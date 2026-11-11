@@ -34,4 +34,10 @@ export {
   reverseReceipt,
   type ReceiptDTO,
 } from "./payments/service";
+export {
+  recordExpensePayment,
+  confirmExpensePayment,
+  reverseExpensePayment,
+  type ExpensePaymentDTO,
+} from "./expense-payments/service";
 export { financeActionFailure, type FinanceActionResult } from "./action-result";
