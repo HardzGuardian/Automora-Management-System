@@ -8,6 +8,7 @@ import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
+import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
 import { calcInvoice } from "./calc";
 import {
   createInvoiceDraftSchema,
@@ -24,7 +25,6 @@ import {
 import {
   companies,
   clients,
-  idempotencyKeys,
   invoiceItems,
   invoices,
   projects,
@@ -215,24 +215,14 @@ export async function createInvoiceDraft(actor: Actor, input: CreateInvoiceDraft
   const requestHash = createHash("sha256").update(JSON.stringify(parsed)).digest("hex");
 
   return withTransaction(async (tx) => {
-    const claim = await tx.insert(idempotencyKeys).values({
+    const claim = await beginIdempotentOperation(tx, {
       companyId: actor.companyId,
-      idempotencyKey: parsed.idempotencyKey,
+      key: parsed.idempotencyKey,
       operation: "invoice.createDraft",
       requestHash,
-    }).onConflictDoNothing({ target: [idempotencyKeys.companyId, idempotencyKeys.idempotencyKey] })
-      .returning({ id: idempotencyKeys.id });
+    });
 
-    if (claim.length === 0) {
-      const [existing] = await tx.select().from(idempotencyKeys).where(and(
-        eq(idempotencyKeys.companyId, actor.companyId),
-        eq(idempotencyKeys.idempotencyKey, parsed.idempotencyKey),
-      )).limit(1);
-      if (!existing || existing.operation !== "invoice.createDraft" || existing.requestHash !== requestHash) {
-        throw new DomainError("CONFLICT", "Idempotency key was already used for a different request.");
-      }
-      return parseInput(invoiceDraftDtoSchema, existing.response);
-    }
+    if (claim.replay) return parseInput(invoiceDraftDtoSchema, claim.response);
 
     await validateReferences(tx, actor.companyId, parsed.clientId, parsed.projectId);
     const [company] = await tx.select({ currency: companies.currency }).from(companies)
@@ -253,15 +243,8 @@ export async function createInvoiceDraft(actor: Actor, input: CreateInvoiceDraft
 
     await addDraftItemRows(tx, actor.companyId, invoice.id, actor.userId, normalizedItems);
     await recomputeDraftTotals(tx, actor.companyId, invoice.id, actor.userId);
-    const claimedRow = claim[0];
-    if (!claimedRow) throw new DomainError("CONFLICT", "Invoice idempotency claim was lost.");
     const calculated = await loadInvoiceDraft(tx, actor.companyId, invoice.id);
-    await tx.update(idempotencyKeys).set({
-      resourceType: "invoice",
-      resourceId: invoice.id,
-      response: calculated,
-    })
-      .where(eq(idempotencyKeys.id, claimedRow.id));
+    await completeIdempotentOperation(tx, claim.id, "invoice", invoice.id, calculated);
     await audit.record(tx, {
       actor,
       entity: "invoice",
