@@ -4,6 +4,7 @@ Required before implementing any change to **permission rules, financial calcula
 
 | Date | Decision | Owner | Why | Status |
 |---|---|---|---|---|
+| 2026-11-11 | Persist invoice lifecycle only (`draft`, `issued`, `cancelled`); derive `partially_paid`, `paid`, and `overdue` from confirmed non-reversed receipts and business dates. | Chintan | Prevents stored payment status from drifting from the source transactions; matches the balance calculation and avoids a status cache. | Accepted |
 | 2026-11-11 | Invoice calculations use exclusive tax; calculate and half-up round tax per line from each line's taxable amount. Line discounts are fixed currency amounts. | Chintan | Applies the architecture's GST default and keeps invoice totals as the sum of rounded line amounts; discount follows the planned monetary `discount` field. | Default applied; confirm with accountant |
 | 2026-11-11 | Keep blueprint stack: Next.js + TypeScript + PostgreSQL + Drizzle (not MongoDB/Express MERN) | Sagar | Blueprint-fixed; finance needs relational constraints and transactions | Accepted |
 | 2026-11-11 | Better Auth for identity/sessions; own RBAC tables for authorisation | Sagar | DB sessions + revocation; Auth.js is in maintenance mode | **Proposed — confirm** |

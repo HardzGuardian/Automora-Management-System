@@ -51,7 +51,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-02 | Invoice calculation (calc.ts) | review | |
 | F-03 | Balance calculation | review | |
 | F-04 | Expense balance & status equivalents | review | |
-| F-05 | State machines | todo | |
+| F-05 | State machines | review | |
 | F-06 | Choose PDF approach and write a 1-page note in docs/decisions.md | todo | |
 | F-07 | db/schema/finance.ts | todo | |
 | F-08 | Finance permission keys reviewed with team; categories seed (default expense categories) | todo | |
