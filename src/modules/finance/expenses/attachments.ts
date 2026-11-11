@@ -8,6 +8,7 @@ import { DomainError } from "@/lib/errors";
 import { expenseAttachments, expenses } from "@/db/schema";
 import { audit } from "@/modules/audit";
 import { expenseAttachmentSchema, type ExpenseAttachmentInput } from "./schemas";
+import { isAllowedAttachmentContent } from "./attachment-content";
 
 type FinanceTransaction = Parameters<Parameters<typeof withTransaction>[0]>[0];
 
@@ -59,6 +60,9 @@ export function createExpenseAttachmentService(storage: FinanceStorageAdapter) {
       const parsed = expenseAttachmentSchema.safeParse(input);
       if (!parsed.success) throw new DomainError("VALIDATION", "Expense attachment is invalid.", parsed.error.flatten());
       if (bytes.byteLength !== parsed.data.size) throw new DomainError("VALIDATION", "Uploaded file size did not match its metadata.");
+      if (!isAllowedAttachmentContent(parsed.data.fileName, bytes)) {
+        throw new DomainError("VALIDATION", "Uploaded bytes do not match an allowed file format.");
+      }
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(expenseId)) {
         throw new DomainError("VALIDATION", "Expense ID is invalid.");
       }
