@@ -1,0 +1,21 @@
+# Confidential blueprint stays out of the public repo
+*.pdf
+
+# Node / Next.js (for when the scaffold lands)
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
