@@ -9,3 +9,4 @@ export {
 export { PROJECT_TRANSITIONS, canTransition, type ProjectStatus } from "./status";
 export type { ProjectDTO } from "./dto";
 export type { CreateProjectInput, ListProjectsInput, UpdateProjectInput } from "./schemas";
+export { addMember, changeOwner, listMembers, removeMember, setMemberRole, type MemberDTO } from "./members";
