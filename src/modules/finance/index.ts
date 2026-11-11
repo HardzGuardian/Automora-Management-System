@@ -17,3 +17,4 @@ export {
   type IssuedInvoiceDTO,
   type CancelledInvoiceDTO,
 } from "./invoices/service";
+export { getInvoicePdfData, InvoicePdfDocument, type InvoicePdfData } from "./invoices/pdf";
