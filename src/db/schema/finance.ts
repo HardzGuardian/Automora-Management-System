@@ -120,6 +120,7 @@ export const payments = pgTable("payments", {
   ...auditColumns(),
 }, (table) => [
   unique("payments_id_company_unique").on(table.id, table.companyId),
+  unique("payments_id_company_invoice_unique").on(table.id, table.companyId, table.invoiceId),
   foreignKey({ columns: [table.invoiceId, table.companyId], foreignColumns: [invoices.id, invoices.companyId], name: "payments_invoice_company_fk" }),
   check("payments_amount_positive", sql`${table.amount} > 0`),
   check("payments_reference_required_for_non_cash", sql`${table.method} = 'cash' OR ${table.reference} IS NOT NULL`),
@@ -139,7 +140,7 @@ export const paymentAllocations = pgTable("payment_allocations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid("created_by").references(() => user.id),
 }, (table) => [
-  foreignKey({ columns: [table.paymentId, table.companyId], foreignColumns: [payments.id, payments.companyId], name: "payment_allocations_payment_company_fk" }),
+  foreignKey({ columns: [table.paymentId, table.companyId, table.invoiceId], foreignColumns: [payments.id, payments.companyId, payments.invoiceId], name: "payment_allocations_payment_invoice_company_fk" }),
   foreignKey({ columns: [table.invoiceId, table.companyId], foreignColumns: [invoices.id, invoices.companyId], name: "payment_allocations_invoice_company_fk" }),
   check("payment_allocations_amount_positive", sql`${table.amount} > 0`),
   index("payment_allocations_company_invoice_idx").on(table.companyId, table.invoiceId),
