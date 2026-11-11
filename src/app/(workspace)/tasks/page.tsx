@@ -35,11 +35,16 @@ export default async function AllTasksPage({
     <main className="flex flex-col gap-4 p-4 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">All tasks ({total})</h1>
-        {can(actor, "tasks.create") ? (
-          <Link href="/tasks/new" className="rounded bg-black px-3 py-2 text-white">
-            New task
+        <div className="flex items-center gap-3">
+          <Link href={{ pathname: "/tasks/calendar", query: { view: "all" } }} className="text-sm underline">
+            Calendar
           </Link>
-        ) : null}
+          {can(actor, "tasks.create") ? (
+            <Link href="/tasks/new" className="rounded bg-black px-3 py-2 text-white">
+              New task
+            </Link>
+          ) : null}
+        </div>
       </div>
       <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} />
       <TaskTable rows={rows} today={todayInTz(actor.timezone)} />

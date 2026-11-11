@@ -3,7 +3,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { allowedTransitions, isOwnTransitionAllowed, listTasks } from "@/modules/tasks";
-import { Board } from "../tasks/_components/board";
+import { BoardDnd } from "../tasks/_components/board-dnd";
 import { TaskFilters } from "../tasks/_components/task-filters";
 import { TaskTable } from "../tasks/_components/task-table";
 
@@ -31,8 +31,18 @@ export default async function MyTasksPage({
   });
   const today = todayInTz(actor.timezone);
   const canManage = can(actor, "tasks.update");
-  const allowed = (t: { status: string }) =>
-    allowedTransitions(t.status).filter((to) => canManage || (can(actor, "tasks.status.update.own") && isOwnTransitionAllowed(t.status, to)));
+  const boardTasks = rows.map((t) => ({
+    id: t.id,
+    taskCode: t.taskCode,
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    dueDate: t.dueDate,
+    overdue: t.dueDate !== null && t.dueDate < today && t.status !== "Completed",
+    allowed: allowedTransitions(t.status).filter(
+      (to) => canManage || (can(actor, "tasks.status.update.own") && isOwnTransitionAllowed(t.status, to)),
+    ),
+  }));
 
   return (
     <main className="flex flex-col gap-4 p-4 sm:p-8">
@@ -45,10 +55,13 @@ export default async function MyTasksPage({
           <Link href={{ query: { ...sp, layout: "board" } }} className={layout === "board" ? "font-semibold underline" : "underline"}>
             Board
           </Link>
+          <Link href={{ pathname: "/tasks/calendar", query: { view: "mine" } }} className="underline">
+            Calendar
+          </Link>
         </nav>
       </div>
       <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} extra={<input type="hidden" name="layout" value={layout} />} />
-      {layout === "board" ? <Board rows={rows} today={today} allowed={(t) => allowed(t)} /> : <TaskTable rows={rows} today={today} />}
+      {layout === "board" ? <BoardDnd tasks={boardTasks} /> : <TaskTable rows={rows} today={today} />}
     </main>
   );
 }
