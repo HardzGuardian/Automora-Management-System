@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
+import { todayInTz } from "@/lib/dates";
 import { listEmployees } from "@/modules/employees";
 import {
   PROJECT_TRANSITIONS,
@@ -20,6 +21,8 @@ import {
   milestoneStatusAction,
   removeMemberAction,
 } from "../actions";
+import { TaskTable } from "../../tasks/_components/task-table";
+import { listTasks } from "@/modules/tasks";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireActor();
@@ -33,10 +36,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     if (e instanceof DomainError && e.code === "NOT_FOUND") notFound();
     throw e;
   }
-  const [progress, members, milestones] = await Promise.all([
+  const [progress, members, milestones, projectTasks] = await Promise.all([
     getProjectProgress(actor, id),
     listMembers(actor, id),
     listMilestones(actor, id),
+    listTasks(actor, { view: "all", projectId: id, pageSize: 100 }),
   ]);
   const canManageMembers = can(actor, "projects.members.manage");
   const candidates =
@@ -142,7 +146,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </form>
         ) : null}
       </section>
-      {/* Tasks tab is added with the task module; finance tab via @/modules/finance (D1-30). */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-medium">Tasks ({projectTasks.total})</h2>
+        <TaskTable rows={projectTasks.rows} today={todayInTz(actor.timezone)} />
+      </section>
+      {/* Finance tab: rendered only via @/modules/finance once it exists (D1-30). */}
     </main>
   );
 }
