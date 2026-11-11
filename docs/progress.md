@@ -7,11 +7,11 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 
 | ID | Task | Status | PR |
 |---|---|---|---|
-| D1-00 | Scaffold | todo | |
-| D1-01 | DB baseline | todo | |
-| D1-02 | Better Auth | todo | |
-| D1-03 | Foundation libs | todo | |
-| D1-04 | Seed | todo | |
+| D1-00 | Scaffold | review | |
+| D1-01 | DB baseline | review | |
+| D1-02 | Better Auth | review | |
+| D1-03 | Foundation libs | review | |
+| D1-04 | Seed | review | |
 | D1-05 | Invitations & account lifecycle | todo | |
 | D1-06 | Forgot / reset password | todo | |
 | D1-07 | Roles & permissions API | todo | |

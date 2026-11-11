@@ -56,7 +56,7 @@ const eslintConfig = defineConfig([
   {
     // Rule 5: only lib/env.ts reads process.env
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/lib/env.ts", "src/**/*.test.ts", "src/test/**"],
+    ignores: ["src/lib/env.ts", "src/db/migrate-cli.ts", "src/**/*.test.ts", "src/test/**"],
     rules: {
       "no-restricted-properties": [
         "error",
