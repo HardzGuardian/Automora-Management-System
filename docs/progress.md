@@ -19,29 +19,29 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | D1-09 | Employee detail | review | |
 | D1-10 | Deactivate / reactivate / suspend | review | |
 | D1-11 | My account: change password, list/revoke own sessions | review | |
-| D1-12 | Client CRUD | todo | |
-| D1-13 | Project CRUD | todo | |
-| D1-14 | Project members | todo | |
-| D1-15 | Milestones: CRUD, status, completed_at | todo | |
-| D1-16 | Progress: progress.ts = completed ÷ non-cancelled eligible tasks, 0% when none; unit tests | todo | |
-| D1-17 | Project detail (overview, members, milestones, tasks; budget/finance tabs via finance modu | todo | |
-| D1-18 | Task CRUD | todo | |
-| D1-19 | Assignees | todo | |
-| D1-20 | Status machine | todo | |
-| D1-21 | lib/dates | todo | |
-| D1-22 | Task activity log | todo | |
-| D1-23 | My Tasks / All Tasks services | todo | |
-| D1-24 | Task pages: My Tasks (list/board toggle), All Tasks (table), Task Detail | todo | |
-| D1-25 | lib/storage + files | todo | |
-| D1-26 | Task comments: add/edit own/delete rules, activity logged | todo | |
-| D1-27 | Task attachments: upload, list, download, remove; inherits task visibility | todo | |
-| D1-28 | Board view (drag between statuses uses the status machine) and Calendar view (due dates) | todo | |
-| D1-29 | Bulk actions: bulk status / reassign / archive; permission checked per record; audited | todo | |
-| D1-30 | Finance-aware client/project detail tabs once Chintan's summaries exist | todo | |
-| D1-31 | Query performance | todo | |
-| D1-32 | Security test suite | todo | |
-| D1-33 | Global search (authorised records only) if time permits (blueprint §3 global pattern) | todo | |
-| D1-34 | Bug-fix and UAT support; README sections for auth, RBAC, tasks | todo | |
+| D1-12 | Client CRUD | review | |
+| D1-13 | Project CRUD | review | |
+| D1-14 | Project members | review | |
+| D1-15 | Milestones: CRUD, status, completed_at | review | |
+| D1-16 | Progress: progress.ts = completed ÷ non-cancelled eligible tasks, 0% when none; unit tests | review | |
+| D1-17 | Project detail (overview, members, milestones, tasks; budget/finance tabs via finance modu | review | |
+| D1-18 | Task CRUD | review | |
+| D1-19 | Assignees | review | |
+| D1-20 | Status machine | review | |
+| D1-21 | lib/dates | review | |
+| D1-22 | Task activity log | review | |
+| D1-23 | My Tasks / All Tasks services | review | |
+| D1-24 | Task pages: My Tasks (list/board toggle), All Tasks (table), Task Detail | review | |
+| D1-25 | lib/storage + files | review | |
+| D1-26 | Task comments: add/edit own/delete rules, activity logged | review | |
+| D1-27 | Task attachments: upload, list, download, remove; inherits task visibility | review | |
+| D1-28 | Board view (drag between statuses uses the status machine) and Calendar view (due dates) | review | |
+| D1-29 | Bulk actions: bulk status / reassign / archive; permission checked per record; audited | review | |
+| D1-30 | Finance-aware client/project detail tabs once Chintan's summaries exist | blocked | |
+| D1-31 | Query performance | review | |
+| D1-32 | Security test suite | review | |
+| D1-33 | Global search (authorised records only) if time permits (blueprint §3 global pattern) | review | |
+| D1-34 | Bug-fix and UAT support; README sections for auth, RBAC, tasks | review | |
 
 ## Chintan (Dev 2)
 

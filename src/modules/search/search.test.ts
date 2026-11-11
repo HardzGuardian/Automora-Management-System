@@ -47,7 +47,7 @@ describe("globalSearch", () => {
   });
 
   it("never returns another company's records", async () => {
-    const s = await seeded();
+    await seeded();
     const other = await workWorld();
     const r = await globalSearch(other.manager, "zephyr");
     expect(r.total).toBe(0);

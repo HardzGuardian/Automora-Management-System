@@ -98,6 +98,24 @@ export async function createTask(actor: Actor, input: CreateTaskInput): Promise<
 - `db`, `withTransaction(fn)`, `type Tx` — `@/db`.
 - Test helpers (`src/test/factories.ts`): `createCompany`, `createUser`, `createEmployee`, `createClient`, `createProject`, `createTask`, `grantPermissions`, `buildActor`. Tests run against a real PostgreSQL (`TEST_DATABASE_URL`), migrated fresh on each run.
 
+### Work-management API as implemented (Sprints 3–5)
+
+Import only from the module's `index.ts`. Every function takes `actor` first; out-of-scope records are `NOT_FOUND`.
+
+| Import | Provides |
+|---|---|
+| `@/modules/employees` | `createEmployee`, `updateEmployee`, `getEmployee`, `listEmployees`, **`getWorkload(actor, employeeId?, {periodDays})`** → `{open, inProgress, overdue, completedInPeriod}`, `getEmployeeTasks`, `deactivateEmployee`, `suspendEmployee`, `reactivateEmployee`, `assertAssignable(tx, companyId, employeeId)` |
+| `@/modules/clients` | `createClient`, `updateClient`, `getClient`, `listClients`, `archiveClient`, `unarchiveClient`, `addClientNote`, `listClientNotes` |
+| `@/modules/projects` | `createProject`, `updateProject`, `changeProjectStatus`, `getProject`, `listProjects`, members (`addMember`, `removeMember`, `setMemberRole`, `changeOwner`, `listMembers`), milestones, **`getProjectProgress`**, **`getProgressForProjects(actor, ids)`** → `Map<id, {done,total,percent}>` |
+| `@/modules/tasks` | `createTask`, `updateTask`, `getTask`, `archiveTask`, `assignTask`/`unassignTask`/`reassignTask`, `changeTaskStatus`, **`listTasks(actor, {view:'mine'|'all', status[], priority[], assigneeId, clientId, projectId, dueFrom, dueTo, overdue, search, sort, dir, page, pageSize<=100})`**, `listTaskActivity`, `listCalendarTasks`, comments, attachments, `bulkChangeStatus`/`bulkReassign`/`bulkArchive`, `canAccessTaskAttachment` |
+| `@/modules/files` | `saveUpload`, `readFile(actor, fileId, checkers)`, `removeFileRow`, `purgeObjects`, type `FileAccessChecker` — **Chintan:** store receipts with `saveUpload`, link them in your own table, and add a `FileAccessChecker` for them to `CHECKERS` in `src/app/api/files/[id]/route.ts` |
+| `@/modules/search` | `globalSearch(actor, query)` |
+| `@/lib/dates` | `todayInTz(tz)`, `addDays`, **`isOverdue(task, today)`**, `overdueCondition(today)`, `dueTodayCondition(today)`, `upcomingCondition(today, days)` — the one overdue rule; dashboards and reminder jobs must use it |
+| `@/lib/notify` | `notify(event)` (never throws, call after commit), `setNotifier(fn)` — **Shubhangi:** register your implementation with `setNotifier` when `modules/notifications` exists. Events emitted: `task.assigned`, `task.review`, `task.completed` (keys per section 6) |
+| `@/lib/storage` | `putObject`, `getObject`, `deleteObject`, `validateUpload`, `sanitizeFileName`, `newStorageKey` |
+
+Task status rules: Pending → In Progress → In Review → Completed, reopen = Completed → In Progress. Assignees may move their own task among the first three; **completing or reopening needs `tasks.update`** (a ruling; change `isOwnTransitionAllowed` if the business wants otherwise).
+
 ## 5. Libraries exported by others
 
 | Owner | Import | Provides |
