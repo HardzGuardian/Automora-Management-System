@@ -6,6 +6,7 @@ import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { todayInTz } from "@/lib/dates";
 import { listEmployees } from "@/modules/employees";
+import { getProjectFinanceSummary, type ProjectFinanceSummary } from "@/modules/finance";
 import {
   PROJECT_TRANSITIONS,
   getProject,
@@ -42,6 +43,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     listMilestones(actor, id),
     listTasks(actor, { view: "all", projectId: id, pageSize: 100 }),
   ]);
+  const canSeeFinance = can(actor, "finance.invoices.read") && can(actor, "finance.expenses.read");
+  let finance: ProjectFinanceSummary | null = null;
+  let financeUnavailable = false;
+  if (canSeeFinance) {
+    try {
+      finance = await getProjectFinanceSummary(actor, id);
+    } catch {
+      financeUnavailable = true; // never let a finance problem break the project page
+    }
+  }
   const canManageMembers = can(actor, "projects.members.manage");
   const candidates =
     canManageMembers && can(actor, "employees.read")
@@ -150,7 +161,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <h2 className="text-lg font-medium">Tasks ({projectTasks.total})</h2>
         <TaskTable rows={projectTasks.rows} today={todayInTz(actor.timezone)} />
       </section>
-      {/* Finance tab: rendered only via @/modules/finance once it exists (D1-30). */}
+      {canSeeFinance ? (
+        <section className="flex flex-col gap-2" aria-label="Finance">
+          <h2 className="text-lg font-medium">Finance (cash basis)</h2>
+          {financeUnavailable ? (
+            <p className="text-sm text-gray-600">Finance data is unavailable right now.</p>
+          ) : finance && finance.currencies.length > 0 ? (
+            <ul className="text-sm">
+              {finance.currencies.map((c) => (
+                <li key={c.currency}>
+                  {c.currency}: received {c.confirmedReceipts} · paid out {c.confirmedExpensePayments} · net {c.netCashMovement}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-600">No confirmed receipts or expense payments yet.</p>
+          )}
+        </section>
+      ) : null}
     </main>
   );
 }

@@ -164,7 +164,6 @@ export async function getExpenseDetail(actor: Actor, expenseId: string) {
   if (!expense) throw new DomainError("EXPENSE_NOT_FOUND", "Expense was not found.");
   return {
     ...expense,
-    total: fromMinor(toMinor(expense.total)),
     ...balance,
   };
 }

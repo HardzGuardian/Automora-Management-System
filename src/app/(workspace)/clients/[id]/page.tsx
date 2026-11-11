@@ -5,6 +5,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { getClient, listClientNotes } from "@/modules/clients";
+import { getClientFinanceSummary, type ClientFinanceSummary } from "@/modules/finance";
 import { listProjects } from "@/modules/projects";
 import { addNoteAction, archiveClientAction } from "../actions";
 import { ClientForm } from "../client-form";
@@ -20,6 +21,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   } catch (e) {
     if (e instanceof DomainError && (e.code === "NOT_FOUND" || e.code === "FORBIDDEN")) notFound();
     throw e;
+  }
+  // Finance data comes only through @/modules/finance and only for users with finance access.
+  let finance: ClientFinanceSummary | null = null;
+  let financeUnavailable = false;
+  if (can(actor, "finance.invoices.read")) {
+    try {
+      finance = await getClientFinanceSummary(actor, id);
+    } catch {
+      financeUnavailable = true; // never let a finance problem break the client page
+    }
   }
   const [notes, projects] = await Promise.all([
     listClientNotes(actor, id),
@@ -64,8 +75,26 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             ))}
           </ul>
         )}
-        {/* Finance tab: rendered only via @/modules/finance once it exists (D1-30). */}
       </section>
+
+      {can(actor, "finance.invoices.read") ? (
+        <section className="flex flex-col gap-2" aria-label="Finance">
+          <h2 className="text-lg font-medium">Finance</h2>
+          {financeUnavailable ? (
+            <p className="text-sm text-gray-600">Finance data is unavailable right now.</p>
+          ) : finance && finance.outstandingByCurrency.length > 0 ? (
+            <ul className="text-sm">
+              {finance.outstandingByCurrency.map((o) => (
+                <li key={o.currency}>
+                  Outstanding receivables: {o.amount} {o.currency}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-600">No outstanding invoices.</p>
+          )}
+        </section>
+      ) : null}
 
       {can(actor, "clients.update") ? (
         <section className="flex flex-col gap-2">

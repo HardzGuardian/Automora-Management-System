@@ -150,7 +150,7 @@ export async function confirmExpensePayment(actor: Actor, paymentId: string): Pr
     if (!payment) throw new DomainError("EXPENSE_PAYMENT_NOT_FOUND", "Expense payment was not found.");
     if (payment.status !== "pending") throw new DomainError("CONFLICT", "Only pending expense payments can be confirmed.");
 
-    const confirmed = await getConfirmedExpensePayments(tx, actor.companyId, expense.id);
+    const { confirmed } = await getExpensePaymentReservations(tx, actor.companyId, expense.id);
     const outstanding = calcExpenseOutstanding(toMinor(expense.total), toMinor(confirmed));
     if (toMinor(payment.amount) > outstanding) throw new DomainError("CONFLICT", "Payment would overpay this expense.");
 

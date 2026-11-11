@@ -1,10 +1,17 @@
-export type ErrorCode =
+export type BaseErrorCode =
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "VALIDATION"
   | "CONFLICT"
   | "INTERNAL";
+
+/** Modules may use entity-specific not-found codes (e.g. INVOICE_NOT_FOUND), per docs/02-contracts.md. */
+export type ErrorCode = BaseErrorCode | `${Uppercase<string>}_NOT_FOUND`;
+
+export function isNotFound(code: string): boolean {
+  return code === "NOT_FOUND" || code.endsWith("_NOT_FOUND");
+}
 
 export class DomainError extends Error {
   readonly code: ErrorCode;

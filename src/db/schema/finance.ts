@@ -31,8 +31,8 @@ function auditColumns() {
   return {
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-    createdBy: uuid("created_by").references(() => user.id),
-    updatedBy: uuid("updated_by").references(() => user.id),
+    createdBy: text("created_by").references(() => user.id),
+    updatedBy: text("updated_by").references(() => user.id),
   };
 }
 
@@ -114,9 +114,9 @@ export const payments = pgTable("payments", {
   notes: text("notes"),
   status: financePaymentStatusEnum("status").notNull().default("pending"),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  confirmedBy: uuid("confirmed_by").references(() => user.id),
+  confirmedBy: text("confirmed_by").references(() => user.id),
   reversedAt: timestamp("reversed_at", { withTimezone: true }),
-  reversedBy: uuid("reversed_by").references(() => user.id),
+  reversedBy: text("reversed_by").references(() => user.id),
   reverseReason: text("reverse_reason"),
   idempotencyKey: uuid("idempotency_key").notNull(),
   ...auditColumns(),
@@ -140,7 +140,7 @@ export const paymentAllocations = pgTable("payment_allocations", {
   invoiceId: uuid("invoice_id").notNull(),
   amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  createdBy: uuid("created_by").references(() => user.id),
+  createdBy: text("created_by").references(() => user.id),
 }, (table) => [
   foreignKey({ columns: [table.paymentId, table.companyId, table.invoiceId], foreignColumns: [payments.id, payments.companyId, payments.invoiceId], name: "payment_allocations_payment_invoice_company_fk" }),
   foreignKey({ columns: [table.invoiceId, table.companyId], foreignColumns: [invoices.id, invoices.companyId], name: "payment_allocations_invoice_company_fk" }),
@@ -199,9 +199,9 @@ export const expensePayments = pgTable("expense_payments", {
   notes: text("notes"),
   status: financePaymentStatusEnum("status").notNull().default("pending"),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  confirmedBy: uuid("confirmed_by").references(() => user.id),
+  confirmedBy: text("confirmed_by").references(() => user.id),
   reversedAt: timestamp("reversed_at", { withTimezone: true }),
-  reversedBy: uuid("reversed_by").references(() => user.id),
+  reversedBy: text("reversed_by").references(() => user.id),
   reverseReason: text("reverse_reason"),
   idempotencyKey: uuid("idempotency_key").notNull(),
   ...auditColumns(),
@@ -223,7 +223,7 @@ export const expenseAttachments = pgTable("expense_attachments", {
   expenseId: uuid("expense_id").notNull(),
   fileId: uuid("file_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  createdBy: uuid("created_by").references(() => user.id),
+  createdBy: text("created_by").references(() => user.id),
 }, (table) => [
   foreignKey({ columns: [table.expenseId, table.companyId], foreignColumns: [expenses.id, expenses.companyId], name: "expense_attachments_expense_company_fk" }),
   foreignKey({ columns: [table.fileId, table.companyId], foreignColumns: [files.id, files.companyId], name: "expense_attachments_file_company_fk" }),

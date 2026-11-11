@@ -37,7 +37,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | D1-27 | Task attachments: upload, list, download, remove; inherits task visibility | review | |
 | D1-28 | Board view (drag between statuses uses the status machine) and Calendar view (due dates) | review | |
 | D1-29 | Bulk actions: bulk status / reassign / archive; permission checked per record; audited | review | |
-| D1-30 | Finance-aware client/project detail tabs once Chintan's summaries exist | blocked | |
+| D1-30 | Finance-aware client/project detail tabs once Chintan's summaries exist | review | |
 | D1-31 | Query performance | review | |
 | D1-32 | Security test suite | review | |
 | D1-33 | Global search (authorised records only) if time permits (blueprint §3 global pattern) | review | |

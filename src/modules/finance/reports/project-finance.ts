@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { calculateProjectCashNet, type ProjectFinanceCurrencySummary } from "./cash-movement-math";
 
-export type { ProjectFinanceCurrencySummary } from "./cash-movement";
+export type { ProjectFinanceCurrencySummary } from "./cash-movement-math";
 
 export type ProjectFinanceSummary = {
   projectId: string;

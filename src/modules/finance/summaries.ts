@@ -80,7 +80,7 @@ export async function getClientFinanceSummary(
   const invoiceBalances = db.select({
     invoiceId: invoices.id,
     currency: invoices.currency,
-    outstanding: sql<string>`GREATEST(${invoices.total}::numeric - ${confirmedAmount}, 0)::numeric`,
+    outstanding: sql<string>`GREATEST(${invoices.total}::numeric - ${confirmedAmount}, 0)::numeric`.as("outstanding"),
   }).from(invoices)
     .leftJoin(paymentAllocations, and(
       eq(paymentAllocations.invoiceId, invoices.id),

@@ -1,5 +1,5 @@
 import "server-only";
-import { nextCode } from "@/lib/codes";
+import { nextSequence } from "@/lib/codes";
 import type { withTransaction } from "@/db";
 import { formatInvoiceNumber } from "./numbering-format";
 
@@ -16,6 +16,6 @@ export async function nextInvoiceNumber(
   const match = /^(\d{4})-\d{2}-\d{2}$/.exec(issueDate);
   const yearText = match?.[1];
   if (!yearText) throw new TypeError("Invoice issue date must be YYYY-MM-DD.");
-  const sequence = await nextCode(tx, companyId, "invoice");
+  const sequence = await nextSequence(tx, companyId, "INV");
   return formatInvoiceNumber(Number(yearText), sequence);
 }

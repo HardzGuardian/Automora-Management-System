@@ -1,4 +1,3 @@
-import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
@@ -14,7 +13,7 @@ export async function GET(
     const actor = await getActor();
     const { id } = await context.params;
     const data = await getInvoicePdfData(actor, id);
-    const pdf = await renderToBuffer(createElement(InvoicePdfDocument, { data }));
+    const pdf = await renderToBuffer(InvoicePdfDocument({ data }));
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",

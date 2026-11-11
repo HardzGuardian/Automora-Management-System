@@ -64,5 +64,6 @@ export { calculateProjectCashNet, combineCashMovementRows } from "./reports/cash
 export { getReceivablesReport, type ReceivablesReport, type ReceivableRow } from "./reports/receivables";
 export { getExpenseRegisterReport, type ExpenseRegisterReport, type ExpenseRegisterRow } from "./reports/expense-register";
 export { getFinanceReportSummary, type FinanceReportSummary, type FinanceCurrencyTotal } from "./reports/summary";
-export { exportFinanceReport, type FinanceExportAdapter, type FinanceExportRecord, type FinanceExportRequest } from "./reports/export";
+export { exportFinanceReport, type FinanceExportAdapter, type FinanceExportRecord } from "./reports/export";
+export type { FinanceExportRequest } from "./reports/schemas";
 export { financeActionFailure, type FinanceActionResult } from "./action-result";
