@@ -67,8 +67,25 @@ export const invoiceDraftDtoSchema = z.object({
   })).max(100),
 });
 
+export const invoiceListSchema = z.object({
+  page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER / 100).default(1),
+  pageSize: z.number().int().positive().max(100).default(25),
+  sortBy: z.enum(["issueDate", "dueDate", "total", "invoiceNumber"]).default("issueDate"),
+  sortDirection: z.enum(["asc", "desc"]).default("desc"),
+  status: z.enum(["draft", "issued", "partially_paid", "paid", "overdue", "cancelled"]).optional(),
+  clientId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
+  fromDate: businessDate.optional(),
+  toDate: businessDate.optional(),
+}).refine((value) => !value.fromDate || !value.toDate || value.fromDate <= value.toDate, {
+  message: "Start date must be on or before end date.",
+  path: ["fromDate"],
+});
+
 export type InvoiceLineInputDTO = z.infer<typeof invoiceLineInputSchema>;
 export type CreateInvoiceDraftInput = z.infer<typeof createInvoiceDraftSchema>;
 export type UpdateInvoiceDraftInput = z.infer<typeof updateInvoiceDraftSchema>;
 export type UpdateInvoiceLineInput = z.infer<typeof updateInvoiceLineSchema>;
 export type InvoiceDraftDTOInput = z.infer<typeof invoiceDraftDtoSchema>;
+export type InvoiceListInput = z.infer<typeof invoiceListSchema>;
+export type InvoiceListQueryInput = z.input<typeof invoiceListSchema>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInvoiceDraftSchema, invoiceLineInputSchema } from "./schemas";
+import { createInvoiceDraftSchema, invoiceLineInputSchema, invoiceListSchema } from "./schemas";
 
 const validLine = {
   description: "Consulting",
@@ -35,5 +35,11 @@ describe("invoice input schemas", () => {
     };
     expect(createInvoiceDraftSchema.safeParse(input).success).toBe(false);
     expect(createInvoiceDraftSchema.safeParse({ ...input, dueDate: "2028-02-29", items: [validLine] }).success).toBe(true);
+  });
+
+  it("bounds list pagination and validates filter date order", () => {
+    expect(invoiceListSchema.safeParse({ page: 1, pageSize: 101 }).success).toBe(false);
+    expect(invoiceListSchema.safeParse({ page: Number.MAX_SAFE_INTEGER, pageSize: 100 }).success).toBe(false);
+    expect(invoiceListSchema.safeParse({ fromDate: "2026-03-01", toDate: "2026-02-01" }).success).toBe(false);
   });
 });

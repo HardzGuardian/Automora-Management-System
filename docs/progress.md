@@ -56,8 +56,8 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-07 | db/schema/finance.ts | doing | |
 | F-08 | Finance permission keys reviewed with team; categories seed (default expense categories) | review | |
 | F-09 | Invoice service | doing | |
-| F-10 | Numbering | todo | |
-| F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | todo | |
+| F-10 | Numbering | doing | |
+| F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | doing | |
 | F-12 | recordReceipt | todo | |
 | F-13 | confirmReceipt | todo | |
 | F-14 | reverseReceipt | todo | |
