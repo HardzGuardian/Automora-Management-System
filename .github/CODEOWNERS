@@ -1,0 +1,9 @@
+/src/db/schema/finance.ts        @Chintan572
+/src/modules/finance/            @Chintan572
+/src/lib/money/                  @Chintan572
+/src/modules/notifications/      @shubhangi-builds
+/src/modules/reports/            @shubhangi-builds
+/src/components/                 @shubhangi-builds
+/src/lib/export/                 @shubhangi-builds
+/src/lib/permissions/catalog.ts  @HardzGuardian @Chintan572 @shubhangi-builds
+*                                @HardzGuardian
