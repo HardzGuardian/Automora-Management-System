@@ -42,6 +42,10 @@ export const updateInvoiceLineSchema = invoiceLineInputSchema.extend({
 
 export const removeInvoiceLineSchema = z.object({ itemId: z.string().uuid() });
 export const issueInvoiceSchema = z.object({ invoiceId: z.string().uuid() });
+export const cancelInvoiceSchema = z.object({
+  invoiceId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(500),
+});
 
 export const invoiceDraftDtoSchema = z.object({
   id: z.string().uuid(),
@@ -88,6 +92,7 @@ export type CreateInvoiceDraftInput = z.infer<typeof createInvoiceDraftSchema>;
 export type UpdateInvoiceDraftInput = z.infer<typeof updateInvoiceDraftSchema>;
 export type UpdateInvoiceLineInput = z.infer<typeof updateInvoiceLineSchema>;
 export type IssueInvoiceInput = z.infer<typeof issueInvoiceSchema>;
+export type CancelInvoiceInput = z.infer<typeof cancelInvoiceSchema>;
 export type InvoiceDraftDTOInput = z.infer<typeof invoiceDraftDtoSchema>;
 export type InvoiceListInput = z.infer<typeof invoiceListSchema>;
 export type InvoiceListQueryInput = z.input<typeof invoiceListSchema>;

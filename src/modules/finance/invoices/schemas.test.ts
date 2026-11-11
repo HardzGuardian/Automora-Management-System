@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInvoiceDraftSchema, invoiceLineInputSchema, invoiceListSchema, issueInvoiceSchema } from "./schemas";
+import { cancelInvoiceSchema, createInvoiceDraftSchema, invoiceLineInputSchema, invoiceListSchema, issueInvoiceSchema } from "./schemas";
 
 const validLine = {
   description: "Consulting",
@@ -46,5 +46,11 @@ describe("invoice input schemas", () => {
   it("validates issue invoice IDs", () => {
     expect(issueInvoiceSchema.safeParse({ invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0" }).success).toBe(true);
     expect(issueInvoiceSchema.safeParse({ invoiceId: "bad-id" }).success).toBe(false);
+  });
+
+  it("requires a valid ID and non-empty invoice cancellation reason", () => {
+    expect(cancelInvoiceSchema.safeParse({ invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0", reason: "Duplicate invoice" }).success).toBe(true);
+    expect(cancelInvoiceSchema.safeParse({ invoiceId: "bad-id", reason: "Duplicate invoice" }).success).toBe(false);
+    expect(cancelInvoiceSchema.safeParse({ invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0", reason: "  " }).success).toBe(false);
   });
 });

@@ -11,4 +11,9 @@ export {
   type ExpenseAttachmentDTO,
   type FinanceStorageAdapter,
 } from "./expenses/attachments";
-export { issueInvoice, type IssuedInvoiceDTO } from "./invoices/service";
+export {
+  issueInvoice,
+  cancelInvoice,
+  type IssuedInvoiceDTO,
+  type CancelledInvoiceDTO,
+} from "./invoices/service";

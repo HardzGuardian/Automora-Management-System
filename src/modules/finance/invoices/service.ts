@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { ZodType } from "zod";
 import { withTransaction } from "@/db";
 import { audit } from "@/modules/audit";
@@ -19,11 +19,13 @@ import {
   updateInvoiceDraftSchema,
   updateInvoiceLineSchema,
   issueInvoiceSchema,
+  cancelInvoiceSchema,
   type CreateInvoiceDraftInput,
   type InvoiceLineInputDTO,
   type UpdateInvoiceDraftInput,
   type UpdateInvoiceLineInput,
   type IssueInvoiceInput,
+  type CancelInvoiceInput,
 } from "./schemas";
 import { nextInvoiceNumber } from "./numbering";
 import { transitionInvoiceState } from "./state-machine";
@@ -33,6 +35,8 @@ import {
   invoiceItems,
   invoices,
   projects,
+  paymentAllocations,
+  payments,
 } from "@/db/schema";
 
 export type InvoiceDraftDTO = {
@@ -495,6 +499,72 @@ export async function issueInvoice(actor: Actor, invoiceId: string): Promise<Iss
         taxAmount: item.taxAmount,
         lineTotal: item.lineTotal,
       })),
+    };
+  });
+}
+
+export type CancelledInvoiceDTO = {
+  id: string;
+  invoiceNumber: string | null;
+  status: "cancelled";
+  cancelledAt: Date;
+  reason: string;
+};
+
+export async function cancelInvoice(actor: Actor, input: CancelInvoiceInput): Promise<CancelledInvoiceDTO> {
+  requirePermission(actor, "finance.invoices.cancel");
+  const parsed = parseInput(cancelInvoiceSchema, input);
+  return withTransaction(async (tx) => {
+    const [invoice] = await tx.select().from(invoices).where(and(
+      eq(invoices.id, parsed.invoiceId),
+      eq(invoices.companyId, actor.companyId),
+    )).limit(1).for("update");
+    if (!invoice) throw new DomainError("INVOICE_NOT_FOUND", "Invoice was not found.");
+    if (invoice.status !== "draft" && invoice.status !== "issued") {
+      throw new DomainError("CONFLICT", "Only draft or issued invoices can be cancelled.");
+    }
+
+    const [unresolvedReceipt] = await tx.select({ id: payments.id }).from(paymentAllocations)
+      .innerJoin(payments, and(
+        eq(payments.id, paymentAllocations.paymentId),
+        eq(payments.companyId, paymentAllocations.companyId),
+      )).where(and(
+        eq(paymentAllocations.companyId, actor.companyId),
+        eq(paymentAllocations.invoiceId, invoice.id),
+        inArray(payments.status, ["pending", "confirmed"]),
+      )).limit(1);
+    if (unresolvedReceipt) {
+      throw new DomainError("CONFLICT", "Resolve pending receipts and reverse confirmed receipts before cancelling this invoice.");
+    }
+
+    const nextStatus = transitionInvoiceState(invoice.status, "cancelled");
+    const now = new Date();
+    const [cancelled] = await tx.update(invoices).set({
+      status: nextStatus,
+      cancelledAt: now,
+      cancelReason: parsed.reason,
+      updatedAt: now,
+      updatedBy: actor.userId,
+    }).where(and(
+      eq(invoices.id, invoice.id),
+      eq(invoices.companyId, actor.companyId),
+      inArray(invoices.status, ["draft", "issued"]),
+    )).returning({ id: invoices.id, invoiceNumber: invoices.invoiceNumber });
+    if (!cancelled) throw new DomainError("CONFLICT", "Invoice could not be cancelled.");
+    await audit.record(tx, {
+      actor,
+      entity: "invoice",
+      entityId: invoice.id,
+      action: "invoice.cancelled",
+      before: { status: invoice.status, total: invoice.total },
+      after: { status: "cancelled", reason: parsed.reason },
+    });
+    return {
+      id: invoice.id,
+      invoiceNumber: cancelled.invoiceNumber,
+      status: "cancelled",
+      cancelledAt: now,
+      reason: parsed.reason,
     };
   });
 }
