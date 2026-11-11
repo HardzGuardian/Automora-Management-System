@@ -20,6 +20,8 @@ const schema = z.object({
   CRON_SECRET: z.string().default(""),
   SEED_DEMO: bool,
   SEED_ADMIN_EMAIL: z.string().email().optional(),
+  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  STORAGE_LOCAL_DIR: z.string().default(".data/uploads"),
   UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10485760),
 });
 

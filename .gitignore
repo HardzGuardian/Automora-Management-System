@@ -22,3 +22,6 @@ Thumbs.db
 
 # SDD workspace
 .superpowers/
+
+# Local file storage (dev/test)
+.data/

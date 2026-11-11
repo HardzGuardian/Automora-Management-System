@@ -20,6 +20,8 @@ export default defineConfig({
     globalSetup: ["src/test/global-setup.ts"],
     env: {
       DATABASE_URL: testDb,
+      STORAGE_DRIVER: "local",
+      STORAGE_LOCAL_DIR: ".data/test-uploads",
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "test-secret-test-secret-test-secret-123",
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
       APP_URL: process.env.APP_URL ?? "http://localhost:3000",
