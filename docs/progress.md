@@ -47,41 +47,41 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 
 | ID | Task | Status | PR |
 |---|---|---|---|
-| F-01 | lib/money | todo | |
-| F-02 | Invoice calculation (calc.ts) | todo | |
-| F-03 | Balance calculation | todo | |
-| F-04 | Expense balance & status equivalents | todo | |
-| F-05 | State machines | todo | |
-| F-06 | Choose PDF approach and write a 1-page note in docs/decisions.md | todo | |
-| F-07 | db/schema/finance.ts | todo | |
-| F-08 | Finance permission keys reviewed with team; categories seed (default expense categories) | todo | |
-| F-09 | Invoice service | todo | |
-| F-10 | Numbering | todo | |
-| F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | todo | |
-| F-12 | recordReceipt | todo | |
-| F-13 | confirmReceipt | todo | |
-| F-14 | reverseReceipt | todo | |
-| F-15 | Allocation (payment_allocations) | todo | |
-| F-16 | Cancelled/Draft invoice refuses receipts | todo | |
-| F-17 | Client outstanding balance query (for Sagar's client detail) | todo | |
-| F-18 | Expense categories CRUD (activate/deactivate, not delete) | todo | |
-| F-19 | Expense CRUD | todo | |
-| F-20 | Receipt/bill attachments through lib/storage (Sagar); downloads require finance.expenses.r | todo | |
-| F-21 | issueInvoice | todo | |
-| F-22 | cancelInvoice: rules — no confirmed receipts (or require reversal first); reason; audit | todo | |
-| F-23 | Printable invoice PDF (company details, items, tax, totals, balance) via /api/invoices/[id | todo | |
-| F-24 | Invoice and receipt screens (list/detail/forms) — with Shubhangi's components | todo | |
-| F-25 | Overdue invoice derivation (due date < company-local today and balance > 0) — uses Sagar's | todo | |
-| F-26 | recordExpensePayment (full/partial), confirm, reverse, idempotency, row lock | todo | |
-| F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | todo | |
-| F-28 | Expense screens (list/detail/payment dialogs) | todo | |
-| F-29 | Project finance summary | todo | |
-| F-30 | Queries | todo | |
-| F-31 | getFinanceSnapshot(actor, range) for the dashboard, with period-total vs point-in-time lab | todo | |
-| F-32 | Finance report exports use the same filters/scope; exports are audited | todo | |
-| F-33 | Edge-case suite | todo | |
-| F-34 | Audit coverage check | todo | |
-| F-35 | Permission pass | todo | |
+| F-01 | lib/money | review | |
+| F-02 | Invoice calculation (calc.ts) | review | |
+| F-03 | Balance calculation | review | |
+| F-04 | Expense balance & status equivalents | review | |
+| F-05 | State machines | review | |
+| F-06 | Choose PDF approach and write a 1-page note in docs/decisions.md | review | |
+| F-07 | db/schema/finance.ts | doing | |
+| F-08 | Finance permission keys reviewed with team; categories seed (default expense categories) | review | |
+| F-09 | Invoice service | doing | |
+| F-10 | Numbering | doing | |
+| F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | doing | |
+| F-12 | recordReceipt | doing | |
+| F-13 | confirmReceipt | review | |
+| F-14 | reverseReceipt | review | |
+| F-15 | Allocation (payment_allocations) | review | |
+| F-16 | Cancelled/Draft invoice refuses receipts | review | |
+| F-17 | Client outstanding balance query (for Sagar's client detail) | review | |
+| F-18 | Expense categories CRUD (activate/deactivate, not delete) | review | |
+| F-19 | Expense CRUD | review | |
+| F-20 | Receipt/bill attachments through lib/storage (Sagar); downloads require finance.expenses.r | review | |
+| F-21 | issueInvoice | review | |
+| F-22 | cancelInvoice: rules — no confirmed receipts (or require reversal first); reason; audit | review | |
+| F-23 | Printable invoice PDF (company details, items, tax, totals, balance) via /api/invoices/[id | review | |
+| F-24 | Invoice and receipt screens (list/detail/forms) — with Shubhangi's components | review | |
+| F-25 | Overdue invoice derivation (due date < company-local today and balance > 0) — uses Sagar's | review | |
+| F-26 | recordExpensePayment (full/partial), confirm, reverse, idempotency, row lock | review | |
+| F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | review | |
+| F-28 | Expense screens (list/detail/payment dialogs) | review | |
+| F-29 | Project finance summary | review | |
+| F-30 | Queries | review | |
+| F-31 | getFinanceSnapshot(actor, range) for the dashboard, with period-total vs point-in-time lab | review | |
+| F-32 | Finance report exports use the same filters/scope; exports are audited | review | |
+| F-33 | Edge-case suite | review | |
+| F-34 | Audit coverage check | review | |
+| F-35 | Permission pass | doing | |
 
 ## Shubhangi (Dev 3)
 
