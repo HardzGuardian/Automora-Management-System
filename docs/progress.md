@@ -55,7 +55,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-06 | Choose PDF approach and write a 1-page note in docs/decisions.md | review | |
 | F-07 | db/schema/finance.ts | doing | |
 | F-08 | Finance permission keys reviewed with team; categories seed (default expense categories) | review | |
-| F-09 | Invoice service | todo | |
+| F-09 | Invoice service | doing | |
 | F-10 | Numbering | todo | |
 | F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | todo | |
 | F-12 | recordReceipt | todo | |
