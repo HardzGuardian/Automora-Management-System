@@ -73,7 +73,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-24 | Invoice and receipt screens (list/detail/forms) — with Shubhangi's components | review | |
 | F-25 | Overdue invoice derivation (due date < company-local today and balance > 0) — uses Sagar's | review | |
 | F-26 | recordExpensePayment (full/partial), confirm, reverse, idempotency, row lock | review | |
-| F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | todo | |
+| F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | review | |
 | F-28 | Expense screens (list/detail/payment dialogs) | todo | |
 | F-29 | Project finance summary | todo | |
 | F-30 | Queries | todo | |
