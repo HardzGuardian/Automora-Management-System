@@ -12,6 +12,13 @@ describe("expense balance calculations", () => {
     expect(calcExpenseOutstanding(50_000, 20_000)).toBe(30_000);
   });
 
+  it("reopens an expense after reversal and reflects a corrected payment", () => {
+    const total = 50_000;
+    expect(calcExpenseOutstanding(total, 20_000 + 15_000)).toBe(15_000);
+    expect(calcExpenseOutstanding(total, 20_000)).toBe(30_000);
+    expect(calcExpenseOutstanding(total, 20_000 + 14_000)).toBe(16_000);
+  });
+
   it("clamps overpayment to zero outstanding", () => {
     expect(calcExpenseOutstanding(50_000, 60_000)).toBe(0);
   });

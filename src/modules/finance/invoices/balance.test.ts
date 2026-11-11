@@ -22,6 +22,21 @@ describe("invoice balance calculations", () => {
     expect(calcOutstanding(0, 0)).toBe(0);
   });
 
+  it("reopens a balance after reversal and accepts a corrected receipt", () => {
+    const total = 50_000;
+    const originalConfirmed = 20_000 + 15_000;
+    const afterReversal = 20_000;
+    const correctedConfirmed = afterReversal + 14_000;
+    expect(calcOutstanding(total, originalConfirmed)).toBe(15_000);
+    expect(calcOutstanding(total, afterReversal)).toBe(30_000);
+    expect(calcOutstanding(total, correctedConfirmed)).toBe(16_000);
+  });
+
+  it("supports an exact receipt and clamps any excess to zero", () => {
+    expect(calcOutstanding(10_000, 10_000)).toBe(0);
+    expect(calcOutstanding(10_000, 10_001)).toBe(0);
+  });
+
   it.each([
     [{ state: "draft", totalMinor: 10_000, confirmedReceiptsMinor: 0, dueDate: "2026-01-01", today: "2026-02-01" }, "draft"],
     [{ state: "cancelled", totalMinor: 10_000, confirmedReceiptsMinor: 0, dueDate: "2026-01-01", today: "2026-02-01" }, "cancelled"],
