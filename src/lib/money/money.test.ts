@@ -38,6 +38,26 @@ describe("money helpers", () => {
     (amount) => expect(() => toMinor(amount)).toThrow(),
   );
 
+  it("rejects runtime numbers and non-string inputs instead of coercing them", () => {
+    for (const value of [0.1, Number.NaN, Number.POSITIVE_INFINITY, null]) {
+      expect(() => Reflect.apply(toMinor, undefined, [value])).toThrow();
+    }
+    expect(() => Reflect.apply(mul, undefined, [0.5, 100])).toThrow();
+  });
+
+  it("rejects overlong decimal inputs before doing large integer work", () => {
+    const overlong = "1".repeat(100_000);
+    expect(() => toMinor(overlong)).toThrow(RangeError);
+    expect(() => mul(overlong, 100)).toThrow(RangeError);
+  });
+
+  it("accepts the safe-integer boundary and rejects overflow", () => {
+    expect(toMinor("90071992547409.91")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(() => toMinor("90071992547409.92")).toThrow(RangeError);
+    expect(() => add(Number.MAX_SAFE_INTEGER, 1)).toThrow(RangeError);
+    expect(() => fromMinor(Number.NaN)).toThrow(RangeError);
+  });
+
   it("formats currency for display", () => {
     expect(formatMoney(12345, "INR")).toContain("123.45");
   });

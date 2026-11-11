@@ -62,4 +62,15 @@ describe("invoice calculations", () => {
   ] as const)("rejects invalid invoice line input %#", (input) => {
     expect(() => calcInvoiceLine(input)).toThrow();
   });
+
+  it("rejects overlong quantities and tax rates before large integer work", () => {
+    const overlong = "1".repeat(100_000);
+    expect(() => calcInvoiceLine(line({ quantity: overlong }))).toThrow(RangeError);
+    expect(() => calcInvoiceLine(line({ taxRate: overlong }))).toThrow(RangeError);
+  });
+
+  it("rejects totals that exceed safe integer minor-unit precision", () => {
+    const largeLine = line({ unitPriceMinor: Number.MAX_SAFE_INTEGER, taxRate: "0" });
+    expect(() => calcInvoice([largeLine, largeLine])).toThrow(RangeError);
+  });
 });

@@ -24,6 +24,8 @@ export type CalculatedInvoice = {
 };
 
 function taxRateAsRatio(taxRate: string): string {
+  if (typeof taxRate !== "string") throw new TypeError("Tax rate must be a decimal percentage string.");
+  if (taxRate.length > 128) throw new RangeError("Tax rate exceeds the supported decimal input length.");
   const match = /^(\d+)(?:\.(\d+))?$/.exec(taxRate);
   if (!match) throw new TypeError("Tax rate must be a non-negative decimal percentage.");
 
