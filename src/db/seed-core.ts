@@ -2,6 +2,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { withTransaction, type Tx } from "@/db";
 import {
   companies,
+  companySettings,
   invitations,
   permissions,
   rolePermissions,
@@ -38,18 +39,22 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
   });
 }
 
+const SEED_MARKER = "system.seeded";
+
 async function ensureCompany(tx: Tx): Promise<string> {
-  // The seeded company is the one that owns the "Super Admin" system role.
+  // The seeded company is identified by an explicit marker, not by name or roles, so it
+  // survives renames and is unambiguous in a database that holds other companies.
   const [existing] = await tx
-    .select({ companyId: roles.companyId })
-    .from(roles)
-    .where(and(eq(roles.name, "Super Admin"), eq(roles.isSystem, true)))
+    .select({ companyId: companySettings.companyId })
+    .from(companySettings)
+    .where(eq(companySettings.settingKey, SEED_MARKER))
     .limit(1);
   if (existing) return existing.companyId;
   const [c] = await tx
     .insert(companies)
     .values({ legalName: "Automora", displayName: "Automora" })
     .returning({ id: companies.id });
+  await tx.insert(companySettings).values({ companyId: c.id, settingKey: SEED_MARKER, settingValueJson: true });
   return c.id;
 }
 
