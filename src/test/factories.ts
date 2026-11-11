@@ -1,13 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/db";
+import { inArray } from "drizzle-orm";
 import {
   clients,
   companies,
   employees,
+  permissions,
   projects,
+  rolePermissions,
+  roles,
   tasks,
   user,
+  userRoles,
 } from "@/db/schema";
+import type { Actor } from "@/lib/auth/actor";
+import { groupOf, type PermissionKey } from "@/lib/permissions/catalog";
 
 type Overrides<T> = Partial<T>;
 
@@ -91,4 +98,36 @@ export async function createTask(
     .values({ companyId, taskCode: `TSK-${n}`, title: `Task ${n}`, ...o })
     .returning();
   return row;
+}
+
+export async function grantPermissions(
+  companyId: string,
+  userId: string,
+  keys: readonly PermissionKey[],
+  roleName = `Role ${randomUUID().slice(0, 6)}`,
+) {
+  const [role] = await db.insert(roles).values({ companyId, name: roleName }).returning();
+  if (keys.length > 0) {
+    await db
+      .insert(permissions)
+      .values(keys.map((key) => ({ key, groupName: groupOf(key) })))
+      .onConflictDoNothing();
+    const rows = await db.select().from(permissions).where(inArray(permissions.key, [...keys]));
+    await db
+      .insert(rolePermissions)
+      .values(rows.map((p) => ({ roleId: role.id, companyId, permissionId: p.id })));
+  }
+  await db.insert(userRoles).values({ userId, roleId: role.id, companyId });
+  return role;
+}
+
+export function buildActor(o: Partial<Actor> & Pick<Actor, "companyId">): Actor {
+  return {
+    userId: o.userId ?? randomUUID(),
+    companyId: o.companyId,
+    employeeId: o.employeeId ?? null,
+    roles: o.roles ?? [],
+    permissions: o.permissions ?? new Set(),
+    timezone: o.timezone ?? "Asia/Kolkata",
+  };
 }

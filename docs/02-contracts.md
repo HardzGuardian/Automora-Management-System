@@ -86,6 +86,18 @@ export async function createTask(actor: Actor, input: CreateTaskInput): Promise<
 | `@/lib/storage` | `putObject`, `getSignedUrl`, `deleteObject`, `files` helpers (Sprint 5) |
 | `@/db` | `db`, `withTransaction(fn)` |
 
+### Foundation API as implemented (Sprint 1)
+
+- `Actor = { userId, companyId, employeeId | null, roles: string[], permissions: ReadonlySet<PermissionKey>, timezone }` — `@/lib/auth/actor`.
+- `getActor()` (app code, reads the session) and `loadActor(userId)` (`@/lib/auth/load-actor`, for tests and jobs). Unknown user → `UNAUTHENTICATED`; suspended (banned) user → `FORBIDDEN`.
+- `can(actor, key)`, `requirePermission(actor, key)` (throws `FORBIDDEN`), `PERMISSIONS`, `ALL_PERMISSION_KEYS`, `SYSTEM_ROLES` — `@/lib/permissions`.
+- `taskScope(actor)`, `projectScope(actor)`, `clientScope(actor)` return a Drizzle `SQL` condition (always company-scoped; `false` when the actor sees nothing) — `@/lib/permissions/scope`. Use in `.where(...)`.
+- `audit.record(tx, { actor, entity, entityId, action, before?, after? })` — `@/modules/audit`. Redacts keys matching `pass|token|secret|hash|credential`. `activity_logs` and `task_activity_logs` reject UPDATE/DELETE via DB trigger.
+- `DomainError(code, message, details?)`, `toActionResult(fn)`, codes `UNAUTHENTICATED | FORBIDDEN | NOT_FOUND | VALIDATION | CONFLICT | INTERNAL` — `@/lib/errors`.
+- `nextCode(tx, companyId, "TSK" | "PRJ" | "CLI" | "EMP" | "INV" | "EXP")` → `"TSK-000123"` — `@/lib/codes`.
+- `db`, `withTransaction(fn)`, `type Tx` — `@/db`.
+- Test helpers (`src/test/factories.ts`): `createCompany`, `createUser`, `createEmployee`, `createClient`, `createProject`, `createTask`, `grantPermissions`, `buildActor`. Tests run against a real PostgreSQL (`TEST_DATABASE_URL`), migrated fresh on each run.
+
 ## 5. Libraries exported by others
 
 | Owner | Import | Provides |

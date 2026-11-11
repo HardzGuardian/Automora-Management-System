@@ -8,6 +8,13 @@
       "when": 1794405444905,
       "tag": "0000_perfect_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794405828291,
+      "tag": "0001_audit_append_only",
+      "breakpoints": true
     }
   ]
 }
