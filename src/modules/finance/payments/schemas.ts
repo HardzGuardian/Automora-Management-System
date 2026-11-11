@@ -32,10 +32,15 @@ export const receiptDtoSchema = z.object({
   method: z.enum(["bank_transfer", "upi", "cash", "card", "other"]),
   reference: z.string().nullable(),
   notes: z.string().nullable(),
-  status: z.enum(["pending", "confirmed"]),
+  status: z.enum(["pending", "confirmed", "reversed"]),
 });
 
 export const confirmReceiptSchema = z.object({ paymentId: z.string().uuid() });
+export const reverseReceiptSchema = z.object({
+  paymentId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(500),
+});
 
 export type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
 export type ReceiptDTOInput = z.infer<typeof receiptDtoSchema>;
+export type ReverseReceiptInput = z.infer<typeof reverseReceiptSchema>;

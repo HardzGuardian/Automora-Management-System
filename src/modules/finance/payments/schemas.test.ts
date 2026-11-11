@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmReceiptSchema, createReceiptSchema } from "./schemas";
+import { confirmReceiptSchema, createReceiptSchema, reverseReceiptSchema } from "./schemas";
 
 const validReceipt = {
   invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0",
@@ -40,5 +40,13 @@ describe("receipt confirmation schema", () => {
 
   it("rejects malformed payment IDs", () => {
     expect(confirmReceiptSchema.safeParse({ paymentId: "not-a-uuid" }).success).toBe(false);
+  });
+});
+
+describe("receipt reversal schema", () => {
+  it("requires a non-empty reason and a payment UUID", () => {
+    expect(reverseReceiptSchema.safeParse({ paymentId: validReceipt.invoiceId, reason: "Duplicate entry" }).success).toBe(true);
+    expect(reverseReceiptSchema.safeParse({ paymentId: validReceipt.invoiceId, reason: "  " }).success).toBe(false);
+    expect(reverseReceiptSchema.safeParse({ paymentId: "bad-id", reason: "Duplicate entry" }).success).toBe(false);
   });
 });

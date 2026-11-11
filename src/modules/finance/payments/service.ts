@@ -9,7 +9,14 @@ import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
 import { audit } from "@/modules/audit";
-import { createReceiptSchema, confirmReceiptSchema, receiptDtoSchema, type CreateReceiptInput } from "./schemas";
+import {
+  createReceiptSchema,
+  confirmReceiptSchema,
+  reverseReceiptSchema,
+  receiptDtoSchema,
+  type CreateReceiptInput,
+  type ReverseReceiptInput,
+} from "./schemas";
 import { calcOutstanding } from "../invoices/balance";
 import { invoices, paymentAllocations, payments } from "@/db/schema";
 
@@ -220,6 +227,61 @@ export async function confirmReceipt(actor: Actor, paymentId: string): Promise<R
       reference: payment.reference,
       notes: payment.notes,
       status: "confirmed",
+    };
+  });
+}
+
+export async function reverseReceipt(actor: Actor, input: ReverseReceiptInput): Promise<ReceiptDTO> {
+  requirePermission(actor, "finance.payments.reverse");
+  const parsed = parseInput(reverseReceiptSchema, input);
+  return withTransaction(async (tx) => {
+    const [preflight] = await tx.select({ invoiceId: payments.invoiceId }).from(payments).where(and(
+      eq(payments.id, parsed.paymentId),
+      eq(payments.companyId, actor.companyId),
+    )).limit(1);
+    if (!preflight) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
+
+    const invoiceRow = await lockInvoiceForPayment(tx, actor.companyId, preflight.invoiceId);
+    const [payment] = await tx.select().from(payments).where(and(
+      eq(payments.id, parsed.paymentId),
+      eq(payments.companyId, actor.companyId),
+      eq(payments.invoiceId, invoiceRow.id),
+    )).limit(1).for("update");
+    if (!payment) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
+    if (payment.status !== "confirmed") {
+      throw new DomainError("CONFLICT", "Only confirmed receipts can be reversed.");
+    }
+
+    const now = new Date();
+    await tx.update(payments).set({
+      status: "reversed",
+      reversedAt: now,
+      reversedBy: actor.userId,
+      reverseReason: parsed.reason,
+      updatedAt: now,
+      updatedBy: actor.userId,
+    }).where(and(
+      eq(payments.id, payment.id),
+      eq(payments.companyId, actor.companyId),
+      eq(payments.status, "confirmed"),
+    ));
+    await audit.record(tx, {
+      actor,
+      entity: "payment",
+      entityId: payment.id,
+      action: "payment.reversed",
+      before: { status: "confirmed", amount: payment.amount },
+      after: { status: "reversed", invoiceId: invoiceRow.id, reason: parsed.reason },
+    });
+    return {
+      id: payment.id,
+      invoiceId: invoiceRow.id,
+      amount: payment.amount,
+      paymentDate: payment.paymentDate,
+      method: payment.method,
+      reference: payment.reference,
+      notes: payment.notes,
+      status: "reversed",
     };
   });
 }
