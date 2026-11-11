@@ -4,6 +4,7 @@ Required before implementing any change to **permission rules, financial calcula
 
 | Date | Decision | Owner | Why | Status |
 |---|---|---|---|---|
+| 2026-11-11 | Format expense codes as `EXP-000001` using the company-scoped `nextCode()` sequence, without a year component. | Chintan | The blueprint requires an `EXP-…` human-readable code and an atomic company sequence but gives no exact format; this keeps codes stable across calendar years. | Accepted |
 | 2026-11-11 | Store invoice quantity as `NUMERIC(14,4)` and percentage tax rates as `NUMERIC(7,4)`; seed Office Supplies, Software & Subscriptions, Travel & Transport, Meals & Accommodation, Professional Services, Marketing, Utilities, Equipment, Bank & Payment Fees, and Other as expense categories. | Chintan | Supports fractional quantities and fine-grained percentage rates, and gives finance users a useful starting category list without constraining later category management. | Accepted |
 | 2026-11-11 | Reject decimal amount, quantity, and tax-rate strings longer than 128 characters in pure calculation helpers. | Chintan | Bounds parsing and BigInt work on untrusted input; values within the documented numeric precision remain supported. | Accepted |
 | 2026-11-11 | Persist invoice lifecycle only (`draft`, `issued`, `cancelled`); derive `partially_paid`, `paid`, and `overdue` from confirmed non-reversed receipts and business dates. | Chintan | Prevents stored payment status from drifting from the source transactions; matches the balance calculation and avoids a status cache. | Accepted |
