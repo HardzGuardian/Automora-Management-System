@@ -70,7 +70,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-21 | issueInvoice | review | |
 | F-22 | cancelInvoice: rules — no confirmed receipts (or require reversal first); reason; audit | review | |
 | F-23 | Printable invoice PDF (company details, items, tax, totals, balance) via /api/invoices/[id | review | |
-| F-24 | Invoice and receipt screens (list/detail/forms) — with Shubhangi's components | todo | |
+| F-24 | Invoice and receipt screens (list/detail/forms) — with Shubhangi's components | review | |
 | F-25 | Overdue invoice derivation (due date < company-local today and balance > 0) — uses Sagar's | review | |
 | F-26 | recordExpensePayment (full/partial), confirm, reverse, idempotency, row lock | todo | |
 | F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | todo | |

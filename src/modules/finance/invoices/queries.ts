@@ -8,12 +8,13 @@ import { todayInTz } from "@/lib/dates";
 import { fromMinor, toMinor } from "@/lib/money";
 import { calcOutstanding, deriveInvoiceStatus } from "./balance";
 import { invoiceListSchema, type InvoiceListInput, type InvoiceListQueryInput } from "./schemas";
-import { invoiceItems, invoices, paymentAllocations, payments } from "@/db/schema";
+import { clients, invoiceItems, invoices, paymentAllocations, payments } from "@/db/schema";
 
 export type InvoiceListRow = {
   id: string;
   invoiceNumber: string | null;
   clientId: string;
+  clientName: string;
   projectId: string | null;
   issueDate: string | null;
   dueDate: string | null;
@@ -46,6 +47,7 @@ function baseQuery(actor: Actor, filters: InvoiceListInput, today: string) {
     id: invoices.id,
     invoiceNumber: invoices.invoiceNumber,
     clientId: invoices.clientId,
+    clientName: clients.name,
     projectId: invoices.projectId,
     issueDate: invoices.issueDate,
     dueDate: invoices.dueDate,
@@ -55,6 +57,7 @@ function baseQuery(actor: Actor, filters: InvoiceListInput, today: string) {
     confirmedReceipts: confirmedAllocationTotal,
     outstanding: outstandingTotal,
   }).from(invoices)
+    .innerJoin(clients, and(eq(clients.id, invoices.clientId), eq(clients.companyId, invoices.companyId)))
     .leftJoin(paymentAllocations, and(
       eq(paymentAllocations.invoiceId, invoices.id),
       eq(paymentAllocations.companyId, invoices.companyId),
@@ -71,6 +74,7 @@ function baseQuery(actor: Actor, filters: InvoiceListInput, today: string) {
       invoices.companyId,
       invoices.invoiceNumber,
       invoices.clientId,
+      clients.name,
       invoices.projectId,
       invoices.issueDate,
       invoices.dueDate,
@@ -83,6 +87,7 @@ function baseQuery(actor: Actor, filters: InvoiceListInput, today: string) {
     id: aggregate.id,
     invoiceNumber: aggregate.invoiceNumber,
     clientId: aggregate.clientId,
+    clientName: aggregate.clientName,
     projectId: aggregate.projectId,
     issueDate: aggregate.issueDate,
     dueDate: aggregate.dueDate,
@@ -152,6 +157,7 @@ export async function getInvoiceDetail(actor: Actor, invoiceId: string): Promise
     id: invoices.id,
     invoiceNumber: invoices.invoiceNumber,
     clientId: invoices.clientId,
+    clientName: clients.name,
     projectId: invoices.projectId,
     issueDate: invoices.issueDate,
     dueDate: invoices.dueDate,
@@ -163,6 +169,7 @@ export async function getInvoiceDetail(actor: Actor, invoiceId: string): Promise
     state: invoices.status,
     confirmedReceipts: confirmedAllocationTotal,
   }).from(invoices)
+    .innerJoin(clients, and(eq(clients.id, invoices.clientId), eq(clients.companyId, invoices.companyId)))
     .leftJoin(paymentAllocations, and(
       eq(paymentAllocations.invoiceId, invoices.id),
       eq(paymentAllocations.companyId, invoices.companyId),
@@ -179,6 +186,7 @@ export async function getInvoiceDetail(actor: Actor, invoiceId: string): Promise
       invoices.companyId,
       invoices.invoiceNumber,
       invoices.clientId,
+      clients.name,
       invoices.projectId,
       invoices.issueDate,
       invoices.dueDate,
@@ -217,6 +225,7 @@ export async function getInvoiceDetail(actor: Actor, invoiceId: string): Promise
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
     clientId: invoice.clientId,
+    clientName: invoice.clientName,
     projectId: invoice.projectId,
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate,
@@ -230,4 +239,11 @@ export async function getInvoiceDetail(actor: Actor, invoiceId: string): Promise
     taxTotal: invoice.taxTotal,
     items,
   };
+}
+
+export async function listInvoiceClients(actor: Actor): Promise<Array<{ id: string; name: string }>> {
+  requirePermission(actor, "finance.invoices.create");
+  return db.select({ id: clients.id, name: clients.name }).from(clients)
+    .where(eq(clients.companyId, actor.companyId))
+    .orderBy(asc(clients.name), asc(clients.id));
 }

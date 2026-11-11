@@ -40,7 +40,15 @@ export const reverseReceiptSchema = z.object({
   paymentId: z.string().uuid(),
   reason: z.string().trim().min(1).max(500),
 });
+export const receiptListSchema = z.object({
+  page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER / 100).default(1),
+  pageSize: z.number().int().positive().max(100).default(25),
+  invoiceId: z.string().uuid().optional(),
+  status: z.enum(["pending", "confirmed", "reversed"]).optional(),
+});
 
 export type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
 export type ReceiptDTOInput = z.infer<typeof receiptDtoSchema>;
 export type ReverseReceiptInput = z.infer<typeof reverseReceiptSchema>;
+export type ReceiptListInput = z.infer<typeof receiptListSchema>;
+export type ReceiptListQueryInput = z.input<typeof receiptListSchema>;

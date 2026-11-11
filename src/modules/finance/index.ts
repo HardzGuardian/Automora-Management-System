@@ -18,3 +18,20 @@ export {
   type CancelledInvoiceDTO,
 } from "./invoices/service";
 export { getInvoicePdfData, InvoicePdfDocument, type InvoicePdfData } from "./invoices/pdf";
+export { listInvoiceClients, listInvoices, getInvoiceDetail } from "./invoices/queries";
+export type { InvoiceDetailDTO, InvoiceListDTO, InvoiceListRow } from "./invoices/queries";
+export {
+  createInvoiceDraft,
+  updateInvoiceDraft,
+  addInvoiceLine,
+  updateInvoiceLine,
+  removeInvoiceLine,
+} from "./invoices/service";
+export { listReceipts, getReceiptDetail } from "./payments/queries";
+export {
+  recordReceipt,
+  confirmReceipt,
+  reverseReceipt,
+  type ReceiptDTO,
+} from "./payments/service";
+export { financeActionFailure, type FinanceActionResult } from "./action-result";
