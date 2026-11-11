@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createReceiptSchema } from "./schemas";
+import { confirmReceiptSchema, createReceiptSchema } from "./schemas";
 
 const validReceipt = {
   invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0",
@@ -30,5 +30,15 @@ describe("receipt input schema", () => {
 
   it("allows a cash receipt without a reference", () => {
     expect(createReceiptSchema.safeParse({ ...validReceipt, method: "cash", reference: undefined }).success).toBe(true);
+  });
+});
+
+describe("receipt confirmation schema", () => {
+  it("accepts a payment UUID", () => {
+    expect(confirmReceiptSchema.safeParse({ paymentId: validReceipt.invoiceId }).success).toBe(true);
+  });
+
+  it("rejects malformed payment IDs", () => {
+    expect(confirmReceiptSchema.safeParse({ paymentId: "not-a-uuid" }).success).toBe(false);
   });
 });

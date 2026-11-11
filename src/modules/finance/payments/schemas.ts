@@ -35,5 +35,7 @@ export const receiptDtoSchema = z.object({
   status: z.enum(["pending", "confirmed"]),
 });
 
+export const confirmReceiptSchema = z.object({ paymentId: z.string().uuid() });
+
 export type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
 export type ReceiptDTOInput = z.infer<typeof receiptDtoSchema>;

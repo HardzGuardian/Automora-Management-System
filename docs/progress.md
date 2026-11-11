@@ -59,7 +59,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-10 | Numbering | doing | |
 | F-11 | Invoice list/detail queries with filters (status, client, project, date range), server pag | doing | |
 | F-12 | recordReceipt | doing | |
-| F-13 | confirmReceipt | todo | |
+| F-13 | confirmReceipt | review | |
 | F-14 | reverseReceipt | todo | |
 | F-15 | Allocation (payment_allocations) | todo | |
 | F-16 | Cancelled/Draft invoice refuses receipts | todo | |
