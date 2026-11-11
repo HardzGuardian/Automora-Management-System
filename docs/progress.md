@@ -47,7 +47,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 
 | ID | Task | Status | PR |
 |---|---|---|---|
-| F-01 | lib/money | todo | |
+| F-01 | lib/money | review | |
 | F-02 | Invoice calculation (calc.ts) | todo | |
 | F-03 | Balance calculation | todo | |
 | F-04 | Expense balance & status equivalents | todo | |
