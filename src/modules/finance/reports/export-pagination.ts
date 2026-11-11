@@ -4,32 +4,44 @@ export type ReportPage<T> = {
   pageSize: number;
 };
 
-export type ReportPageCollection<T> = {
-  rows: T[];
-  complete: boolean;
-};
+export class ReportChangedDuringExportError extends Error {
+  constructor() {
+    super("Report data changed while the export was being generated.");
+    this.name = "ReportChangedDuringExportError";
+  }
+}
 
-/** Collects a bounded page sequence and detects changes instead of retrying forever. */
-export async function collectReportPages<T>(
+/** Streams bounded report pages and aborts if paging no longer represents one result set. */
+export async function* iterateReportPages<T>(
   fetchPage: (page: number) => Promise<ReportPage<T>>,
   keyForRow: (row: T) => string,
-): Promise<ReportPageCollection<T>> {
+): AsyncGenerator<T> {
   const first = await fetchPage(1);
   if (!Number.isSafeInteger(first.total) || first.total < 0 || !Number.isSafeInteger(first.pageSize) || first.pageSize <= 0) {
-    return { rows: [], complete: false };
+    throw new ReportChangedDuringExportError();
   }
   const expectedTotal = first.total;
-  const rows = new Map<string, T>();
-  for (const row of first.rows) rows.set(keyForRow(row), row);
-  if (rows.size > expectedTotal) return { rows: [...rows.values()], complete: false };
-
   const lastPage = Math.ceil(expectedTotal / first.pageSize);
-  for (let page = 2; page <= lastPage && rows.size < expectedTotal; page += 1) {
+  const seen = new Set<string>();
+  let count = 0;
+
+  const emitRows = async function* (rows: readonly T[]): AsyncGenerator<T> {
+    for (const row of rows) {
+      const key = keyForRow(row);
+      if (seen.has(key) || count >= expectedTotal) throw new ReportChangedDuringExportError();
+      seen.add(key);
+      count += 1;
+      yield row;
+    }
+  };
+
+  yield* emitRows(first.rows);
+  for (let page = 2; page <= lastPage && count < expectedTotal; page += 1) {
     const next = await fetchPage(page);
     if (next.total !== expectedTotal || next.pageSize !== first.pageSize || next.rows.length === 0) {
-      return { rows: [...rows.values()], complete: false };
+      throw new ReportChangedDuringExportError();
     }
-    for (const row of next.rows) rows.set(keyForRow(row), row);
+    yield* emitRows(next.rows);
   }
-  return { rows: [...rows.values()], complete: rows.size === expectedTotal };
+  if (count !== expectedTotal) throw new ReportChangedDuringExportError();
 }

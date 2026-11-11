@@ -1,25 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { collectReportPages } from "./export-pagination";
+import { iterateReportPages, ReportChangedDuringExportError } from "./export-pagination";
 
-describe("report export page collection", () => {
-  it("collects each unique row over a bounded sequence", async () => {
-    const result = await collectReportPages(async (page) => page === 1
+async function collect<T>(values: AsyncIterable<T>): Promise<T[]> {
+  const rows: T[] = [];
+  for await (const value of values) rows.push(value);
+  return rows;
+}
+
+describe("report export page iteration", () => {
+  it("streams unique rows over a bounded page sequence", async () => {
+    const rows = await collect(iterateReportPages(async (page) => page === 1
       ? { rows: [{ id: "a" }, { id: "b" }], total: 3, pageSize: 2 }
-      : { rows: [{ id: "c" }], total: 3, pageSize: 2 }, (row) => row.id);
-    expect(result).toEqual({ rows: [{ id: "a" }, { id: "b" }, { id: "c" }], complete: true });
+      : { rows: [{ id: "c" }], total: 3, pageSize: 2 }, (row) => row.id));
+    expect(rows).toEqual([{ id: "a" }, { id: "b" }, { id: "c" }]);
   });
 
-  it("stops and marks the collection incomplete when the report changes", async () => {
-    const result = await collectReportPages(async (page) => page === 1
+  it("fails instead of looping when row counts change", async () => {
+    const rows = iterateReportPages(async (page) => page === 1
       ? { rows: [{ id: "a" }, { id: "b" }], total: 3, pageSize: 2 }
       : { rows: [], total: 2, pageSize: 2 }, (row) => row.id);
-    expect(result.complete).toBe(false);
+    await expect(collect(rows)).rejects.toBeInstanceOf(ReportChangedDuringExportError);
   });
 
-  it("stops on duplicate rows rather than looping past the bounded page count", async () => {
-    const result = await collectReportPages(async (page) => page === 1
+  it("rejects duplicate rows caused by offset shifts", async () => {
+    const rows = iterateReportPages(async (page) => page === 1
       ? { rows: [{ id: "a" }, { id: "b" }], total: 3, pageSize: 2 }
       : { rows: [{ id: "b" }, { id: "c" }], total: 3, pageSize: 2 }, (row) => row.id);
-    expect(result).toEqual({ rows: [{ id: "a" }, { id: "b" }, { id: "c" }], complete: true });
+    await expect(collect(rows)).rejects.toBeInstanceOf(ReportChangedDuringExportError);
   });
 });

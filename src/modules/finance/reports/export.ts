@@ -8,63 +8,79 @@ import { getReceivablesReport } from "./receivables";
 import { getExpenseRegisterReport } from "./expense-register";
 import { getCashMovementReport } from "./cash-movement";
 import { getFinanceReportSummary } from "./summary";
-import { collectReportPages } from "./export-pagination";
+import { iterateReportPages } from "./export-pagination";
 import { financeExportRequestSchema, financeReportRangeSchema, type FinanceExportRequest } from "./schemas";
 
 export type FinanceExportRecord = Readonly<Record<string, string | number | null>>;
 
-/** Adapter port; bind to the documented toCsv/toXlsx/streamExport helpers. */
+/** Streaming adapter port; bind to the documented toCsv/toXlsx/streamExport helpers. */
 export type FinanceExportAdapter = {
-  /** Must apply the documented formula-injection escaping to all string cells. */
-  toCsv(rows: readonly FinanceExportRecord[]): string;
-  /** Must encode string cells as text, never as formulas. */
-  toXlsx(rows: readonly FinanceExportRecord[]): Promise<Uint8Array>;
+  /** Must escape formula-leading strings and emit encoded chunks as rows are consumed. */
+  toCsv(rows: AsyncIterable<FinanceExportRecord>): AsyncIterable<Uint8Array>;
+  /** Must encode strings as text and emit XLSX chunks without buffering all report rows. */
+  toXlsx(rows: AsyncIterable<FinanceExportRecord>): AsyncIterable<Uint8Array>;
   streamExport(input: {
-    body: string | Uint8Array;
+    body: AsyncIterable<Uint8Array>;
     contentType: string;
     fileName: string;
   }): Response;
 };
 
-async function loadAllReceivables(actor: Actor, range: { fromDate: string; toDate: string }): Promise<FinanceExportRecord[]> {
-  const result = await collectReportPages(
+async function* streamReceivables(actor: Actor, range: { fromDate: string; toDate: string }): AsyncGenerator<FinanceExportRecord> {
+  const rows = iterateReportPages(
     (page) => getReceivablesReport(actor, { ...range, page, pageSize: 100 }),
     (row) => row.invoiceId,
   );
-  if (!result.complete) throw new DomainError("CONFLICT", "Receivables changed while exporting. Retry the export.");
-  return result.rows.map((row) => ({
-    invoiceNumber: row.invoiceNumber,
-    clientName: row.clientName,
-    issueDate: row.issueDate,
-    dueDate: row.dueDate,
-    currency: row.currency,
-    total: row.total,
-    confirmedReceipts: row.confirmedReceipts,
-    outstanding: row.outstanding,
-    status: row.status,
-  }));
+  for await (const row of rows) yield {
+      invoiceNumber: row.invoiceNumber,
+      clientName: row.clientName,
+      issueDate: row.issueDate,
+      dueDate: row.dueDate,
+      currency: row.currency,
+      total: row.total,
+      confirmedReceipts: row.confirmedReceipts,
+      outstanding: row.outstanding,
+      status: row.status,
+    };
 }
 
-async function loadAllExpenses(actor: Actor, range: { fromDate: string; toDate: string }): Promise<FinanceExportRecord[]> {
-  const result = await collectReportPages(
+async function* streamExpenses(actor: Actor, range: { fromDate: string; toDate: string }): AsyncGenerator<FinanceExportRecord> {
+  const rows = iterateReportPages(
     (page) => getExpenseRegisterReport(actor, { ...range, page, pageSize: 100 }),
     (row) => row.expenseId,
   );
-  if (!result.complete) throw new DomainError("CONFLICT", "Expenses changed while exporting. Retry the export.");
-  return result.rows.map((row) => ({
-    expenseCode: row.expenseCode,
-    category: row.categoryName,
-    projectId: row.projectId,
-    payee: row.payee,
-    description: row.description,
-    expenseDate: row.expenseDate,
-    dueDate: row.dueDate,
+  for await (const row of rows) yield {
+      expenseCode: row.expenseCode,
+      category: row.categoryName,
+      projectId: row.projectId,
+      payee: row.payee,
+      description: row.description,
+      expenseDate: row.expenseDate,
+      dueDate: row.dueDate,
+      currency: row.currency,
+      total: row.total,
+      confirmedPayments: row.confirmedPayments,
+      outstanding: row.outstanding,
+      status: row.status,
+    };
+}
+
+async function* streamCashMovement(actor: Actor, range: { fromDate: string; toDate: string }): AsyncGenerator<FinanceExportRecord> {
+  const rows = iterateReportPages(
+    (page) => getCashMovementReport(actor, { ...range, page, pageSize: 100 }),
+    (row) => `${row.date}:${row.currency}`,
+  );
+  for await (const row of rows) yield {
+    date: row.date,
     currency: row.currency,
-    total: row.total,
-    confirmedPayments: row.confirmedPayments,
-    outstanding: row.outstanding,
-    status: row.status,
-  }));
+    confirmedReceipts: row.confirmedReceipts,
+    confirmedExpensePayments: row.confirmedExpensePayments,
+    netCashMovement: row.netCashMovement,
+  };
+}
+
+async function* streamRows(rows: readonly FinanceExportRecord[]): AsyncGenerator<FinanceExportRecord> {
+  yield* rows;
 }
 
 export async function exportFinanceReport(
@@ -79,44 +95,32 @@ export async function exportFinanceReport(
   const range = financeReportRangeSchema.safeParse({ fromDate: parsed.data.fromDate, toDate: parsed.data.toDate });
   if (!range.success) throw new DomainError("VALIDATION", "Finance export date range is invalid.", range.error.flatten());
 
-  let rows: FinanceExportRecord[];
+  let rows: AsyncIterable<FinanceExportRecord>;
   switch (parsed.data.report) {
     case "receivables":
-      rows = await loadAllReceivables(actor, range.data);
+      rows = streamReceivables(actor, range.data);
       break;
     case "expense-register":
-      rows = await loadAllExpenses(actor, range.data);
+      rows = streamExpenses(actor, range.data);
       break;
-    case "cash-movement": {
-      const result = await collectReportPages(
-        (page) => getCashMovementReport(actor, { ...range.data, page, pageSize: 100 }),
-        (row) => `${row.date}:${row.currency}`,
-      );
-      if (!result.complete) throw new DomainError("CONFLICT", "Cash movement changed while exporting. Retry the export.");
-      rows = result.rows.map((row) => ({
-        date: row.date,
-        currency: row.currency,
-        confirmedReceipts: row.confirmedReceipts,
-        confirmedExpensePayments: row.confirmedExpensePayments,
-        netCashMovement: row.netCashMovement,
-      }));
+    case "cash-movement":
+      rows = streamCashMovement(actor, range.data);
       break;
-    }
     case "summary": {
       const summary = await getFinanceReportSummary(actor, range.data);
-      rows = [
+      rows = streamRows([
         ...summary.period.invoiceTotalsByCurrency.map((row) => ({ metric: "invoices_by_issue_date", ...row })),
         ...summary.period.confirmedReceiptsByCurrency.map((row) => ({ metric: "confirmed_receipts_by_payment_date", ...row })),
         ...summary.period.expenseTotalsByCurrency.map((row) => ({ metric: "expenses_by_expense_date", ...row })),
         ...summary.pointInTime.outstandingReceivablesByCurrency.map((row) => ({ metric: "outstanding_receivables_point_in_time", ...row })),
         ...summary.period.cashMovementByCurrency.map((row) => ({ metric: "cash_movement_by_payment_date", ...row })),
-      ];
+      ]);
       break;
     }
   }
 
   const fileName = `finance-${parsed.data.report}-${range.data.fromDate}-${range.data.toDate}.${parsed.data.format}`;
-  const body = parsed.data.format === "csv" ? adapter.toCsv(rows) : await adapter.toXlsx(rows);
+  const body = parsed.data.format === "csv" ? adapter.toCsv(rows) : adapter.toXlsx(rows);
   const contentType = parsed.data.format === "csv"
     ? "text/csv; charset=utf-8"
     : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -130,7 +134,6 @@ export async function exportFinanceReport(
       format: parsed.data.format,
       fromDate: range.data.fromDate,
       toDate: range.data.toDate,
-      rowCount: rows.length,
     },
   }));
   return adapter.streamExport({ body, contentType, fileName });
