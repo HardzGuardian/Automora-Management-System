@@ -75,7 +75,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-26 | recordExpensePayment (full/partial), confirm, reverse, idempotency, row lock | review | |
 | F-27 | Expense outstanding & status (Unpaid/Partially Paid/Paid) | review | |
 | F-28 | Expense screens (list/detail/payment dialogs) | review | |
-| F-29 | Project finance summary | todo | |
+| F-29 | Project finance summary | review | |
 | F-30 | Queries | todo | |
 | F-31 | getFinanceSnapshot(actor, range) for the dashboard, with period-total vs point-in-time lab | todo | |
 | F-32 | Finance report exports use the same filters/scope; exports are audited | todo | |

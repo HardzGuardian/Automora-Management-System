@@ -49,4 +49,10 @@ export {
   type ExpensePaymentDTO,
 } from "./expense-payments/service";
 export { listExpensePayments, type ExpensePaymentRow } from "./expense-payments/queries";
+export {
+  getProjectFinanceSummary,
+  type ProjectFinanceSummary,
+  type ProjectFinanceCurrencySummary,
+} from "./reports/project-finance";
+export { calculateProjectCashNet } from "./reports/cash-movement";
 export { financeActionFailure, type FinanceActionResult } from "./action-result";
