@@ -2,6 +2,8 @@
 
 Internal operations platform for Automora Tech Solutions LLP: employees, clients, projects, tasks, and operational finance.
 
+Repository: https://github.com/HardzGuardian/Automora-Management-System
+
 Source of truth for product rules: the *Automora Company Management System Development Blueprint* (v1.0, 07 Nov 2026). It is marked confidential/internal, so the PDF is **not stored in this public repo** — get it from Sagar / the project owner.
 Source of truth for **how we build it**: the documents in [`docs/`](docs).
 
