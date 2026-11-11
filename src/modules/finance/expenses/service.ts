@@ -45,13 +45,15 @@ async function validateExpenseRelations(
   tx: ExpenseTransaction,
   companyId: string,
   fields: ExpenseFields,
+  existingCategoryId?: string,
 ): Promise<void> {
-  const [category] = await tx.select({ id: expenseCategories.id }).from(expenseCategories).where(and(
+  const [category] = await tx.select({ id: expenseCategories.id, active: expenseCategories.active }).from(expenseCategories).where(and(
     eq(expenseCategories.id, fields.categoryId),
     eq(expenseCategories.companyId, companyId),
-    eq(expenseCategories.active, true),
   )).limit(1);
-  if (!category) throw new DomainError("CATEGORY_NOT_FOUND", "Active expense category was not found.");
+  if (!category || (!category.active && category.id !== existingCategoryId)) {
+    throw new DomainError("CATEGORY_NOT_FOUND", "Active expense category was not found.");
+  }
 
   if (fields.projectId) {
     const [project] = await tx.select({ id: projects.id }).from(projects).where(and(
@@ -140,7 +142,7 @@ export async function updateExpense(actor: Actor, input: UpdateExpenseInput): Pr
     )).limit(1);
     if (existingPayment) throw new DomainError("CONFLICT", "An expense cannot be edited after a payment has been recorded.");
 
-    await validateExpenseRelations(tx, actor.companyId, parsed);
+    await validateExpenseRelations(tx, actor.companyId, parsed, current.categoryId);
     const [updated] = await tx.update(expenses).set({
       categoryId: parsed.categoryId,
       projectId: parsed.projectId ?? null,

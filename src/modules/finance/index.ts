@@ -6,7 +6,14 @@ export {
   type ExpenseCategoryDTO,
 } from "./expenses/categories";
 export { createExpense, updateExpense, type ExpenseDTO } from "./expenses/service";
-export { getExpenseBalance, type ExpenseBalanceDTO } from "./expenses/queries";
+export {
+  getExpenseBalance,
+  getExpenseDetail,
+  listExpenses,
+  type ExpenseBalanceDTO,
+  type ExpenseListDTO,
+  type ExpenseListRow,
+} from "./expenses/queries";
 export {
   createExpenseAttachmentService,
   type ExpenseAttachmentDTO,
@@ -41,4 +48,5 @@ export {
   reverseExpensePayment,
   type ExpensePaymentDTO,
 } from "./expense-payments/service";
+export { listExpensePayments, type ExpensePaymentRow } from "./expense-payments/queries";
 export { financeActionFailure, type FinanceActionResult } from "./action-result";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createExpenseSchema, expenseAttachmentSchema, updateExpenseSchema } from "./schemas";
+import { createExpenseSchema, expenseAttachmentSchema, expenseListSchema, updateExpenseSchema } from "./schemas";
 
 const validExpense = {
   categoryId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0",
@@ -37,5 +37,11 @@ describe("expense input schemas", () => {
     expect(expenseAttachmentSchema.safeParse({ fileName: "receipt.exe", contentType: "application/pdf", size: 1024 }).success).toBe(false);
     expect(expenseAttachmentSchema.safeParse({ fileName: "../receipt.pdf", contentType: "application/pdf", size: 1024 }).success).toBe(false);
     expect(expenseAttachmentSchema.safeParse({ fileName: "receipt.pdf", contentType: "application/pdf", size: 10 * 1024 * 1024 + 1 }).success).toBe(false);
+  });
+
+  it("applies safe expense list defaults and bounds", () => {
+    expect(expenseListSchema.parse({})).toEqual({ page: 1, pageSize: 25 });
+    expect(expenseListSchema.safeParse({ pageSize: 101 }).success).toBe(false);
+    expect(expenseListSchema.safeParse({ status: "overdue" }).success).toBe(false);
   });
 });

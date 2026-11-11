@@ -4,7 +4,7 @@ import { z, type ZodType } from "zod";
 import { db, withTransaction } from "@/db";
 import { expenseCategories } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
-import { requirePermission } from "@/lib/permissions";
+import { can, requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { audit } from "@/modules/audit";
 import { createExpenseCategorySchema } from "./schemas";
@@ -26,7 +26,9 @@ function parseInput<T>(schema: ZodType<T>, input: unknown): T {
 }
 
 export async function listExpenseCategories(actor: Actor, includeInactive = false): Promise<ExpenseCategoryDTO[]> {
-  requirePermission(actor, "finance.categories.manage");
+  if (!can(actor, "finance.categories.manage") && !can(actor, "finance.expenses.create") && !can(actor, "finance.expenses.read")) {
+    throw new DomainError("FORBIDDEN", "You do not have permission to read expense categories.");
+  }
   const rows = await db.select({
     id: expenseCategories.id,
     name: expenseCategories.name,

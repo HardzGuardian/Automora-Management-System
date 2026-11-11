@@ -64,7 +64,16 @@ export const expenseDtoSchema = z.object({
   total: amount,
   status: z.enum(["unpaid", "partially_paid", "paid"]),
 });
+export const expenseListSchema = z.object({
+  page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER / 100).default(1),
+  pageSize: z.number().int().positive().max(100).default(25),
+  categoryId: uuid.optional(),
+  projectId: uuid.optional(),
+  status: z.enum(["unpaid", "partially_paid", "paid"]).optional(),
+});
 
 export type ExpenseFields = z.infer<typeof expenseFieldsSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
+export type ExpenseListInput = z.infer<typeof expenseListSchema>;
+export type ExpenseListQueryInput = z.input<typeof expenseListSchema>;
