@@ -8,6 +8,7 @@ import { getReceivablesReport } from "./receivables";
 import { getExpenseRegisterReport } from "./expense-register";
 import { getCashMovementReport } from "./cash-movement";
 import { getFinanceReportSummary } from "./summary";
+import { collectReportPages } from "./export-pagination";
 import { financeExportRequestSchema, financeReportRangeSchema, type FinanceExportRequest } from "./schemas";
 
 export type FinanceExportRecord = Readonly<Record<string, string | number | null>>;
@@ -26,13 +27,12 @@ export type FinanceExportAdapter = {
 };
 
 async function loadAllReceivables(actor: Actor, range: { fromDate: string; toDate: string }): Promise<FinanceExportRecord[]> {
-  const first = await getReceivablesReport(actor, { ...range, page: 1, pageSize: 100 });
-  const rows = [...first.rows];
-  for (let page = 2; rows.length < first.total; page += 1) {
-    const next = await getReceivablesReport(actor, { ...range, page, pageSize: 100 });
-    rows.push(...next.rows);
-  }
-  return rows.map((row) => ({
+  const result = await collectReportPages(
+    (page) => getReceivablesReport(actor, { ...range, page, pageSize: 100 }),
+    (row) => row.invoiceId,
+  );
+  if (!result.complete) throw new DomainError("CONFLICT", "Receivables changed while exporting. Retry the export.");
+  return result.rows.map((row) => ({
     invoiceNumber: row.invoiceNumber,
     clientName: row.clientName,
     issueDate: row.issueDate,
@@ -46,13 +46,12 @@ async function loadAllReceivables(actor: Actor, range: { fromDate: string; toDat
 }
 
 async function loadAllExpenses(actor: Actor, range: { fromDate: string; toDate: string }): Promise<FinanceExportRecord[]> {
-  const first = await getExpenseRegisterReport(actor, { ...range, page: 1, pageSize: 100 });
-  const rows = [...first.rows];
-  for (let page = 2; rows.length < first.total; page += 1) {
-    const next = await getExpenseRegisterReport(actor, { ...range, page, pageSize: 100 });
-    rows.push(...next.rows);
-  }
-  return rows.map((row) => ({
+  const result = await collectReportPages(
+    (page) => getExpenseRegisterReport(actor, { ...range, page, pageSize: 100 }),
+    (row) => row.expenseId,
+  );
+  if (!result.complete) throw new DomainError("CONFLICT", "Expenses changed while exporting. Retry the export.");
+  return result.rows.map((row) => ({
     expenseCode: row.expenseCode,
     category: row.categoryName,
     projectId: row.projectId,
@@ -89,13 +88,12 @@ export async function exportFinanceReport(
       rows = await loadAllExpenses(actor, range.data);
       break;
     case "cash-movement": {
-      const first = await getCashMovementReport(actor, { ...range.data, page: 1, pageSize: 100 });
-      const combined = [...first.rows];
-      for (let page = 2; combined.length < first.total; page += 1) {
-        const next = await getCashMovementReport(actor, { ...range.data, page, pageSize: 100 });
-        combined.push(...next.rows);
-      }
-      rows = combined.map((row) => ({
+      const result = await collectReportPages(
+        (page) => getCashMovementReport(actor, { ...range.data, page, pageSize: 100 }),
+        (row) => `${row.date}:${row.currency}`,
+      );
+      if (!result.complete) throw new DomainError("CONFLICT", "Cash movement changed while exporting. Retry the export.");
+      rows = result.rows.map((row) => ({
         date: row.date,
         currency: row.currency,
         confirmedReceipts: row.confirmedReceipts,
