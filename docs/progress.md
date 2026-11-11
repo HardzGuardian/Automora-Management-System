@@ -12,13 +12,13 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | D1-02 | Better Auth | review | |
 | D1-03 | Foundation libs | review | |
 | D1-04 | Seed | review | |
-| D1-05 | Invitations & account lifecycle | todo | |
-| D1-06 | Forgot / reset password | todo | |
-| D1-07 | Roles & permissions API | todo | |
-| D1-08 | Employee CRUD | todo | |
-| D1-09 | Employee detail | todo | |
-| D1-10 | Deactivate / reactivate / suspend | todo | |
-| D1-11 | My account: change password, list/revoke own sessions | todo | |
+| D1-05 | Invitations & account lifecycle | review | |
+| D1-06 | Forgot / reset password | review | |
+| D1-07 | Roles & permissions API | review | |
+| D1-08 | Employee CRUD | review | |
+| D1-09 | Employee detail | review | |
+| D1-10 | Deactivate / reactivate / suspend | review | |
+| D1-11 | My account: change password, list/revoke own sessions | review | |
 | D1-12 | Client CRUD | todo | |
 | D1-13 | Project CRUD | todo | |
 | D1-14 | Project members | todo | |
