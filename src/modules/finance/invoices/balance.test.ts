@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { calcOutstanding, deriveInvoiceStatus } from "./balance";
+import { calcOutstanding, deriveInvoiceStatus, isReceivableInvoiceState } from "./balance";
 
 describe("invoice balance calculations", () => {
+  it.each([
+    ["draft", false],
+    ["issued", true],
+    ["cancelled", false],
+  ] as const)("receipt eligibility for %s is %s", (state, expected) => {
+    expect(isReceivableInvoiceState(state)).toBe(expected);
+  });
+
   it("matches the receipt and reversal example", () => {
     expect(calcOutstanding(50_000, 20_000)).toBe(30_000);
     expect(calcOutstanding(50_000, 35_000)).toBe(15_000);

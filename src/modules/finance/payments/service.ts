@@ -18,7 +18,7 @@ import {
   type CreateReceiptInput,
   type ReverseReceiptInput,
 } from "./schemas";
-import { calcOutstanding } from "../invoices/balance";
+import { calcOutstanding, isReceivableInvoiceState } from "../invoices/balance";
 import { invoices, paymentAllocations, payments } from "@/db/schema";
 
 export type ReceiptDTO = {
@@ -29,7 +29,7 @@ export type ReceiptDTO = {
   method: CreateReceiptInput["method"];
   reference: string | null;
   notes: string | null;
-  status: "pending" | "confirmed";
+  status: "pending" | "confirmed" | "reversed";
 };
 
 function parseInput<T>(schema: ZodType<T>, input: unknown): T {
@@ -68,7 +68,7 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
     )).limit(1).for("update");
     const currentInvoice = invoiceRows[0];
     if (!currentInvoice) throw new DomainError("INVOICE_NOT_FOUND", "Invoice was not found.");
-    if (currentInvoice.status !== "issued") {
+    if (!isReceivableInvoiceState(currentInvoice.status)) {
       throw new DomainError("CONFLICT", "Only issued invoices can receive payments.");
     }
 
@@ -155,7 +155,9 @@ async function lockInvoiceForPayment(
     .for("update");
   const invoiceRow = rows[0];
   if (!invoiceRow) throw new DomainError("INVOICE_NOT_FOUND", "Invoice was not found.");
-  if (invoiceRow.status !== "issued") throw new DomainError("CONFLICT", "Only issued invoices can receive payments.");
+  if (!isReceivableInvoiceState(invoiceRow.status)) {
+    throw new DomainError("CONFLICT", "Only issued invoices can receive payments.");
+  }
   return invoiceRow;
 }
 

@@ -15,6 +15,11 @@ export type InvoiceStatusInput = {
   today: string;
 };
 
+/** Only issued invoices can accept receipt activity. */
+export function isReceivableInvoiceState(state: InvoiceLifecycleState): boolean {
+  return state === "issued";
+}
+
 function assertNonNegativeMinor(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new RangeError(`${name} must be a non-negative integer number of minor units.`);
