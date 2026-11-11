@@ -15,8 +15,8 @@ Source-level F-35 review on 2026-11-11. Public finance data access and mutation 
 
 ## Verification limits and integration work
 
-- This checkout does not contain `src/lib/auth`, `src/lib/permissions`, `src/db`, the Drizzle schema, or a PostgreSQL test database. Therefore employee and manager-without-grant cases and cross-company IDOR cases cannot be executed end-to-end here. Source review does not substitute for those denied-request tests.
-- The shared `src/lib/export` implementation and `src/app/api/exports/[report]/route.ts` are Shubhangi-owned and absent. The finance export service is ready for that adapter/route, but no HTTP export endpoint is wired in this checkout.
+- This checkout does not contain `src/lib/auth`, `src/lib/permissions`, `src/db/index.ts` (including `withTransaction`), or a PostgreSQL test database. The finance schema source exists but no generated migration is present. Therefore employee and manager-without-grant cases and cross-company IDOR cases cannot be executed end-to-end here. Source review does not substitute for those denied-request tests.
+- The shared `src/lib/export` implementation and `src/app/api/exports/[report]/route.ts` are Shubhangi-owned and absent. The finance export service now requires a streaming adapter over async row/chunk iterables, but no HTTP export endpoint is wired in this checkout.
 - Storage helpers and the shared files/download route are Sagar-owned and absent. The finance attachment adapter checks permissions and company ownership, but actual file endpoint authorization requires that integration.
 
 F-35 remains in progress until those integration tests and shared endpoints are available; no files outside Chintan's ownership were changed.

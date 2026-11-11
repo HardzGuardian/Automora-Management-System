@@ -49,6 +49,8 @@ function zipEntryNames(bytes: Uint8Array): Set<string> | null {
     }
   }
   if (endOffset < 0 || endOffset + 22 > bytes.length) return null;
+  const commentLength = readUint16(bytes, endOffset + 20);
+  if (endOffset + 22 + commentLength !== bytes.length) return null;
 
   const disk = readUint16(bytes, endOffset + 4);
   const directoryDisk = readUint16(bytes, endOffset + 6);
