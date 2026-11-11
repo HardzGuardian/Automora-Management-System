@@ -77,7 +77,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-28 | Expense screens (list/detail/payment dialogs) | review | |
 | F-29 | Project finance summary | review | |
 | F-30 | Queries | review | |
-| F-31 | getFinanceSnapshot(actor, range) for the dashboard, with period-total vs point-in-time lab | todo | |
+| F-31 | getFinanceSnapshot(actor, range) for the dashboard, with period-total vs point-in-time lab | review | |
 | F-32 | Finance report exports use the same filters/scope; exports are audited | todo | |
 | F-33 | Edge-case suite | todo | |
 | F-34 | Audit coverage check | todo | |

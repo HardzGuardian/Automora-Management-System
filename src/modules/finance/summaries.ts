@@ -6,11 +6,59 @@ import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { clients, invoices, paymentAllocations, payments } from "@/db/schema";
+import { getFinanceReportSummary } from "./reports/summary";
+import type { FinanceReportRange } from "./reports/schemas";
 
 export type ClientFinanceSummary = {
   clientId: string;
   outstandingByCurrency: Array<{ currency: string; amount: string }>;
 };
+
+export type FinanceSnapshot = {
+  range: FinanceReportRange;
+  periodTotals: {
+    invoicesByIssueDate: Array<{ currency: string; amount: string; count?: number }>;
+    confirmedReceiptsByPaymentDate: Array<{ currency: string; amount: string }>;
+    expensesByExpenseDate: Array<{ currency: string; amount: string; count?: number }>;
+    cashMovementByPaymentDate: Array<{
+      currency: string;
+      confirmedReceipts: string;
+      confirmedExpensePayments: string;
+      netCashMovement: string;
+    }>;
+  };
+  pointInTime: {
+    outstandingReceivables: Array<{ currency: string; amount: string }>;
+  };
+  labels: {
+    invoiceTotals: "period total by issue date";
+    confirmedReceipts: "period total by payment date";
+    expenses: "period total by expense date";
+    cashMovement: "period total by payment date";
+    outstandingReceivables: "point in time";
+  };
+};
+
+export async function getFinanceSnapshot(actor: Actor, range: FinanceReportRange): Promise<FinanceSnapshot> {
+  const summary = await getFinanceReportSummary(actor, range);
+  return {
+    range: summary.range,
+    periodTotals: {
+      invoicesByIssueDate: summary.period.invoiceTotalsByCurrency,
+      confirmedReceiptsByPaymentDate: summary.period.confirmedReceiptsByCurrency,
+      expensesByExpenseDate: summary.period.expenseTotalsByCurrency,
+      cashMovementByPaymentDate: summary.period.cashMovementByCurrency,
+    },
+    pointInTime: { outstandingReceivables: summary.pointInTime.outstandingReceivablesByCurrency },
+    labels: {
+      invoiceTotals: "period total by issue date",
+      confirmedReceipts: "period total by payment date",
+      expenses: "period total by expense date",
+      cashMovement: "period total by payment date",
+      outstandingReceivables: "point in time",
+    },
+  };
+}
 
 /** Return issued-invoice receivables, grouped so currencies are never combined. */
 export async function getClientFinanceSummary(

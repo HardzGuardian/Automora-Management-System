@@ -1,4 +1,9 @@
-export { getClientFinanceSummary, type ClientFinanceSummary } from "./summaries";
+export {
+  getClientFinanceSummary,
+  getFinanceSnapshot,
+  type ClientFinanceSummary,
+  type FinanceSnapshot,
+} from "./summaries";
 export {
   createExpenseCategory,
   listExpenseCategories,
