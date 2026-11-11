@@ -24,9 +24,9 @@ Source of truth for **how we build it**: the documents in [`docs/`](docs).
 
 | Dev | Name | Owns |
 |-----|------|------|
-| 1 | Sagar | Auth, RBAC, employees, clients, projects, tasks, shared platform libs |
-| 2 | Chintan | Invoices, payments, expenses, financial reports, money logic |
-| 3 | Shubhangi | App shell, design system, dashboards, reports UI, notifications, settings, integration |
+| 1 | Sagar ([@HardzGuardian](https://github.com/HardzGuardian)) | Auth, RBAC, employees, clients, projects, tasks, shared platform libs |
+| 2 | Chintan ([@Chintan572](https://github.com/Chintan572)) | Invoices, payments, expenses, financial reports, money logic |
+| 3 | Shubhangi ([@shubhangi-builds](https://github.com/shubhangi-builds)) | App shell, design system, dashboards, reports UI, notifications, settings, integration |
 
 ## Stack
 

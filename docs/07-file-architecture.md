@@ -131,20 +131,20 @@ e2e/
 ```
 Test factories (`src/test/`) are owned by Sagar; add your own factory in the same folder when your module needs one.
 
-## 4. CODEOWNERS (suggested)
+## 4. CODEOWNERS
 
 ```
-/src/db/schema/finance.ts        @chintan
-/src/modules/finance/            @chintan
-/src/lib/money/                  @chintan
-/src/modules/notifications/      @shubhangi
-/src/modules/reports/            @shubhangi
-/src/components/                 @shubhangi
-/src/lib/export/                 @shubhangi
-/src/lib/permissions/catalog.ts  @sagar @chintan @shubhangi   (all three)
-*                                @sagar
+/src/db/schema/finance.ts        @Chintan572
+/src/modules/finance/            @Chintan572
+/src/lib/money/                  @Chintan572
+/src/modules/notifications/      @shubhangi-builds
+/src/modules/reports/            @shubhangi-builds
+/src/components/                 @shubhangi-builds
+/src/lib/export/                 @shubhangi-builds
+/src/lib/permissions/catalog.ts  @HardzGuardian @Chintan572 @shubhangi-builds   (all three)
+*                                @HardzGuardian
 ```
-(Replace handles with the real GitHub usernames.)
+Handles: Sagar = `@HardzGuardian`, Chintan = `@Chintan572`, Shubhangi = `@shubhangi-builds`. Copy this block to `.github/CODEOWNERS` in the scaffold PR (D1-00).
 
 ## 5. Where "profile" things live
 
