@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import { employees, taskActivityLogs, taskAssignees, tasks } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
@@ -48,6 +48,8 @@ export async function logTaskActivity(
     taskId,
     actorId: actor.userId,
     action,
+    // clock_timestamp(), not now(): events in one transaction must keep their write order.
+    createdAt: sql`clock_timestamp()`,
     oldValue: oldValue === undefined ? null : redact(oldValue),
     newValue: newValue === undefined ? null : redact(newValue),
   });

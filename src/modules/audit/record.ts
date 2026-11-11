@@ -1,4 +1,5 @@
 import "server-only";
+import { sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import { activityLogs } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
@@ -21,6 +22,7 @@ export async function record(tx: Tx, e: AuditEvent): Promise<void> {
     entity: e.entity,
     entityId: e.entityId,
     action: e.action,
+    createdAt: sql`clock_timestamp()`, // keep write order within a transaction
     before: e.before === undefined ? null : redact(e.before),
     after: e.after === undefined ? null : redact(e.after),
   });
