@@ -17,3 +17,4 @@ export {
   updateMilestone,
   type MilestoneDTO,
 } from "./milestones";
+export { calcProgress, getProgressForProjects, getProjectProgress, type Progress } from "./progress";
