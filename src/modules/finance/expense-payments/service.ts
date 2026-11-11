@@ -19,6 +19,7 @@ import {
   type ReverseExpensePaymentInput,
 } from "./schemas";
 import { calcExpenseOutstanding } from "../expenses/balance";
+import { calcAvailablePaymentAmount } from "../payments/reservations";
 
 type ExpensePaymentTransaction = Parameters<Parameters<typeof withTransaction>[0]>[0];
 
@@ -45,7 +46,8 @@ function toExpensePaymentDTO(value: unknown): ExpensePaymentDTO {
   return parsed.data;
 }
 
-const confirmedExpenseTotal = sql<string>`COALESCE(SUM(${expensePayments.amount}::numeric), 0)::numeric`;
+const confirmedExpenseTotal = sql<string>`COALESCE(SUM(CASE WHEN ${expensePayments.status} = 'confirmed' AND ${expensePayments.reversedAt} IS NULL THEN ${expensePayments.amount}::numeric ELSE 0 END), 0)::numeric`;
+const pendingExpenseTotal = sql<string>`COALESCE(SUM(CASE WHEN ${expensePayments.status} = 'pending' THEN ${expensePayments.amount}::numeric ELSE 0 END), 0)::numeric`;
 
 async function lockExpense(tx: ExpensePaymentTransaction, companyId: string, expenseId: string) {
   const [expense] = await tx.select({ id: expenses.id, total: expenses.total }).from(expenses)
@@ -58,14 +60,15 @@ async function lockExpense(tx: ExpensePaymentTransaction, companyId: string, exp
   return expense;
 }
 
-async function getConfirmedExpensePayments(tx: ExpensePaymentTransaction, companyId: string, expenseId: string): Promise<string> {
-  const [sum] = await tx.select({ total: confirmedExpenseTotal }).from(expensePayments).where(and(
+async function getExpensePaymentReservations(tx: ExpensePaymentTransaction, companyId: string, expenseId: string) {
+  const [sum] = await tx.select({
+    confirmed: confirmedExpenseTotal,
+    pending: pendingExpenseTotal,
+  }).from(expensePayments).where(and(
     eq(expensePayments.expenseId, expenseId),
     eq(expensePayments.companyId, companyId),
-    eq(expensePayments.status, "confirmed"),
-    isNull(expensePayments.reversedAt),
   ));
-  return sum?.total ?? "0";
+  return { confirmed: sum?.confirmed ?? "0", pending: sum?.pending ?? "0" };
 }
 
 export async function recordExpensePayment(actor: Actor, input: RecordExpensePaymentInput): Promise<ExpensePaymentDTO> {
@@ -83,11 +86,13 @@ export async function recordExpensePayment(actor: Actor, input: RecordExpensePay
     if (claim.replay) return toExpensePaymentDTO(claim.response);
 
     const expense = await lockExpense(tx, actor.companyId, parsed.expenseId);
-    if (parsed.status === "confirmed") {
-      const confirmed = await getConfirmedExpensePayments(tx, actor.companyId, expense.id);
-      const outstanding = calcExpenseOutstanding(toMinor(expense.total), toMinor(confirmed));
-      if (toMinor(amount) > outstanding) throw new DomainError("CONFLICT", "Payment would overpay this expense.");
-    }
+    const reservations = await getExpensePaymentReservations(tx, actor.companyId, expense.id);
+    const available = calcAvailablePaymentAmount(
+      toMinor(expense.total),
+      toMinor(reservations.confirmed),
+      toMinor(reservations.pending),
+    );
+    if (toMinor(amount) > available) throw new DomainError("CONFLICT", "Payment exceeds the expense balance available after pending payments.");
     const now = parsed.status === "confirmed" ? new Date() : null;
     const [payment] = await tx.insert(expensePayments).values({
       companyId: actor.companyId,

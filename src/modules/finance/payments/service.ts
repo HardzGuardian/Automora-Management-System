@@ -19,6 +19,7 @@ import {
   type ReverseReceiptInput,
 } from "./schemas";
 import { calcOutstanding, isReceivableInvoiceState } from "../invoices/balance";
+import { calcAvailablePaymentAmount } from "./reservations";
 import { invoices, paymentAllocations, payments } from "@/db/schema";
 
 export type ReceiptDTO = {
@@ -38,7 +39,8 @@ function parseInput<T>(schema: ZodType<T>, input: unknown): T {
   return parsed.data;
 }
 
-const confirmedAllocationTotal = sql<string>`COALESCE(SUM(CASE WHEN ${payments.id} IS NOT NULL THEN ${paymentAllocations.amount}::numeric ELSE 0 END), 0)::numeric`;
+const confirmedAllocationTotal = sql<string>`COALESCE(SUM(CASE WHEN ${payments.status} = 'confirmed' AND ${payments.reversedAt} IS NULL THEN ${paymentAllocations.amount}::numeric ELSE 0 END), 0)::numeric`;
+const pendingAllocationTotal = sql<string>`COALESCE(SUM(CASE WHEN ${payments.status} = 'pending' THEN ${paymentAllocations.amount}::numeric ELSE 0 END), 0)::numeric`;
 
 export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Promise<ReceiptDTO> {
   requirePermission(actor, "finance.payments.record");
@@ -72,21 +74,26 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
       throw new DomainError("CONFLICT", "Only issued invoices can receive payments.");
     }
 
-    const [confirmed] = await tx.select({ total: confirmedAllocationTotal })
+    const [reservations] = await tx.select({
+      confirmed: confirmedAllocationTotal,
+      pending: pendingAllocationTotal,
+    })
       .from(paymentAllocations)
       .leftJoin(payments, and(
         eq(payments.id, paymentAllocations.paymentId),
         eq(payments.companyId, paymentAllocations.companyId),
-        eq(payments.status, "confirmed"),
-        isNull(payments.reversedAt),
       ))
       .where(and(
         eq(paymentAllocations.invoiceId, parsed.invoiceId),
         eq(paymentAllocations.companyId, actor.companyId),
       ));
-    const outstandingMinor = calcOutstanding(toMinor(currentInvoice.total), toMinor(confirmed?.total ?? "0"));
-    if (parsed.status === "confirmed" && amountMinor > outstandingMinor) {
-      throw new DomainError("CONFLICT", "Receipt would overpay the invoice.");
+    const availableMinor = calcAvailablePaymentAmount(
+      toMinor(currentInvoice.total),
+      toMinor(reservations?.confirmed ?? "0"),
+      toMinor(reservations?.pending ?? "0"),
+    );
+    if (amountMinor > availableMinor) {
+      throw new DomainError("CONFLICT", "Receipt exceeds the invoice balance available after pending receipts.");
     }
 
     const now = parsed.status === "confirmed" ? new Date() : null;
