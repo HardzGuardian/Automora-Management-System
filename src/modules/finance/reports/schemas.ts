@@ -12,6 +12,13 @@ export const financeReportRangeSchema = z.object({
   message: "Start date must be on or before end date.",
   path: ["fromDate"],
 });
+
+export const financeExportRequestSchema = z.object({
+  report: z.enum(["receivables", "expense-register", "cash-movement", "summary"]),
+  format: z.enum(["csv", "xlsx"]),
+  fromDate: z.string(),
+  toDate: z.string(),
+});
 export const receivablesReportSchema = financeReportRangeSchema.extend({
   page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER / 100).default(1),
   pageSize: z.number().int().positive().max(100).default(50),
@@ -22,5 +29,6 @@ export const cashMovementReportSchema = financeReportRangeSchema.extend({
 });
 
 export type FinanceReportRange = z.infer<typeof financeReportRangeSchema>;
+export type FinanceExportRequest = z.infer<typeof financeExportRequestSchema>;
 export type ReceivablesReportInput = z.input<typeof receivablesReportSchema>;
 export type CashMovementReportInput = z.input<typeof cashMovementReportSchema>;
