@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
@@ -14,6 +15,9 @@ export default async function LoginPage({
       <h1 className="text-2xl font-semibold">Sign in to Automora</h1>
       {activated ? <p className="text-sm text-green-700">Account activated. You can sign in now.</p> : null}
       <LoginForm />
+      <Link href="/forgot-password" className="text-sm underline">
+        Forgot password?
+      </Link>
     </main>
   );
 }

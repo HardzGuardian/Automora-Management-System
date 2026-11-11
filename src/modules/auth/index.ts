@@ -5,4 +5,3 @@ export {
   resendInvitation,
   revokeInvitation,
 } from "./invitations";
-export { inviteEmail, resetPasswordEmail } from "./emails";

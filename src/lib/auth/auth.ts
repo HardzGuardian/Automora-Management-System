@@ -6,6 +6,8 @@ import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
+import { sendEmail } from "@/lib/email/send";
+import { resetPasswordEmail } from "@/lib/email/templates";
 import { env } from "@/lib/env";
 
 // Better Auth handles identity and sessions only. Authorisation (roles, permissions,
@@ -22,6 +24,11 @@ export const auth = betterAuth({
     disableSignUp: true, // users are created only through invitations
     minPasswordLength: 10,
     revokeSessionsOnPasswordReset: true,
+    resetPasswordTokenExpiresIn: 60 * 60, // single-use (token is deleted on use), 1 hour
+    sendResetPassword: async ({ user: u, url }) => {
+      // Not awaited and errors swallowed so response time/shape never reveals whether the email exists.
+      void sendEmail(resetPasswordEmail(u.email, url)).catch(() => undefined);
+    },
   },
   user: {
     additionalFields: {

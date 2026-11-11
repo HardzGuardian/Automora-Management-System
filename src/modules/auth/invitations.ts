@@ -19,7 +19,7 @@ import { env } from "@/lib/env";
 import { DomainError } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
 import { audit } from "@/modules/audit";
-import { inviteEmail } from "./emails";
+import { inviteEmail } from "@/lib/email/templates";
 import {
   acceptInvitationSchema,
   createInvitationSchema,

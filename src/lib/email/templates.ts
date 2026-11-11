@@ -1,4 +1,4 @@
-import type { Email } from "@/lib/email/send";
+import type { Email } from "./send";
 
 export function inviteEmail(to: string, companyName: string, acceptUrl: string): Email {
   return {
