@@ -7,6 +7,8 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
 import {
   archiveTask,
+  bulkArchive,
+  bulkChangeStatus,
   assignTask,
   changeTaskStatus,
   createTask,
@@ -96,4 +98,18 @@ export async function archiveTaskAction(fd: FormData): Promise<void> {
   await toActionResult(() => archiveTask(actor, id));
   revalidatePath("/tasks");
   redirect("/tasks");
+}
+
+/** Bulk bar on All Tasks: "archive" or "status:<new status>" applied to the ticked tasks. */
+export async function bulkAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const ids = fd.getAll("taskIds").map(String).filter(Boolean);
+  const op = str(fd.get("op"));
+  const r = await toActionResult(() =>
+    op === "archive" ? bulkArchive(actor, ids) : bulkChangeStatus(actor, ids, op.replace(/^status:/, "")),
+  );
+  revalidatePath("/tasks");
+  revalidatePath("/my-tasks");
+  if (!r.ok) redirect(`/tasks?bulkError=${encodeURIComponent(r.error.message)}`);
+  redirect(`/tasks?bulk=${r.data.succeeded}-${r.data.failed}`);
 }

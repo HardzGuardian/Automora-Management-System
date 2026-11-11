@@ -8,3 +8,4 @@ export { listTaskActivity, listTasks, type ListTasksInput, type TaskActivityDTO 
 export { addComment, deleteComment, editComment, listComments, type CommentDTO } from "./comments";
 export { attachToTask, canAccessTaskAttachment, listAttachments, removeAttachment, type AttachmentDTO } from "./attachments";
 export { buildMonthGrid, listCalendarTasks, monthBounds, shiftMonth, type CalendarCell } from "./calendar";
+export { bulkArchive, bulkChangeStatus, bulkReassign, type BulkItemResult, type BulkResult } from "./bulk";

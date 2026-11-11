@@ -3,6 +3,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { listTasks } from "@/modules/tasks";
+import { bulkAction } from "./actions";
 import { TaskFilters } from "./_components/task-filters";
 import { TaskTable } from "./_components/task-table";
 
@@ -13,7 +14,7 @@ const PRIORITIES = ["Low", "Medium", "High", "Urgent"] as const;
 export default async function AllTasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; status?: string; priority?: string; overdue?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; status?: string; priority?: string; overdue?: string; bulk?: string; bulkError?: string }>;
 }) {
   const actor = await requireActor();
   const sp = await searchParams;
@@ -47,7 +48,31 @@ export default async function AllTasksPage({
         </div>
       </div>
       <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} />
-      <TaskTable rows={rows} today={todayInTz(actor.timezone)} />
+      {sp.bulk ? (
+        <p role="status" className="text-sm text-green-700">
+          Bulk update: {sp.bulk.split("-")[0]} done, {sp.bulk.split("-")[1]} not applied.
+        </p>
+      ) : null}
+      {sp.bulkError ? (
+        <p role="alert" className="text-sm text-red-600">
+          {sp.bulkError}
+        </p>
+      ) : null}
+      {can(actor, "tasks.bulk") ? (
+        <form id="bulk-form" action={bulkAction} className="flex flex-wrap items-center gap-2 text-sm">
+          <select name="op" className="rounded border border-gray-300 px-3 py-2" aria-label="Bulk action">
+            <option value="status:In Progress">Move to In Progress</option>
+            <option value="status:In Review">Move to In Review</option>
+            <option value="status:Completed">Move to Completed</option>
+            <option value="status:Pending">Move to Pending</option>
+            {can(actor, "tasks.archive") ? <option value="archive">Archive</option> : null}
+          </select>
+          <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+            Apply to selected
+          </button>
+        </form>
+      ) : null}
+      <TaskTable rows={rows} today={todayInTz(actor.timezone)} selectFormId={can(actor, "tasks.bulk") ? "bulk-form" : undefined} />
       <nav className="flex items-center gap-3 text-sm">
         {page > 1 ? (
           <Link href={{ query: { ...sp, page: page - 1 } }} className="underline">
