@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateProjectCashNet } from "./cash-movement";
+import { calculateProjectCashNet } from "./cash-movement-math";
 
 describe("project cash based financial summary", () => {
   it("nets confirmed cash movements without combining currencies", () => {

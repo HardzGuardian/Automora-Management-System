@@ -5,8 +5,7 @@ import { companies, expensePayments, expenses, invoices, paymentAllocations, pay
 import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
-import { calculateProjectCashNet } from "./cash-movement";
-import type { ProjectFinanceCurrencySummary } from "./cash-movement";
+import { calculateProjectCashNet, type ProjectFinanceCurrencySummary } from "./cash-movement-math";
 
 export type { ProjectFinanceCurrencySummary } from "./cash-movement";
 
