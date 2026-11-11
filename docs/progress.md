@@ -66,7 +66,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-17 | Client outstanding balance query (for Sagar's client detail) | review | |
 | F-18 | Expense categories CRUD (activate/deactivate, not delete) | review | |
 | F-19 | Expense CRUD | review | |
-| F-20 | Receipt/bill attachments through lib/storage (Sagar); downloads require finance.expenses.r | todo | |
+| F-20 | Receipt/bill attachments through lib/storage (Sagar); downloads require finance.expenses.r | review | |
 | F-21 | issueInvoice | review | |
 | F-22 | cancelInvoice: rules — no confirmed receipts (or require reversal first); reason; audit | todo | |
 | F-23 | Printable invoice PDF (company details, items, tax, totals, balance) via /api/invoices/[id | todo | |
