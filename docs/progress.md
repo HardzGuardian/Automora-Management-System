@@ -81,7 +81,7 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 | F-32 | Finance report exports use the same filters/scope; exports are audited | review | |
 | F-33 | Edge-case suite | review | |
 | F-34 | Audit coverage check | review | |
-| F-35 | Permission pass | todo | |
+| F-35 | Permission pass | doing | |
 
 ## Shubhangi (Dev 3)
 
