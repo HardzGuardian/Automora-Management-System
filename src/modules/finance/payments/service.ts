@@ -9,6 +9,7 @@ import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
 import { audit } from "@/modules/audit";
+import { allocateReceiptToInvoice } from "./allocation";
 import {
   createReceiptSchema,
   confirmReceiptSchema,
@@ -106,12 +107,12 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
     }).returning({ id: payments.id });
     if (!payment) throw new DomainError("CONFLICT", "Receipt could not be recorded.");
 
-    await tx.insert(paymentAllocations).values({
+    await allocateReceiptToInvoice(tx, {
       companyId: actor.companyId,
       paymentId: payment.id,
       invoiceId: parsed.invoiceId,
       amount,
-      createdBy: actor.userId,
+      actorId: actor.userId,
     });
 
     const receipt: ReceiptDTO = {
