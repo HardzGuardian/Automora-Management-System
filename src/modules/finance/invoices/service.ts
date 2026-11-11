@@ -8,6 +8,7 @@ import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
+import { todayInTz } from "@/lib/dates";
 import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
 import { calcInvoice } from "./calc";
 import {
@@ -17,11 +18,15 @@ import {
   removeInvoiceLineSchema,
   updateInvoiceDraftSchema,
   updateInvoiceLineSchema,
+  issueInvoiceSchema,
   type CreateInvoiceDraftInput,
   type InvoiceLineInputDTO,
   type UpdateInvoiceDraftInput,
   type UpdateInvoiceLineInput,
+  type IssueInvoiceInput,
 } from "./schemas";
+import { nextInvoiceNumber } from "./numbering";
+import { transitionInvoiceState } from "./state-machine";
 import {
   companies,
   clients,
@@ -53,6 +58,12 @@ export type InvoiceDraftDTO = {
     taxAmount: string;
     lineTotal: string;
   }>;
+};
+
+export type IssuedInvoiceDTO = Omit<InvoiceDraftDTO, "status" | "invoiceNumber"> & {
+  status: "issued";
+  invoiceNumber: string;
+  issueDate: string;
 };
 
 function parseInput<T>(schema: ZodType<T>, input: unknown): T {
@@ -389,5 +400,101 @@ export async function removeInvoiceLine(actor: Actor, invoiceId: string, itemId:
       before: { itemId: item.id, description: item.description, lineTotal: item.lineTotal },
     });
     return loadInvoiceDraft(tx, actor.companyId, invoiceId);
+  });
+}
+
+export async function issueInvoice(actor: Actor, invoiceId: string): Promise<IssuedInvoiceDTO> {
+  requirePermission(actor, "finance.invoices.issue");
+  const parsed = parseInput(issueInvoiceSchema, { invoiceId }) satisfies IssueInvoiceInput;
+  return withTransaction(async (tx) => {
+    const [invoice] = await tx.select().from(invoices).where(and(
+      eq(invoices.id, parsed.invoiceId),
+      eq(invoices.companyId, actor.companyId),
+    )).limit(1).for("update");
+    if (!invoice) throw new DomainError("INVOICE_NOT_FOUND", "Invoice was not found.");
+    if (invoice.status !== "draft") throw new DomainError("CONFLICT", "Only draft invoices can be issued.");
+    if (!invoice.dueDate) throw new DomainError("VALIDATION", "A due date is required before issuing an invoice.");
+
+    await validateReferences(tx, actor.companyId, invoice.clientId, invoice.projectId);
+    const items = await tx.select().from(invoiceItems).where(and(
+      eq(invoiceItems.invoiceId, invoice.id),
+      eq(invoiceItems.companyId, actor.companyId),
+    )).orderBy(asc(invoiceItems.position));
+    if (items.length === 0) throw new DomainError("VALIDATION", "An invoice needs at least one line before it can be issued.");
+
+    let calculations: ReturnType<typeof calcInvoice>;
+    try {
+      calculations = calcInvoice(items.map((item) => ({
+        quantity: item.quantity,
+        unitPriceMinor: toMinor(item.unitPrice),
+        discountMinor: toMinor(item.discount),
+        taxRate: item.taxRate,
+      })));
+    } catch (error) {
+      if (error instanceof Error) throw new DomainError("VALIDATION", error.message);
+      throw new DomainError("VALIDATION", "Invoice totals could not be validated.");
+    }
+    if (calculations.totalMinor <= 0) throw new DomainError("VALIDATION", "An invoice total must be positive before issue.");
+
+    const issueDate = todayInTz(actor.timezone);
+    const nextState = transitionInvoiceState(invoice.status, "issued");
+    const invoiceNumber = await nextInvoiceNumber(tx, actor.companyId, issueDate);
+    const [issued] = await tx.update(invoices).set({
+      status: nextState,
+      invoiceNumber,
+      issueDate,
+      subtotal: fromMinor(calculations.subtotalMinor),
+      discountTotal: fromMinor(calculations.discountTotalMinor),
+      taxTotal: fromMinor(calculations.taxTotalMinor),
+      total: fromMinor(calculations.totalMinor),
+      updatedAt: new Date(),
+      updatedBy: actor.userId,
+    }).where(and(
+      eq(invoices.id, invoice.id),
+      eq(invoices.companyId, actor.companyId),
+      eq(invoices.status, "draft"),
+    )).returning({ id: invoices.id });
+    if (!issued) throw new DomainError("CONFLICT", "Invoice could not be issued.");
+
+    await audit.record(tx, {
+      actor,
+      entity: "invoice",
+      entityId: invoice.id,
+      action: "invoice.issued",
+      before: { status: "draft", total: invoice.total },
+      after: {
+        status: "issued",
+        invoiceNumber,
+        issueDate,
+        dueDate: invoice.dueDate,
+        total: fromMinor(calculations.totalMinor),
+      },
+    });
+
+    return {
+      id: invoice.id,
+      clientId: invoice.clientId,
+      projectId: invoice.projectId,
+      invoiceNumber,
+      status: "issued",
+      issueDate,
+      dueDate: invoice.dueDate,
+      currency: invoice.currency,
+      subtotal: fromMinor(calculations.subtotalMinor),
+      discountTotal: fromMinor(calculations.discountTotalMinor),
+      taxTotal: fromMinor(calculations.taxTotalMinor),
+      total: fromMinor(calculations.totalMinor),
+      items: items.map((item) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        taxRate: item.taxRate,
+        subtotal: item.subtotal,
+        taxAmount: item.taxAmount,
+        lineTotal: item.lineTotal,
+      })),
+    };
   });
 }

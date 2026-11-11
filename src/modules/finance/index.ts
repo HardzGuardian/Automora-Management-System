@@ -6,3 +6,4 @@ export {
   type ExpenseCategoryDTO,
 } from "./expenses/categories";
 export { createExpense, updateExpense, type ExpenseDTO } from "./expenses/service";
+export { issueInvoice, type IssuedInvoiceDTO } from "./invoices/service";

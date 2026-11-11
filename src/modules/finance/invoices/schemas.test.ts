@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInvoiceDraftSchema, invoiceLineInputSchema, invoiceListSchema } from "./schemas";
+import { createInvoiceDraftSchema, invoiceLineInputSchema, invoiceListSchema, issueInvoiceSchema } from "./schemas";
 
 const validLine = {
   description: "Consulting",
@@ -41,5 +41,10 @@ describe("invoice input schemas", () => {
     expect(invoiceListSchema.safeParse({ page: 1, pageSize: 101 }).success).toBe(false);
     expect(invoiceListSchema.safeParse({ page: Number.MAX_SAFE_INTEGER, pageSize: 100 }).success).toBe(false);
     expect(invoiceListSchema.safeParse({ fromDate: "2026-03-01", toDate: "2026-02-01" }).success).toBe(false);
+  });
+
+  it("validates issue invoice IDs", () => {
+    expect(issueInvoiceSchema.safeParse({ invoiceId: "4f86e663-629b-4b3b-b1a4-a239ce7f85a0" }).success).toBe(true);
+    expect(issueInvoiceSchema.safeParse({ invoiceId: "bad-id" }).success).toBe(false);
   });
 });
