@@ -10,8 +10,12 @@ import {
   allowedTransitions,
   getTask,
   isOwnTransitionAllowed,
+  listAttachments,
+  listComments,
   listTaskActivity,
 } from "@/modules/tasks";
+import { CommentForm, UploadForm } from "../_components/collab-forms";
+import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
 import { archiveTaskAction, assignAction, changeStatusFormAction, unassignAction } from "../actions";
 
 export default async function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +30,11 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
     if (e instanceof DomainError && e.code === "NOT_FOUND") notFound();
     throw e;
   }
-  const history = await listTaskActivity(actor, id);
+  const [history, comments, attachments] = await Promise.all([
+    listTaskActivity(actor, id),
+    listComments(actor, id),
+    listAttachments(actor, id),
+  ]);
   const today = todayInTz(actor.timezone);
   const overdue = task.dueDate !== null && task.dueDate < today && task.status !== "Completed" && !task.archived;
   const isAssignee = actor.employeeId !== null && task.assignees.some((a) => a.employeeId === actor.employeeId);
@@ -113,7 +121,56 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         ) : null}
       </section>
 
-      {/* Comments and attachments sections are added with D1-26 / D1-27. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Comments ({comments.length})</h2>
+        <ul className="flex flex-col gap-2 text-sm">
+          {comments.map((c) => (
+            <li key={c.id} className="rounded border border-gray-200 p-2">
+              <p className="whitespace-pre-wrap">{c.body}</p>
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                {c.authorName} · {c.createdAt.toLocaleString()}
+                {c.edited ? " · edited" : ""}
+                {c.authorId === actor.userId || manage ? (
+                  <form action={deleteCommentAction}>
+                    <input type="hidden" name="taskId" value={id} />
+                    <input type="hidden" name="commentId" value={c.id} />
+                    <button type="submit" className="underline">
+                      Delete
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+        {can(actor, "tasks.comment") && !task.archived ? <CommentForm taskId={id} /> : null}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Attachments ({attachments.length})</h2>
+        <ul className="flex flex-col gap-1 text-sm">
+          {attachments.map((a) => (
+            <li key={a.id} className="flex items-center gap-3">
+              <a href={`/api/files/${a.fileId}`} className="underline">
+                {a.name}
+              </a>
+              <span className="text-xs text-gray-500">
+                {Math.max(1, Math.round(a.size / 1024))} KB · {a.uploadedByName ?? "unknown"}
+              </span>
+              {a.uploadedBy === actor.userId || manage ? (
+                <form action={removeAttachmentAction}>
+                  <input type="hidden" name="taskId" value={id} />
+                  <input type="hidden" name="attachmentId" value={a.id} />
+                  <button type="submit" className="underline">
+                    Remove
+                  </button>
+                </form>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {can(actor, "tasks.attach") && !task.archived ? <UploadForm taskId={id} /> : null}
+      </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-medium">Activity</h2>
