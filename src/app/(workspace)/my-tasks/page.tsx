@@ -80,7 +80,6 @@ export default async function MyTasksPage({
         priority={priority}
         overdue={sp.overdue === "1"}
         extra={<input type="hidden" name="layout" value={layout} />}
-        clearHref={layout === "board" ? "/my-tasks?layout=board" : "/my-tasks"}
       />
       {layout === "board" ? (
         <BoardDnd tasks={boardTasks} />

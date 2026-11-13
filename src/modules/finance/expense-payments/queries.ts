@@ -6,6 +6,7 @@ import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
+import { requiresSecondConfirmer } from "@/modules/settings";
 
 export type ExpensePaymentRow = {
   id: string;
@@ -15,6 +16,8 @@ export type ExpensePaymentRow = {
   method: "bank_transfer" | "upi" | "cash" | "card" | "other";
   reference: string | null;
   status: "pending" | "confirmed" | "reversed";
+  /** Pending, recorded by the viewer, and the company wants someone else to confirm it. */
+  awaitingSecondPerson: boolean;
 };
 
 export async function listExpensePayments(actor: Actor, expenseId: string): Promise<ExpensePaymentRow[]> {
@@ -33,9 +36,15 @@ export async function listExpensePayments(actor: Actor, expenseId: string): Prom
     method: expensePayments.method,
     reference: expensePayments.reference,
     status: expensePayments.status,
+    createdBy: expensePayments.createdBy,
   }).from(expensePayments).where(and(
     eq(expensePayments.expenseId, expense.id),
     eq(expensePayments.companyId, actor.companyId),
   )).orderBy(desc(expensePayments.paymentDate), desc(expensePayments.id));
-  return rows.map((row) => ({ ...row, amount: fromMinor(toMinor(row.amount)) }));
+  const secondPerson = await requiresSecondConfirmer(actor.companyId);
+  return rows.map(({ createdBy, ...row }) => ({
+    ...row,
+    amount: fromMinor(toMinor(row.amount)),
+    awaitingSecondPerson: secondPerson && row.status === "pending" && createdBy === actor.userId,
+  }));
 }

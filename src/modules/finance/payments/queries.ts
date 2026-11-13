@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/permissions";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { invoices, payments } from "@/db/schema";
+import { requiresSecondConfirmer } from "@/modules/settings";
 import { receiptListSchema, type ReceiptListInput, type ReceiptListQueryInput } from "./schemas";
 
 export type ReceiptListRow = {
@@ -60,7 +61,10 @@ export async function listReceipts(actor: Actor, input: ReceiptListQueryInput = 
   };
 }
 
-export async function getReceiptDetail(actor: Actor, paymentId: string): Promise<ReceiptListRow & { notes: string | null }> {
+export async function getReceiptDetail(
+  actor: Actor,
+  paymentId: string,
+): Promise<ReceiptListRow & { notes: string | null; awaitingSecondPerson: boolean }> {
   requirePermission(actor, "finance.payments.read");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(paymentId)) {
     throw new DomainError("VALIDATION", "Receipt ID is invalid.");
@@ -76,6 +80,7 @@ export async function getReceiptDetail(actor: Actor, paymentId: string): Promise
     reference: payments.reference,
     status: payments.status,
     notes: payments.notes,
+    createdBy: payments.createdBy,
   }).from(payments).innerJoin(invoices, and(
     eq(invoices.id, payments.invoiceId),
     eq(invoices.companyId, payments.companyId),
@@ -84,5 +89,8 @@ export async function getReceiptDetail(actor: Actor, paymentId: string): Promise
     eq(payments.companyId, actor.companyId),
   )).limit(1);
   if (!receipt) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
-  return { ...receipt, amount: fromMinor(toMinor(receipt.amount)) };
+  const { createdBy, ...row } = receipt;
+  // Pending, recorded by this user, and the company wants someone else to confirm it.
+  const awaitingSecondPerson = row.status === "pending" && createdBy === actor.userId && (await requiresSecondConfirmer(actor.companyId));
+  return { ...row, amount: fromMinor(toMinor(row.amount)), awaitingSecondPerson };
 }

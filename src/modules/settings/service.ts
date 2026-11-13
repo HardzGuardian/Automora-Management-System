@@ -79,11 +79,17 @@ export async function updateCompanyProfile(actor: Actor, input: CompanyProfileIn
 
 // ---- Preferences: a small, typed set. Unknown keys are rejected, never stored. ----
 const PREFS = {
-  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High", "Urgent"]), fallback: "Medium" as string | number },
-  "invoices.defaultDueDays": { schema: z.number().int().min(0).max(365), fallback: 30 as string | number },
+  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High", "Urgent"]), fallback: "Medium" as string | number | boolean },
+  "invoices.defaultDueDays": { schema: z.number().int().min(0).max(365), fallback: 30 as string | number | boolean },
+  "finance.requireSecondConfirmer": { schema: z.boolean(), fallback: false as string | number | boolean },
 } as const;
 export type PreferenceKey = keyof typeof PREFS;
-export type Preferences = { "tasks.defaultPriority": string; "invoices.defaultDueDays": number };
+export type Preferences = {
+  "tasks.defaultPriority": string;
+  "invoices.defaultDueDays": number;
+  /** When true, whoever records a receipt or outgoing payment cannot also confirm it. */
+  "finance.requireSecondConfirmer": boolean;
+};
 
 const PREFIX = "pref:";
 
@@ -98,6 +104,18 @@ export async function getPreferences(actor: Actor): Promise<Preferences> {
     out[key] = parsed?.success ? parsed.data : def.fallback;
   }
   return out as Preferences;
+}
+
+/**
+ * Company policy read by the finance services (no settings permission needed: it is a rule applied
+ * to everyone, not data shown to them). Defaults to off.
+ */
+export async function requiresSecondConfirmer(companyId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ value: companySettings.settingValueJson })
+    .from(companySettings)
+    .where(and(eq(companySettings.companyId, companyId), eq(companySettings.settingKey, PREFIX + "finance.requireSecondConfirmer")));
+  return row?.value === true;
 }
 
 export async function updatePreferences(actor: Actor, input: Record<string, unknown>): Promise<Preferences> {

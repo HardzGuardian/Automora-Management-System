@@ -18,6 +18,7 @@ import {
   type CreateReceiptInput,
   type ReverseReceiptInput,
 } from "./schemas";
+import { assertNotSelfConfirmed } from "../second-person";
 import { calcOutstanding, isReceivableInvoiceState } from "../invoices/balance";
 import { calcAvailablePaymentAmount } from "./reservations";
 import { invoices, paymentAllocations, payments } from "@/db/schema";
@@ -45,7 +46,10 @@ const pendingAllocationTotal = sql<string>`COALESCE(SUM(CASE WHEN ${payments.sta
 export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Promise<ReceiptDTO> {
   requirePermission(actor, "finance.payments.record");
   const parsed = parseInput(createReceiptSchema, input);
-  if (parsed.status === "confirmed") requirePermission(actor, "finance.payments.confirm");
+  if (parsed.status === "confirmed") {
+    requirePermission(actor, "finance.payments.confirm");
+    await assertNotSelfConfirmed(actor, actor.userId); // recording as already-confirmed is self-confirming
+  }
   const amountMinor = toMinor(parsed.amount);
   if (amountMinor <= 0) throw new DomainError("VALIDATION", "Receipt amount must be positive.");
   const amount = fromMinor(amountMinor);
@@ -206,6 +210,7 @@ export async function confirmReceipt(actor: Actor, paymentId: string): Promise<R
     )).limit(1).for("update");
     if (!payment) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
     if (payment.status !== "pending") throw new DomainError("CONFLICT", "Only pending receipts can be confirmed.");
+    await assertNotSelfConfirmed(actor, payment.createdBy);
 
     const confirmedTotal = await getConfirmedInvoiceAllocationTotal(tx, actor.companyId, invoiceRow.id);
     const outstandingMinor = calcOutstanding(toMinor(invoiceRow.total), toMinor(confirmedTotal));

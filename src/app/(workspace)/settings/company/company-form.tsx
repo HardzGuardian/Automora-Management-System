@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { UnsavedChangesGuard } from "@/components/forms/unsaved-changes-guard";
 import { Field } from "@/components/ui/field";
 import { buttonClass, cardClass, inputClass } from "@/components/ui/styles";
 import type { CompanyProfile } from "@/modules/settings";
@@ -53,6 +54,7 @@ export function CompanyForm({ profile, canEdit }: { profile: CompanyProfile; can
         </Field>
       </div>
       <div className="flex flex-wrap items-center gap-3">
+        {canEdit ? <UnsavedChangesGuard /> : null}
         {canEdit ? (
           <button type="submit" disabled={pending} className={buttonClass("primary")}>
             {pending ? "Saving…" : "Save changes"}

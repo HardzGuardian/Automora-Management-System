@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UnsavedChangesGuard } from "@/components/forms/unsaved-changes-guard";
 import { Field } from "@/components/ui/field";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { recordReceiptAction } from "../actions";
@@ -47,6 +48,7 @@ export function NewReceiptForm({ invoiceId }: { invoiceId: string }) {
         <div className="flex flex-col gap-3 sm:col-span-2">
           <FormError message={state && !state.ok ? state.error.message : null} />
           <div>
+            <UnsavedChangesGuard />
             <button type="submit" disabled={pending} className={buttonClass("primary")}>
               {pending ? "Recording…" : "Record pending receipt"}
             </button>

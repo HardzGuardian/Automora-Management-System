@@ -112,7 +112,11 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
                       <td className={tdNumClass}>{money(expense.currency, payment.amount)}</td>
                       {hasActions ? (
                         <td className={tdClass}>
-                          <ExpensePaymentActions paymentId={payment.id} status={payment.status} canPay={canPay} canReverse={canReverse} />
+                          {payment.awaitingSecondPerson ? (
+                            <span className="text-xs text-muted">Waiting for another person to confirm</span>
+                          ) : (
+                            <ExpensePaymentActions paymentId={payment.id} status={payment.status} canPay={canPay} canReverse={canReverse} />
+                          )}
                         </td>
                       ) : null}
                     </tr>

@@ -12,6 +12,7 @@ import {
   archiveTeam,
   createDepartment,
   createTeam,
+  departmentNamesForEmployees,
   getOrgChart,
   getTeam,
   listAssignableTeams,
@@ -209,5 +210,42 @@ describe("assigning a project to a team", () => {
     expect(left.some((r) => r.membershipRole === "owner")).toBe(true);
     expect(left.some((r) => r.viaTeamId)).toBe(false);
     expect(await db.select().from(projectMembers).where(and(eq(projectMembers.projectId, project.id), eq(projectMembers.employeeId, late.employeeId)))).toHaveLength(0);
+  });
+});
+
+describe("departments shown for employees", () => {
+  it("derives each employee's department from active teams, sorted and de-duplicated", async () => {
+    const { w, teamA, teamB } = await org();
+    const design = await createDepartment(w.manager, { name: "Design" });
+    const studio = await createTeam(w.manager, { departmentId: design.id, name: "Studio" });
+    const both = await w.employee();
+    const one = await w.employee();
+    const none = await w.employee();
+    await addTeamMember(w.manager, teamA.id, both.employeeId);
+    await addTeamMember(w.manager, teamB.id, both.employeeId); // same department twice
+    await addTeamMember(w.manager, studio.id, both.employeeId);
+    await addTeamMember(w.manager, teamA.id, one.employeeId);
+
+    const map = await departmentNamesForEmployees(w.manager, [both.employeeId, one.employeeId, none.employeeId]);
+    expect(map.get(both.employeeId)).toEqual(["Design", "Software Development"]);
+    expect(map.get(one.employeeId)).toEqual(["Software Development"]);
+    expect(map.has(none.employeeId)).toBe(false);
+  });
+
+  it("ignores archived teams, other companies and callers without employees.read", async () => {
+    const { w, teamA, teamB } = await org();
+    const e = await w.employee();
+    await addTeamMember(w.manager, teamA.id, e.employeeId);
+    await archiveTeam(w.manager, teamA.id);
+    await addTeamMember(w.manager, teamB.id, e.employeeId);
+    expect((await departmentNamesForEmployees(w.manager, [e.employeeId])).get(e.employeeId)).toEqual(["Software Development"]);
+    await archiveTeam(w.manager, teamB.id);
+    expect((await departmentNamesForEmployees(w.manager, [e.employeeId])).has(e.employeeId)).toBe(false);
+
+    const other = await workWorld(BOSS);
+    expect((await departmentNamesForEmployees(other.manager, [e.employeeId])).size).toBe(0);
+    const plain = await w.employee(["teams.read"]);
+    await expect(departmentNamesForEmployees(plain.actor, [e.employeeId])).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await departmentNamesForEmployees(w.manager, [])).size).toBe(0);
   });
 });

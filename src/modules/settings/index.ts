@@ -2,6 +2,7 @@ export {
   getCompanyProfile,
   getNumbering,
   getPreferences,
+  requiresSecondConfirmer,
   updateCompanyProfile,
   updatePreferences,
   type CompanyProfile,

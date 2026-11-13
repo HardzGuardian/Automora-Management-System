@@ -21,7 +21,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     if (error instanceof DomainError && (error.code === "PAYMENT_NOT_FOUND" || error.code === "FORBIDDEN")) notFound();
     throw error;
   }
-  const canConfirm = actor.permissions.has("finance.payments.confirm") && receipt.status === "pending";
+  const canConfirm = actor.permissions.has("finance.payments.confirm") && receipt.status === "pending" && !receipt.awaitingSecondPerson;
   const canReverse = actor.permissions.has("finance.payments.reverse") && receipt.status === "confirmed";
   const invoiceName = receipt.invoiceNumber ?? receipt.invoiceId;
 
@@ -41,7 +41,11 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
         }
       />
       {receipt.status === "pending" ? (
-        <p className="text-sm text-muted">This receipt is pending and does not reduce the invoice balance until it is confirmed.</p>
+        <p className="text-sm text-muted">
+          {receipt.awaitingSecondPerson
+            ? "Waiting for another person to confirm this receipt, because you recorded it. It does not reduce the invoice balance until then."
+            : "This receipt is pending and does not reduce the invoice balance until it is confirmed."}
+        </p>
       ) : null}
       {receipt.status === "reversed" ? (
         <p className="text-sm text-muted">This receipt was reversed and no longer counts toward the invoice balance.</p>

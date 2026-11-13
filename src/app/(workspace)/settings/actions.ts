@@ -33,7 +33,11 @@ export async function savePreferencesAction(_prev: SettingsState, fd: FormData):
   const actor = await requireActor();
   const days = Number(str(fd.get("invoices.defaultDueDays")));
   const r = await toActionResult(() =>
-    updatePreferences(actor, { "tasks.defaultPriority": str(fd.get("tasks.defaultPriority")), "invoices.defaultDueDays": days }),
+    updatePreferences(actor, {
+      "tasks.defaultPriority": str(fd.get("tasks.defaultPriority")),
+      "invoices.defaultDueDays": days,
+      "finance.requireSecondConfirmer": fd.get("finance.requireSecondConfirmer") === "on",
+    }),
   );
   if (!r.ok) return { error: r.error.message };
   revalidatePath("/settings/preferences");

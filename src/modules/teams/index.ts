@@ -4,6 +4,7 @@ export {
   archiveTeam,
   createDepartment,
   createTeam,
+  departmentNamesForEmployees,
   getOrgChart,
   getTeam,
   listAssignableTeams,

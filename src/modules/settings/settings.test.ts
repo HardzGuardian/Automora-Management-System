@@ -75,12 +75,12 @@ describe("timezone drives 'today' (AC-07)", () => {
 describe("preferences", () => {
   it("returns defaults, saves valid values and audits", async () => {
     const a = await admin();
-    expect(await getPreferences(a.actor)).toEqual({ "tasks.defaultPriority": "Medium", "invoices.defaultDueDays": 30 });
+    expect(await getPreferences(a.actor)).toEqual({ "tasks.defaultPriority": "Medium", "invoices.defaultDueDays": 30, "finance.requireSecondConfirmer": false });
     const saved = await updatePreferences(a.actor, { "tasks.defaultPriority": "High", "invoices.defaultDueDays": 15 });
-    expect(saved).toEqual({ "tasks.defaultPriority": "High", "invoices.defaultDueDays": 15 });
+    expect(saved).toEqual({ "tasks.defaultPriority": "High", "invoices.defaultDueDays": 15, "finance.requireSecondConfirmer": false });
     expect(await getPreferences(a.actor)).toEqual(saved);
     // partial update keeps the rest
-    expect(await updatePreferences(a.actor, { "invoices.defaultDueDays": 45 })).toEqual({ "tasks.defaultPriority": "High", "invoices.defaultDueDays": 45 });
+    expect(await updatePreferences(a.actor, { "invoices.defaultDueDays": 45 })).toEqual({ "tasks.defaultPriority": "High", "invoices.defaultDueDays": 45, "finance.requireSecondConfirmer": false });
     const logs = await db.select().from(activityLogs).where(eq(activityLogs.companyId, a.company.id));
     expect(logs.filter((l) => l.action === "settings.preferences_updated")).toHaveLength(2);
   });

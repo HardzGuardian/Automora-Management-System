@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { UnsavedChangesGuard } from "@/components/forms/unsaved-changes-guard";
 import { buttonClass } from "./styles";
 
 /** Bottom-left form actions: one primary submit + a Cancel link. Shows `pendingLabel` while pending. */
@@ -18,6 +19,7 @@ export function FormActions({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3 pt-1">
+      <UnsavedChangesGuard />
       <button type="submit" disabled={pending} className={buttonClass("primary")}>
         {pending ? pendingLabel : label}
       </button>

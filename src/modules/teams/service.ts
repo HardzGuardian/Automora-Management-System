@@ -325,6 +325,30 @@ export async function listTeamsForEmployee(actor: Actor, employeeId: string): Pr
     .orderBy(asc(departments.name), asc(teams.name));
 }
 
+/**
+ * Department names per employee, derived from the employee's active teams (sorted, de-duplicated).
+ * Employees on no team are absent from the map. Used by the directory so "Department" cannot
+ * disagree with team membership; the legacy free-text employees.department is only a fallback.
+ */
+export async function departmentNamesForEmployees(actor: Actor, employeeIds: string[]): Promise<Map<string, string[]>> {
+  requirePermission(actor, "employees.read");
+  const result = new Map<string, string[]>();
+  if (employeeIds.length === 0) return result;
+  const rows = await db
+    .selectDistinct({ employeeId: teamMembers.employeeId, department: departments.name })
+    .from(teamMembers)
+    .innerJoin(teams, and(eq(teams.id, teamMembers.teamId), eq(teams.companyId, teamMembers.companyId), isNull(teams.archivedAt)))
+    .innerJoin(departments, and(eq(departments.id, teams.departmentId), eq(departments.companyId, teams.companyId), isNull(departments.archivedAt)))
+    .where(and(eq(teamMembers.companyId, actor.companyId), inArray(teamMembers.employeeId, employeeIds)))
+    .orderBy(asc(departments.name));
+  for (const r of rows) {
+    const list = result.get(r.employeeId);
+    if (list) list.push(r.department);
+    else result.set(r.employeeId, [r.department]);
+  }
+  return result;
+}
+
 /** Teams the actor may hand work to: everything with the permission, otherwise just the teams they lead. */
 export async function listAssignableTeams(actor: Actor, permission: "tasks.assign" | "projects.members.manage"): Promise<{ id: string; label: string }[]> {
   const base = and(eq(teams.companyId, actor.companyId), isNull(teams.archivedAt));

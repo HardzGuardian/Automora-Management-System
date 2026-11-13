@@ -152,15 +152,18 @@ describe("scope, finance and isolation", () => {
 
 describe("timezone drives 'today' (AC-07)", () => {
   it("the same task is overdue in one company timezone and not in another", async () => {
-    const s = await seeded();
-    const pago = todayInTz("Pacific/Pago_Pago");
-    const task = await createTask(s.w.manager, { title: "tz task", dueDate: pago });
-    void task;
+    // A company with no other dated tasks: seeded() dates tasks in the default timezone, and those
+    // flip between overdue/not-overdue too, which made this test depend on the time of day it ran.
+    const w = await workWorld(COMPANY_KEYS);
+    // UTC-11 and UTC+14 are 25h apart, so their calendar dates always differ: a task due on the
+    // western "today" is never overdue there, and is always overdue in the east.
+    await createTask(w.manager, { title: "tz task", dueDate: todayInTz("Pacific/Pago_Pago") });
 
-    await db.update(companies).set({ timezone: "Pacific/Pago_Pago" }).where(eq(companies.id, s.w.company.id));
-    const west = await getDashboard(await loadActor(s.w.managerUserId), { preset: "month" });
-    await db.update(companies).set({ timezone: "Pacific/Kiritimati" }).where(eq(companies.id, s.w.company.id));
-    const east = await getDashboard(await loadActor(s.w.managerUserId), { preset: "month" });
-    expect(east.counts.overdueTasks).toBe(west.counts.overdueTasks + 1);
+    await db.update(companies).set({ timezone: "Pacific/Pago_Pago" }).where(eq(companies.id, w.company.id));
+    const west = await getDashboard(await loadActor(w.managerUserId), { preset: "month" });
+    await db.update(companies).set({ timezone: "Pacific/Kiritimati" }).where(eq(companies.id, w.company.id));
+    const east = await getDashboard(await loadActor(w.managerUserId), { preset: "month" });
+    expect(west.counts.overdueTasks).toBe(0);
+    expect(east.counts.overdueTasks).toBe(1);
   });
 });

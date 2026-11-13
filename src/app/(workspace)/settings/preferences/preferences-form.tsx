@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { UnsavedChangesGuard } from "@/components/forms/unsaved-changes-guard";
 import { Field } from "@/components/ui/field";
 import { buttonClass, cardClass, inputClass } from "@/components/ui/styles";
 import type { Preferences } from "@/modules/settings";
@@ -29,7 +30,21 @@ export function PreferencesForm({ prefs, canEdit }: { prefs: Preferences; canEdi
       <Field id="dueDays" label="Default invoice payment terms (days)" hint="Days between the issue date and the due date.">
         <input id="dueDays" name="invoices.defaultDueDays" type="number" min={0} max={365} step={1} defaultValue={prefs["invoices.defaultDueDays"]} disabled={!canEdit} aria-describedby="dueDays-hint" className={inputClass} />
       </Field>
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="finance.requireSecondConfirmer"
+          defaultChecked={prefs["finance.requireSecondConfirmer"]}
+          disabled={!canEdit}
+          className="mt-0.5 size-4 accent-primary"
+        />
+        <span>
+          <span className="block font-medium">Require a second person to confirm payments</span>
+          <span className="block text-muted">Whoever records a receipt or an outgoing payment cannot confirm it themselves.</span>
+        </span>
+      </label>
       <div className="flex flex-wrap items-center gap-3">
+        {canEdit ? <UnsavedChangesGuard /> : null}
         {canEdit ? (
           <button type="submit" disabled={pending} className={buttonClass("primary")}>
             {pending ? "Saving…" : "Save preferences"}

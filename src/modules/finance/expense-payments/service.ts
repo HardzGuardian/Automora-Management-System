@@ -19,6 +19,7 @@ import {
   type ReverseExpensePaymentInput,
 } from "./schemas";
 import { calcExpenseOutstanding } from "../expenses/balance";
+import { assertNotSelfConfirmed } from "../second-person";
 import { calcAvailablePaymentAmount } from "../payments/reservations";
 
 type ExpensePaymentTransaction = Parameters<Parameters<typeof withTransaction>[0]>[0];
@@ -74,6 +75,7 @@ async function getExpensePaymentReservations(tx: ExpensePaymentTransaction, comp
 export async function recordExpensePayment(actor: Actor, input: RecordExpensePaymentInput): Promise<ExpensePaymentDTO> {
   requirePermission(actor, "finance.expenses.pay");
   const parsed = parseInput(recordExpensePaymentSchema, input);
+  if (parsed.status === "confirmed") await assertNotSelfConfirmed(actor, actor.userId); // recording as already-confirmed is self-confirming
   const amount = fromMinor(toMinor(parsed.amount));
   const requestHash = createHash("sha256").update(JSON.stringify(parsed)).digest("hex");
   return withTransaction(async (tx) => {
@@ -149,6 +151,7 @@ export async function confirmExpensePayment(actor: Actor, paymentId: string): Pr
     )).limit(1).for("update");
     if (!payment) throw new DomainError("EXPENSE_PAYMENT_NOT_FOUND", "Expense payment was not found.");
     if (payment.status !== "pending") throw new DomainError("CONFLICT", "Only pending expense payments can be confirmed.");
+    await assertNotSelfConfirmed(actor, payment.createdBy);
 
     const { confirmed } = await getExpensePaymentReservations(tx, actor.companyId, expense.id);
     const outstanding = calcExpenseOutstanding(toMinor(expense.total), toMinor(confirmed));

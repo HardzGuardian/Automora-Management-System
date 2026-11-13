@@ -20,7 +20,9 @@ import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { getEmployee, getEmployeeTasks, getWorkload, type TaskTab } from "@/modules/employees";
 import { listRoles } from "@/modules/auth";
+import { departmentNamesForEmployees } from "@/modules/teams";
 import { deactivateAction, reactivateAction, suspendAction } from "../actions";
+import { ProfilePhotoCard } from "../_components/profile-photo-card";
 import { InviteForm } from "./invite-form";
 
 const TABS: { key: TaskTab; label: string }[] = [
@@ -51,6 +53,10 @@ export default async function EmployeeDetailPage({
     if (e instanceof DomainError && (e.code === "NOT_FOUND" || e.code === "FORBIDDEN")) notFound();
     throw e;
   }
+
+  // Department comes from team membership; the legacy free-text value is only a fallback.
+  const teamDepartments = can(actor, "employees.read") ? (await departmentNamesForEmployees(actor, [id])).get(id) : undefined;
+  const department = teamDepartments?.join(", ") ?? employee.department;
 
   const canSeeWork = actor.employeeId === id || can(actor, "employees.workload.read");
   const [workload, tasks] = canSeeWork
@@ -83,7 +89,7 @@ export default async function EmployeeDetailPage({
         title={employee.fullName}
         code={employee.employeeCode}
         badges={<StatusBadge status={employee.employmentStatus} />}
-        facts={[employee.designation ?? "No designation", employee.department ?? "No department", employee.workEmail]}
+        facts={[employee.designation ?? "No designation", department ?? "No department", employee.workEmail]}
       />
 
       {showActions ? (
@@ -195,13 +201,19 @@ export default async function EmployeeDetailPage({
         </div>
 
         <aside className="flex min-w-0 flex-col gap-5">
+          <ProfilePhotoCard
+            employeeId={id}
+            name={employee.fullName}
+            fileId={employee.profileImageFileId}
+            canChange={actor.employeeId === id || can(actor, "employees.update")}
+          />
           <DetailsList
             items={[
               { label: "Status", value: <StatusBadge status={employee.employmentStatus} /> },
               { label: "Work email", value: <a href={`mailto:${employee.workEmail}`} className={linkClass}>{employee.workEmail}</a> },
               { label: "Phone", value: employee.phone },
               { label: "Designation", value: employee.designation },
-              { label: "Department", value: employee.department },
+              { label: "Department", value: department },
               { label: "Joined", value: employee.joiningDate },
               { label: "Sign-in", value: employee.hasAccount ? "Has an account" : "No account yet" },
               { label: "Added", value: formatDateTime(employee.createdAt, actor.timezone) },
