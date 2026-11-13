@@ -2,3 +2,7 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
   esbuild: true
+# Patched versions of transitive dependencies (pnpm audit): uuid in exceljs, esbuild in better-auth's bundled drizzle-kit.
+overrides:
+  "exceljs>uuid": "^11.1.1"
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
