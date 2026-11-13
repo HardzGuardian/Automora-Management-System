@@ -38,50 +38,47 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const f = dash.finance;
   const period = `${dash.range.from} – ${dash.range.to}`;
 
+  const tasksHref = dash.audience === "personal" ? "/my-tasks" : "/tasks";
+  const overdueHref = dash.audience === "personal" ? "/my-tasks?overdue=1" : "/tasks?overdue=1";
+  const outstanding = f ? f.pointInTime.outstandingReceivables.map((o) => `${o.currency} ${o.amount}`).join(" · ") || "0.00" : null;
+
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title={TITLE[dash.audience]} description={`Period: ${period} · Today is ${dash.range.today}`} />
-      <RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={error} />
+      <PageHeader
+        title={TITLE[dash.audience]}
+        description={period}
+        actions={<RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={error} />}
+      />
 
-      <section aria-label="Key figures" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {c.activeEmployees !== null ? <KpiCard label="Active employees" value={c.activeEmployees} basis="point in time" href="/employees" /> : null}
-        {c.activeClients !== null ? <KpiCard label="Active clients" value={c.activeClients} basis="point in time" href="/clients" /> : null}
-        <KpiCard label="Active projects" value={c.activeProjects} basis="point in time" href="/projects" />
-        <KpiCard label="Open tasks" value={c.openTasks} basis="point in time" href={dash.audience === "personal" ? "/my-tasks" : "/tasks"} />
-        <KpiCard label="Completed tasks" value={c.completedTasks} basis="period total" tone="success" hint={period} />
-        <KpiCard label="Overdue tasks" value={c.overdueTasks} basis="point in time" tone={c.overdueTasks > 0 ? "danger" : "neutral"} href={dash.audience === "personal" ? "/my-tasks?overdue=1" : "/tasks?overdue=1"} />
-        <KpiCard label="Due in next 7 days" value={c.dueNext7Days} basis="point in time" tone="info" />
-        {f ? <KpiCard label="Outstanding invoices" value={f.pointInTime.outstandingReceivables.map((o) => `${o.currency} ${o.amount}`).join(" · ") || "0.00"} basis="point in time" href="/invoices" /> : null}
+      <section aria-label="Key figures" className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <KpiCard label="Open tasks" value={c.openTasks} href={tasksHref} />
+          <KpiCard label="Overdue tasks" value={c.overdueTasks} tone={c.overdueTasks > 0 ? "danger" : "neutral"} href={overdueHref} />
+          <KpiCard label="Due in next 7 days" value={c.dueNext7Days} tone="info" />
+          {outstanding !== null ? (
+            <KpiCard label="Outstanding invoices" value={outstanding} href="/invoices" />
+          ) : (
+            <KpiCard label="Completed tasks" value={c.completedTasks} basis="period total" tone="success" />
+          )}
+        </div>
+        <details className="group">
+          <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1 rounded-md px-1 text-sm text-primary underline underline-offset-2">
+            More figures
+          </summary>
+          <div className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {c.activeEmployees !== null ? <KpiCard label="Active employees" value={c.activeEmployees} href="/employees" /> : null}
+            {c.activeClients !== null ? <KpiCard label="Active clients" value={c.activeClients} href="/clients" /> : null}
+            <KpiCard label="Active projects" value={c.activeProjects} href="/projects" />
+            {outstanding !== null ? <KpiCard label="Completed tasks" value={c.completedTasks} basis="period total" tone="success" /> : null}
+          </div>
+        </details>
+        <p className="text-xs text-muted">Figures are as of today, except those marked “period total”, which cover {period}.</p>
       </section>
 
-      <section aria-label="Charts" className="grid gap-4 lg:grid-cols-2">
-        <BarChartCard
-          title="Tasks by status"
-          caption="Point in time · all non-archived tasks you can see"
-          data={dash.taskStatus.map((s) => ({ label: s.status, value: s.count, color: STATUS_COLOR[s.status] }))}
-        />
-        <BarChartCard
-          title="Open tasks by priority"
-          caption="Point in time · completed tasks excluded"
-          data={dash.taskPriority.map((p) => ({ label: p.priority, value: p.count, color: PRIORITY_COLOR[p.priority] }))}
-        />
+      <section aria-label="Needs attention" className="grid gap-4 lg:grid-cols-2">
+        <DeadlineList title="Overdue" items={dash.overdue} overdue empty="Nothing is overdue." viewAllHref={overdueHref} />
+        <DeadlineList title="Due in the next 7 days" items={dash.upcoming} empty="No deadlines in the next 7 days." viewAllHref={tasksHref} />
       </section>
-
-      <section aria-label="Deadlines" className="grid gap-4 lg:grid-cols-2">
-        <DeadlineList title="Upcoming deadlines (next 7 days)" items={dash.upcoming} empty="No deadlines in the next 7 days." viewAllHref="/tasks" />
-        <DeadlineList title="Overdue tasks" items={dash.overdue} overdue empty="Nothing is overdue." viewAllHref={dash.audience === "personal" ? "/my-tasks?overdue=1" : "/tasks?overdue=1"} />
-      </section>
-
-      {dash.workload ? (
-        <BarChartCard
-          title="Open tasks per employee"
-          caption="Point in time · active employees with open work · red bar = has overdue tasks, green = none"
-          horizontal
-          valueLabel="Open tasks"
-          data={dash.workload.map((w) => ({ label: w.name, value: w.open, color: w.overdue > 0 ? "#b42318" : "#167c50" }))}
-          emptyText="No open assignments."
-        />
-      ) : null}
 
       {f ? (
         <FinanceSnapshotCard
@@ -89,6 +86,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           receipts={f.periodTotals.confirmedReceiptsByPaymentDate}
           expenses={f.periodTotals.expensesByExpenseDate}
           outstanding={f.pointInTime.outstandingReceivables}
+        />
+      ) : null}
+
+      <section aria-label="Breakdown" className="grid gap-4 lg:grid-cols-2">
+        <BarChartCard
+          title="Tasks by status"
+          caption="All non-archived tasks you can see"
+          data={dash.taskStatus.map((s) => ({ label: s.status, value: s.count, color: STATUS_COLOR[s.status] }))}
+        />
+        <BarChartCard
+          title="Open tasks by priority"
+          caption="Completed tasks excluded"
+          data={dash.taskPriority.map((p) => ({ label: p.priority, value: p.count, color: PRIORITY_COLOR[p.priority] }))}
+        />
+      </section>
+
+      {dash.workload ? (
+        <BarChartCard
+          title="Open tasks per employee"
+          caption="Red bar = has overdue tasks, green = none"
+          horizontal
+          valueLabel="Open tasks"
+          data={dash.workload.map((w) => ({ label: w.name, value: w.open, color: w.overdue > 0 ? "#b42318" : "#167c50" }))}
+          emptyText="No open assignments."
         />
       ) : null}
 

@@ -5,7 +5,9 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
+import { departmentNamesForEmployees } from "@/modules/teams";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Employees" };
 
@@ -32,6 +34,8 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const sort = SORTS.find((s) => s === sp.sort);
   const dir = sp.dir === "desc" ? "desc" : "asc";
   const { rows, total } = await listEmployees(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, sort, dir });
+  // Department comes from team membership; the legacy free-text value is only a fallback.
+  const departments = await departmentNamesForEmployees(actor, rows.map((e) => e.id));
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,7 +43,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         title="Employees"
         actions={can(actor, "employees.create") ? <Link href="/employees/new" className={buttonClass("primary")}>New employee</Link> : null}
       />
-      <form className="flex flex-wrap gap-2" role="search" aria-label="Filter employees">
+      <FilterBar label="Filter employees">
         <input name="q" defaultValue={sp.q} aria-label="Search" placeholder="Search name, email or code" className={`${inputClass} max-w-xs`} />
         <select name="status" defaultValue={status ?? ""} aria-label="Status" className={`${inputClass} max-w-40`}>
           <option value="">All statuses</option>
@@ -47,14 +51,11 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             <option key={s}>{s}</option>
           ))}
         </select>
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Employees"
         columns={COLUMNS}
-        rows={rows.map((e) => ({ id: e.id, employeeCode: e.employeeCode, fullName: e.fullName, designation: e.designation, department: e.department, employmentStatus: e.employmentStatus, joiningDate: e.joiningDate, workEmail: e.workEmail }))}
+        rows={rows.map((e) => ({ id: e.id, employeeCode: e.employeeCode, fullName: e.fullName, designation: e.designation, department: departments.get(e.id)?.join(", ") ?? e.department, employmentStatus: e.employmentStatus, joiningDate: e.joiningDate, workEmail: e.workEmail }))}
         total={total}
         page={page}
         pageSize={PAGE_SIZE}

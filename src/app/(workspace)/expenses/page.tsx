@@ -6,6 +6,7 @@ import { getActor } from "@/lib/auth/actor";
 import { listExpenseCategories, listExpenses } from "@/modules/finance";
 import { money } from "../invoices/_components/finance-ui";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Expenses" };
 
@@ -43,10 +44,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         description="Money the company owes or has paid out. Payments count toward an expense only once confirmed."
         actions={canCreate ? <Link href="/expenses/new" className={buttonClass("primary")}>Create expense</Link> : null}
       />
-      <form className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter expenses">
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Status
-          <select name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
+      <FilterBar label="Filter expenses">
+        <select aria-label="Status" name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -54,11 +53,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
               </option>
             ))}
           </select>
-        </label>
         {categories.length > 0 ? (
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Category
-            <select name="categoryId" defaultValue={categoryId ?? ""} className={`${inputClass} w-56`}>
+          <select aria-label="Category" name="categoryId" defaultValue={categoryId ?? ""} className={`${inputClass} w-56`}>
               <option value="">All categories</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -66,12 +62,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                 </option>
               ))}
             </select>
-          </label>
         ) : null}
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Expenses"
         columns={COLUMNS}

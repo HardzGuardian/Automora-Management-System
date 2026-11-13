@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { MoreOptions } from "@/components/forms/more-options";
 import { Alert } from "@/components/ui/alert";
 import { Field, fieldAria } from "@/components/ui/field";
 import { FormActions } from "@/components/ui/form-actions";
@@ -57,27 +58,29 @@ export function ProjectForm({ clients, employees, defaultOwnerId }: { clients: O
           ))}
         </select>
       </Field>
-      <Field id="description" label="Description">
-        <textarea id="description" name="description" rows={3} className={inputClass} />
+      <Field id="dueDate" label="Due date" error={err("dueDate")}>
+        <input id="dueDate" name="dueDate" type="date" className={inputClass} {...fieldAria("dueDate", { error: err("dueDate") })} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <MoreOptions>
+        <div className="sm:col-span-2">
+          <Field id="description" label="Description">
+            <textarea id="description" name="description" rows={3} className={inputClass} />
+          </Field>
+        </div>
         <Field id="startDate" label="Start date">
           <input id="startDate" name="startDate" type="date" className={inputClass} />
         </Field>
-        <Field id="dueDate" label="Due date" error={err("dueDate")}>
-          <input id="dueDate" name="dueDate" type="date" className={inputClass} {...fieldAria("dueDate", { error: err("dueDate") })} />
+        <Field id="budgetAmount" label="Budget" error={err("budgetAmount")} hint="Up to 2 decimals. Leave empty if there is no fixed budget.">
+          <input
+            id="budgetAmount"
+            name="budgetAmount"
+            inputMode="decimal"
+            placeholder="0.00"
+            className={inputClass}
+            {...fieldAria("budgetAmount", { error: err("budgetAmount"), hint: true })}
+          />
         </Field>
-      </div>
-      <Field id="budgetAmount" label="Budget (optional)" error={err("budgetAmount")} hint="Up to 2 decimals. Leave empty if there is no fixed budget.">
-        <input
-          id="budgetAmount"
-          name="budgetAmount"
-          inputMode="decimal"
-          placeholder="0.00"
-          className={inputClass}
-          {...fieldAria("budgetAmount", { error: err("budgetAmount"), hint: true })}
-        />
-      </Field>
+      </MoreOptions>
       <FormActions label="Create project" pending={pending} cancelHref="/projects" />
     </form>
   );

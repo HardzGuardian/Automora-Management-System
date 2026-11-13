@@ -1,4 +1,5 @@
 import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
@@ -13,7 +14,8 @@ export default async function NewProjectPage() {
   if (!can(actor, "projects.create")) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="New project" />
+        <BackLink href="/projects">Projects</BackLink>
+      <PageHeader title="New project" />
         <Alert tone="warning">You do not have permission to create projects.</Alert>
       </div>
     );
@@ -24,6 +26,7 @@ export default async function NewProjectPage() {
   ]);
   return (
     <div className="flex flex-col gap-4">
+      <BackLink href="/projects">Projects</BackLink>
       <PageHeader title="New project" description="Set up the project; tasks and milestones are added on its page." />
       <ProjectForm
         clients={clients.rows.map((c) => ({ id: c.id, label: `${c.clientCode} ${c.name}` }))}

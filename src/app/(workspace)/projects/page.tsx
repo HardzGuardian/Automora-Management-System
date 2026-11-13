@@ -6,6 +6,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { getProgressForProjects, listProjects } from "@/modules/projects";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Projects" };
 
@@ -32,7 +33,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Projects" actions={can(actor, "projects.create") ? <Link href="/projects/new" className={buttonClass("primary")}>New project</Link> : null} />
-      <form className="flex flex-wrap gap-2" role="search" aria-label="Filter projects">
+      <FilterBar label="Filter projects">
         <input name="q" defaultValue={sp.q} aria-label="Search" placeholder="Search projects" className={`${inputClass} max-w-xs`} />
         <select name="status" defaultValue={status ?? ""} aria-label="Status" className={`${inputClass} max-w-40`}>
           <option value="">All statuses</option>
@@ -40,10 +41,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <option key={s}>{s}</option>
           ))}
         </select>
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Projects"
         columns={COLUMNS}

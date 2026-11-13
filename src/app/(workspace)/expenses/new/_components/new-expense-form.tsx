@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UnsavedChangesGuard } from "@/components/forms/unsaved-changes-guard";
+import { MoreOptions } from "@/components/forms/more-options";
 import { Field } from "@/components/ui/field";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { createExpenseAction } from "../../actions";
@@ -35,19 +37,22 @@ export function NewExpenseForm({ categories, projects }: { categories: ExpenseCa
           <input id="description" name="description" maxLength={2000} required className={inputClass} />
         </Field>
       </div>
-      <div className="sm:col-span-2">
-        <ProjectSelect id="projectId" projects={projects} />
-      </div>
       <Field id="expenseDate" label="Expense date" required>
         <input id="expenseDate" name="expenseDate" type="date" required className={inputClass} />
-      </Field>
-      <Field id="dueDate" label="Due date" hint="Optional. When the payee expects to be paid.">
-        <input id="dueDate" name="dueDate" type="date" aria-describedby="dueDate-hint" className={inputClass} />
       </Field>
       <Field id="total" label="Total" required hint="Full amount owed, in the company currency.">
         <input id="total" name="total" type="number" min="0.01" step="0.01" required aria-describedby="total-hint" className={inputClass} />
       </Field>
+      <div className="sm:col-span-2">
+        <MoreOptions>
+          <ProjectSelect id="projectId" projects={projects} />
+          <Field id="dueDate" label="Due date" hint="When the payee expects to be paid.">
+            <input id="dueDate" name="dueDate" type="date" aria-describedby="dueDate-hint" className={inputClass} />
+          </Field>
+        </MoreOptions>
+      </div>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <UnsavedChangesGuard />
         <button type="submit" disabled={pending || categories.length === 0} className={buttonClass("primary")}>
           {pending ? "Saving…" : "Create expense"}
         </button>

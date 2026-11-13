@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { breadcrumbs, type NavGroup } from "./nav";
+import type { NavGroup } from "./nav";
 import { BellIcon, NavIcon } from "./nav-icons";
 
 export type ShellUser = { name: string; email: string; roles: string[] };
@@ -89,7 +89,6 @@ export function AppShell({
   const [openFor, setOpenFor] = useState<string | null>(null);
   const open = openFor === pathname;
   const setOpen = useCallback((v: boolean) => setOpenFor(v ? pathname : null), [pathname]);
-  const crumbs = breadcrumbs(pathname);
 
   // Close on Escape.
   useEffect(() => {
@@ -164,24 +163,6 @@ export function AppShell({
           </div>
         </header>
 
-        <nav aria-label="Breadcrumb" className="px-3 pt-3 text-xs text-muted sm:px-6">
-          <ol className="flex flex-wrap items-center gap-1">
-            {crumbs.map((c, i) => (
-              <li key={c.href} className="flex items-center gap-1">
-                {i > 0 ? <span aria-hidden="true">/</span> : null}
-                {i === crumbs.length - 1 ? (
-                  <span aria-current="page" className="text-foreground">
-                    {c.label}
-                  </span>
-                ) : (
-                  <Link href={c.href} className="hover:text-foreground hover:underline">
-                    {c.label}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ol>
-        </nav>
 
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-6">
           {children}

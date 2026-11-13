@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { MoreOptions } from "@/components/forms/more-options";
 import { Alert } from "@/components/ui/alert";
 import { Field, fieldAria } from "@/components/ui/field";
 import { FormActions } from "@/components/ui/form-actions";
@@ -31,14 +32,8 @@ export function TaskForm({ projects, employees }: { projects: Option[]; employee
             <option>Urgent</option>
           </select>
         </Field>
-        <Field id="estimatedHours" label="Estimated hours" error={err("estimatedHours")}>
-          <input
-            id="estimatedHours"
-            name="estimatedHours"
-            inputMode="decimal"
-            className={inputClass}
-            {...fieldAria("estimatedHours", { error: err("estimatedHours") })}
-          />
+        <Field id="dueDate" label="Due date" error={err("dueDate")}>
+          <input id="dueDate" name="dueDate" type="date" className={inputClass} {...fieldAria("dueDate", { error: err("dueDate") })} />
         </Field>
       </div>
       <Field id="projectId" label="Project (optional)">
@@ -51,14 +46,6 @@ export function TaskForm({ projects, employees }: { projects: Option[]; employee
           ))}
         </select>
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="startDate" label="Start date">
-          <input id="startDate" name="startDate" type="date" className={inputClass} />
-        </Field>
-        <Field id="dueDate" label="Due date" error={err("dueDate")}>
-          <input id="dueDate" name="dueDate" type="date" className={inputClass} {...fieldAria("dueDate", { error: err("dueDate") })} />
-        </Field>
-      </div>
       {employees.length > 0 ? (
         <fieldset className="flex min-w-0 flex-col gap-1">
           <legend className="mb-1 p-0 text-sm font-medium">Assign to</legend>
@@ -71,6 +58,20 @@ export function TaskForm({ projects, employees }: { projects: Option[]; employee
           </div>
         </fieldset>
       ) : null}
+      <MoreOptions>
+        <Field id="startDate" label="Start date">
+          <input id="startDate" name="startDate" type="date" className={inputClass} />
+        </Field>
+        <Field id="estimatedHours" label="Estimated hours" error={err("estimatedHours")}>
+          <input
+            id="estimatedHours"
+            name="estimatedHours"
+            inputMode="decimal"
+            className={inputClass}
+            {...fieldAria("estimatedHours", { error: err("estimatedHours") })}
+          />
+        </Field>
+      </MoreOptions>
       <FormActions label="Create task" pending={pending} cancelHref="/tasks" />
     </form>
   );

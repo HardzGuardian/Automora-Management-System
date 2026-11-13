@@ -80,8 +80,11 @@ export function ConfirmForm({
   confirmLabel,
   danger = true,
   triggerClassName,
+  formClassName = "inline-flex",
 }: {
   triggerClassName?: string;
+  /** Layout of the form itself. Use a column when the form wraps a lot of content above its button. */
+  formClassName?: string;
   action: (formData: FormData) => void | Promise<void>;
   children?: ReactNode;
   /** Trigger content. May include an sr-only suffix so repeated triggers have distinct names. */
@@ -93,7 +96,7 @@ export function ConfirmForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form ref={formRef} action={action} className="inline-flex">
+    <form ref={formRef} action={action} className={formClassName}>
       {children}
       <ConfirmDialog
         triggerClassName={triggerClassName}

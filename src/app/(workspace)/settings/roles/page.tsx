@@ -1,115 +1,142 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { Field } from "@/components/ui/field";
-import { buttonClass, cardClass, inputClass } from "@/components/ui/styles";
+import { buttonClass, cardClass, inputClass, linkClass } from "@/components/ui/styles";
+import { cn } from "@/lib/cn";
 import { requireActor } from "@/lib/auth/require-actor";
 import { ALL_PERMISSION_KEYS, PERMISSION_GROUPS, can } from "@/lib/permissions";
+import { AREA_TITLES, PERMISSION_LABELS, permissionArea } from "@/lib/permissions/labels";
 import { listRoles } from "@/modules/auth";
 import { createRoleAction, savePermissionsAction } from "../actions";
 
 export const metadata = { title: "Roles & permissions" };
 
-const GROUP_LABEL: Record<string, string> = { system: "System", work: "Work management", finance: "Finance" };
-const QUALIFIERS = new Set(["own", "all", "any"]);
+const GROUP_TITLE: Record<string, string> = { system: "System", work: "Work", finance: "Finance" };
 
-const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
-
-/** `tasks.status.update.own` becomes "Tasks · status update (own)". The raw key is still shown next to it. */
-function permissionLabel(key: string): string {
-  const parts = key.split(".");
-  const area = capitalise(parts[0] ?? key);
-  const rest = parts.slice(1);
-  const last = rest[rest.length - 1];
-  const qualifier = rest.length > 1 && last && QUALIFIERS.has(last) ? last : null;
-  const action = (qualifier ? rest.slice(0, -1) : rest).join(" ");
-  return `${area}${action ? ` · ${action}` : ""}${qualifier ? ` (${qualifier})` : ""}`;
-}
-
-/** Keys of one group, bucketed by their first segment (the area), keeping catalog order. */
+/** Keys of one group bucketed by area, in catalogue order. */
 function byArea(keys: readonly string[]): Array<[string, string[]]> {
   const map = new Map<string, string[]>();
   for (const k of keys) {
-    const area = k.split(".")[0] ?? k;
+    const area = permissionArea(k);
     map.set(area, [...(map.get(area) ?? []), k]);
   }
   return [...map.entries()];
 }
 
-export default async function RolesPage() {
+export default async function RolesPage({ searchParams }: { searchParams: Promise<{ role?: string; keys?: string }> }) {
   const actor = await requireActor();
+  const sp = await searchParams;
   const roles = await listRoles(actor);
   const canManage = can(actor, "roles.manage");
+  const role = roles.find((r) => r.id === sp.role) ?? roles[0];
+  const showKeys = sp.keys === "1";
+  const href = (id: string, keys = showKeys) => `/settings/roles?role=${id}${keys ? "&keys=1" : ""}`;
+
+  const locked = role ? role.isSystem && role.name === "Super Admin" : false;
+  const granted = new Set<string>(role?.permissions ?? []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <p className="max-w-2xl text-sm text-muted">
-        Each role is a set of permissions. Changes apply the next time a user loads a page. The Super Admin role always has every permission and cannot be edited.
-        Hiding a menu item is a convenience only; every action is checked on the server.
+        A role is a set of things people are allowed to do. Changes apply the next time they load a page. Every action is also checked on the server.
       </p>
 
-      {roles.map((role) => {
-        const locked = role.isSystem && role.name === "Super Admin";
-        const granted = new Set<string>(role.permissions);
-        return (
-          <section key={role.id} aria-label={role.name} className={`${cardClass} flex flex-col gap-3`}>
-            <div>
-              <h2 className="m-0 flex flex-wrap items-center gap-2 text-base font-semibold">
-                {role.name}
-                {role.isSystem ? <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-normal text-muted">System role</span> : null}
-              </h2>
-              {role.description ? <p className="mt-1 text-sm text-muted">{role.description}</p> : null}
-              <p className="mt-1 text-xs text-muted">
-                {granted.size} of {ALL_PERMISSION_KEYS.length} permissions
-                {locked ? " · always full access, not editable" : ""}
-              </p>
+      <div className="grid items-start gap-5 lg:grid-cols-[16rem_1fr]">
+        <nav aria-label="Roles" className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1">
+            {roles.map((r) => {
+              const active = r.id === role?.id;
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={href(r.id)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-10 flex-col justify-center rounded-md border px-3 py-2 text-sm",
+                      active ? "border-primary bg-primary-soft" : "border-border bg-surface hover:bg-background",
+                    )}
+                  >
+                    <span className={cn("font-medium", active && "text-primary")}>{r.name}</span>
+                    <span className="text-xs text-muted">
+                      {r.isSystem && r.name === "Super Admin" ? "Everything" : `${r.permissions.length} of ${ALL_PERMISSION_KEYS.length} permissions`}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {canManage ? (
+            <details className={`${cardClass} p-3`}>
+              <summary className="cursor-pointer text-sm font-medium">New role</summary>
+              <form action={createRoleAction} className="mt-3 flex flex-col gap-3">
+                <Field id="new-role-name" label="Name" required hint="Starts with no permissions. Add them after creating it.">
+                  <input id="new-role-name" name="name" required minLength={2} maxLength={60} aria-describedby="new-role-name-hint" className={inputClass} />
+                </Field>
+                <Field id="new-role-description" label="Description (optional)">
+                  <input id="new-role-description" name="description" maxLength={300} className={inputClass} />
+                </Field>
+                <div>
+                  <button type="submit" className={buttonClass("primary")}>
+                    Create role
+                  </button>
+                </div>
+              </form>
+            </details>
+          ) : null}
+        </nav>
+
+        {role ? (
+          <section aria-label={role.name} className={`${cardClass} flex flex-col gap-4`}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="m-0 flex flex-wrap items-center gap-2 text-lg font-semibold">
+                  {role.name}
+                  {role.isSystem ? <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-normal text-muted">System role</span> : null}
+                </h2>
+                {role.description ? <p className="mt-1 text-sm text-muted">{role.description}</p> : null}
+                {locked ? <p className="mt-1 text-sm text-muted">Always has full access and cannot be edited.</p> : null}
+              </div>
+              <Link href={href(role.id, !showKeys)} className={cn(linkClass, "text-sm")}>
+                {showKeys ? "Hide technical names" : "Show technical names"}
+              </Link>
             </div>
 
             <ConfirmFormOrView canEdit={canManage && !locked} roleId={role.id} roleName={role.name}>
-              <div className="grid gap-6 lg:grid-cols-3">
+              <div className="flex flex-col gap-6">
                 {Object.entries(PERMISSION_GROUPS).map(([group, keys]) => (
-                  <fieldset key={group} className="flex min-w-0 flex-col gap-1 border-0 p-0">
-                    <legend className="mb-2 w-full border-b border-border pb-1 text-sm font-semibold">{GROUP_LABEL[group] ?? group}</legend>
-                    {byArea(keys).map(([area, areaKeys]) => (
-                      <div key={area} className="flex flex-col">
-                        <p className="mb-0.5 mt-2 text-xs font-medium uppercase tracking-wide text-muted">{capitalise(area)}</p>
-                        {areaKeys.map((k) => (
-                          <label key={k} className="flex min-h-8 items-start gap-2 py-1 text-sm">
-                            <input type="checkbox" name="permissions" value={k} defaultChecked={granted.has(k) || locked} disabled={!canManage || locked} className="mt-0.5" />
-                            <span className="min-w-0">
-                              <span className="block">{permissionLabel(k)}</span>
-                              <span className="block break-all text-xs text-muted">{k}</span>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    ))}
-                  </fieldset>
+                  <div key={group} className="flex flex-col gap-3">
+                    <h3 className="m-0 border-b border-border pb-1 text-sm font-semibold">{GROUP_TITLE[group] ?? group}</h3>
+                    <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+                      {byArea(keys).map(([area, areaKeys]) => (
+                        <fieldset key={area} className="flex min-w-0 flex-col border-0 p-0">
+                          <legend className="mb-1 p-0 text-xs font-medium uppercase tracking-wide text-muted">{AREA_TITLES[area] ?? area}</legend>
+                          {areaKeys.map((k) => (
+                            <label key={k} className="flex min-h-9 items-start gap-2 py-1.5 text-sm">
+                              <input
+                                type="checkbox"
+                                name="permissions"
+                                value={k}
+                                defaultChecked={granted.has(k) || locked}
+                                disabled={!canManage || locked}
+                                className="mt-0.5 size-4 accent-primary"
+                              />
+                              <span className="min-w-0">
+                                <span className="block">{PERMISSION_LABELS[k as keyof typeof PERMISSION_LABELS]}</span>
+                                {showKeys ? <span className="block break-all text-xs text-muted">{k}</span> : null}
+                              </span>
+                            </label>
+                          ))}
+                        </fieldset>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </ConfirmFormOrView>
           </section>
-        );
-      })}
-
-      {canManage ? (
-        <form action={createRoleAction} className={`${cardClass} flex max-w-xl flex-col gap-4`}>
-          <div>
-            <h2 className="m-0 text-base font-semibold">New role</h2>
-            <p className="mt-1 text-sm text-muted">A new role starts with no permissions. Add them above after creating it.</p>
-          </div>
-          <Field id="new-role-name" label="Name" required>
-            <input id="new-role-name" name="name" required minLength={2} maxLength={60} className={inputClass} />
-          </Field>
-          <Field id="new-role-description" label="Description (optional)">
-            <input id="new-role-description" name="description" maxLength={300} className={inputClass} />
-          </Field>
-          <div>
-            <button type="submit" className={buttonClass("primary")}>
-              Create role
-            </button>
-          </div>
-        </form>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -124,9 +151,10 @@ function ConfirmFormOrView({ canEdit, roleId, roleName, children }: { canEdit: b
       description="This changes what everyone with this role can see and do. The change is recorded in the audit log."
       confirmLabel="Save permissions"
       danger={false}
+      formClassName="flex flex-col items-start gap-4"
     >
       <input type="hidden" name="roleId" value={roleId} />
-      <div className="mb-4">{children}</div>
+      <div className="w-full">{children}</div>
     </ConfirmForm>
   );
 }

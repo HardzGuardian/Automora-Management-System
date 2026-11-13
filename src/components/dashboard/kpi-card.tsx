@@ -8,7 +8,10 @@ const TONE = {
   info: "text-info",
 } as const;
 
-/** KPI tile. `basis` says whether the number is a period total or a point-in-time figure. */
+/**
+ * KPI tile. Only period totals carry a label (`basis`); point-in-time figures are the default and
+ * the page says so once, instead of repeating it on every tile.
+ */
 export function KpiCard({
   label,
   value,
@@ -28,7 +31,7 @@ export function KpiCard({
     <>
       <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
       <p className={cn("mt-1 text-3xl font-semibold tabular-nums", TONE[tone])}>{value}</p>
-      {basis ? <p className="mt-1 text-xs text-muted">{basis}</p> : null}
+      {basis === "period total" ? <p className="mt-1 text-xs text-muted">period total</p> : null}
       {hint ? <p className="text-xs text-muted">{hint}</p> : null}
     </>
   );

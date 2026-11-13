@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert } from "@/components/ui/alert";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -13,7 +14,8 @@ export default async function NewTaskPage() {
   if (!can(actor, "tasks.create")) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="New task" />
+        <BackLink href="/tasks">All tasks</BackLink>
+      <PageHeader title="New task" />
         <Alert tone="warning">You do not have permission to create tasks.</Alert>
       </div>
     );
@@ -26,6 +28,7 @@ export default async function NewTaskPage() {
   ]);
   return (
     <div className="flex flex-col gap-4">
+      <BackLink href="/tasks">All tasks</BackLink>
       <PageHeader title="New task" description="Give it a title; everything else can be added later." />
       <TaskForm
         projects={projects.rows.map((p) => ({ id: p.id, label: `${p.projectCode} ${p.name}` }))}

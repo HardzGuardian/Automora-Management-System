@@ -1,7 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { buttonClass, inputClass } from "@/components/ui/styles";
+import { inputClass } from "@/components/ui/styles";
 
 const STATUSES = ["Pending", "In Progress", "In Review", "Completed"];
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
@@ -12,17 +11,13 @@ export function TaskFilters({
   priority,
   overdue,
   extra,
-  clearHref,
 }: {
   q?: string;
   status?: string;
   priority?: string;
   overdue?: boolean;
   extra?: ReactNode;
-  /** When set and a filter is active, shows a "Clear" link back to the unfiltered list. */
-  clearHref?: string;
 }) {
-  const active = Boolean(q || status || priority || overdue);
   return (
     <FilterBar label="Filter tasks">
       {extra}
@@ -42,14 +37,6 @@ export function TaskFilters({
       <label className="flex min-h-10 items-center gap-2 text-sm">
         <input type="checkbox" name="overdue" value="1" defaultChecked={overdue} className="size-4 accent-primary" /> Overdue only
       </label>
-      <button type="submit" className={buttonClass("secondary")}>
-        Filter
-      </button>
-      {clearHref && active ? (
-        <Link href={clearHref} className={buttonClass("ghost")}>
-          Clear
-        </Link>
-      ) : null}
     </FilterBar>
   );
 }

@@ -6,6 +6,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Clients" };
 
@@ -31,15 +32,12 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Clients" actions={can(actor, "clients.create") ? <Link href="/clients/new" className={buttonClass("primary")}>New client</Link> : null} />
-      <form className="flex flex-wrap items-center gap-2" role="search" aria-label="Filter clients">
+      <FilterBar label="Filter clients">
         <input name="q" defaultValue={sp.q} aria-label="Search" placeholder="Search clients" className={`${inputClass} max-w-xs`} />
         <label className="flex items-center gap-1 text-sm">
           <input type="checkbox" name="archived" value="1" defaultChecked={includeArchived} /> Include archived
         </label>
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Clients"
         columns={COLUMNS}

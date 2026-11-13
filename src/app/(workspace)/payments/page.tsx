@@ -1,10 +1,11 @@
 import { DataTable, type DataColumn } from "@/components/data-table/data-table";
 import { PageHeader } from "@/components/ui/page-header";
-import { buttonClass, inputClass } from "@/components/ui/styles";
+import { inputClass } from "@/components/ui/styles";
 import { getActor } from "@/lib/auth/actor";
 import { listReceipts } from "@/modules/finance";
 import { methodLabel, money } from "../invoices/_components/finance-ui";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Receipts" };
 
@@ -33,10 +34,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         title="Receipts"
         description="Money received against invoices. A receipt counts toward the balance only once it is confirmed. New receipts are recorded from the invoice."
       />
-      <form className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter receipts">
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Status
-          <select name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
+      <FilterBar label="Filter receipts">
+        <select aria-label="Status" name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -44,11 +43,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               </option>
             ))}
           </select>
-        </label>
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Receipts"
         columns={COLUMNS}

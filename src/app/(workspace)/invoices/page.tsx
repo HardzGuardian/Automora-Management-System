@@ -6,6 +6,7 @@ import { getActor } from "@/lib/auth/actor";
 import { listInvoiceClients, listInvoices } from "@/modules/finance";
 import { money } from "./_components/finance-ui";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 export const metadata = { title: "Invoices" };
 
@@ -48,10 +49,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         description="Drafts can be edited. Issued invoices are numbered, locked and can receive payments."
         actions={canCreate ? <Link href="/invoices/new" className={buttonClass("primary")}>Create invoice</Link> : null}
       />
-      <form className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter invoices">
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Status
-          <select name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
+      <FilterBar label="Filter invoices">
+        <select aria-label="Status" name="status" defaultValue={status ?? ""} className={`${inputClass} w-44`}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -59,11 +58,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
               </option>
             ))}
           </select>
-        </label>
         {clients.length > 0 ? (
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Client
-            <select name="clientId" defaultValue={clientId ?? ""} className={`${inputClass} w-56`}>
+          <select aria-label="Client" name="clientId" defaultValue={clientId ?? ""} className={`${inputClass} w-56`}>
               <option value="">All clients</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -71,14 +67,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                 </option>
               ))}
             </select>
-          </label>
         ) : null}
-        {sort ? <input type="hidden" name="sort" value={sort} /> : null}
-        {sort ? <input type="hidden" name="dir" value={dir} /> : null}
-        <button type="submit" className={buttonClass("secondary")}>
-          Filter
-        </button>
-      </form>
+      </FilterBar>
       <DataTable
         caption="Invoices"
         columns={COLUMNS}

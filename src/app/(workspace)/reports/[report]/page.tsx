@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RangeFilter } from "@/components/dashboard/range-filter";
+import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { buttonClass, inputClass } from "@/components/ui/styles";
@@ -9,6 +10,7 @@ import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { REPORT_KEYS, RANGE_PRESETS, runReport, type ReportFilters, type ReportKey } from "@/modules/reports";
 import { parsePage } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/filter-bar";
 
 const PAGE_SIZE = 25;
 const STATUSES = ["Pending", "In Progress", "In Review", "Completed"] as const;
@@ -54,6 +56,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
 
   return (
     <div className="flex flex-col gap-4">
+      <BackLink href="/reports">Reports</BackLink>
       <PageHeader
         title={result?.title ?? "Report"}
         description={result?.subtitle || undefined}
@@ -77,25 +80,19 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       {key === "employee-workload" ? (
         <RangeFilter preset={sp.preset ?? "month"} from={sp.from} to={sp.to} error={failure} />
       ) : isTaskReport ? (
-        <form className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter report">
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Status
-            <select name="status" defaultValue={status ?? ""} className={inputClass}>
-              <option value="">All</option>
-              {STATUSES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Priority
-            <select name="priority" defaultValue={priority ?? ""} className={inputClass}>
-              <option value="">All</option>
-              {PRIORITIES.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          </label>
+        <FilterBar label="Filter report">
+          <select name="status" aria-label="Status" defaultValue={status ?? ""} className={`${inputClass} sm:w-40`}>
+            <option value="">All statuses</option>
+            {STATUSES.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+          <select name="priority" aria-label="Priority" defaultValue={priority ?? ""} className={`${inputClass} sm:w-40`}>
+            <option value="">All priorities</option>
+            {PRIORITIES.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
           <label className="flex flex-col gap-1 text-xs text-muted">
             Due from
             <input type="date" name="from" defaultValue={sp.from} className={inputClass} />
@@ -104,20 +101,12 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
             Due to
             <input type="date" name="to" defaultValue={sp.to} className={inputClass} />
           </label>
-          <button type="submit" className={buttonClass("secondary")}>
-            Apply
-          </button>
-          {status || priority || sp.from || sp.to ? (
-            <Link href={`/reports/${key}`} className={buttonClass("ghost")}>
-              Clear filters
-            </Link>
-          ) : null}
           {failure ? (
             <p role="alert" className="w-full text-sm text-danger">
               {failure}
             </p>
           ) : null}
-        </form>
+        </FilterBar>
       ) : null}
 
       {!result ? (

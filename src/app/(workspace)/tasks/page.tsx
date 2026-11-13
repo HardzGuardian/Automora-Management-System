@@ -2,12 +2,13 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Pager } from "@/components/ui/pager";
-import { buttonClass, inputClass } from "@/components/ui/styles";
+import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { listTasks } from "@/modules/tasks";
 import { bulkAction } from "./actions";
+import { BulkBar } from "./_components/bulk-bar";
 import { TaskFilters } from "./_components/task-filters";
 import { TaskTable } from "./_components/task-table";
 import { parsePage } from "@/lib/pagination";
@@ -58,7 +59,7 @@ export default async function AllTasksPage({
           </>
         }
       />
-      <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} clearHref="/tasks" />
+      <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} />
       {sp.bulk ? (
         <Alert tone="success">
           Bulk update: {sp.bulk.split("-")[0]} done, {sp.bulk.split("-")[1]} not applied.
@@ -66,19 +67,13 @@ export default async function AllTasksPage({
       ) : null}
       {sp.bulkError ? <Alert tone="error">{sp.bulkError}</Alert> : null}
       {canBulk ? (
-        <form id="bulk-form" action={bulkAction} className="flex flex-wrap items-center gap-2 text-sm">
-          <select name="op" className={`${inputClass} sm:w-56`} aria-label="Bulk action">
-            <option value="status:In Progress">Move to In Progress</option>
-            <option value="status:In Review">Move to In Review</option>
-            <option value="status:Completed">Move to Completed</option>
-            <option value="status:Pending">Move to Pending</option>
-            {can(actor, "tasks.archive") ? <option value="archive">Archive</option> : null}
-          </select>
-          <button type="submit" className={buttonClass("secondary")}>
-            Apply to selected
-          </button>
-          <span className="text-muted">Tick tasks in the table first.</span>
-        </form>
+        <BulkBar formId="bulk-form" name="taskIds" action={bulkAction}>
+          <option value="status:In Progress">Move to In Progress</option>
+          <option value="status:In Review">Move to In Review</option>
+          <option value="status:Completed">Move to Completed</option>
+          <option value="status:Pending">Move to Pending</option>
+          {can(actor, "tasks.archive") ? <option value="archive">Archive</option> : null}
+        </BulkBar>
       ) : null}
       <TaskTable rows={rows} today={todayInTz(actor.timezone)} selectFormId={canBulk ? "bulk-form" : undefined} />
       <Pager

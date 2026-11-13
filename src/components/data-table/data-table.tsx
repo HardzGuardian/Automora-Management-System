@@ -100,7 +100,7 @@ export function DataTable({
         <p aria-live="polite">
           {total} result{total === 1 ? "" : "s"}
         </p>
-        {columns.length > 3 ? (
+        {columns.length > 3 && rows.length > 0 ? (
           <details className="relative">
             <summary className="cursor-pointer rounded-md border border-border bg-surface px-3 py-2">Columns</summary>
             <fieldset className="absolute right-0 z-10 mt-1 flex w-52 flex-col gap-1 rounded-md border border-border bg-surface p-3 shadow-md">
@@ -197,6 +197,7 @@ export function DataTable({
         </div>
       )}
 
+      {pages > 1 ? (
       <nav aria-label="Pagination" className="flex flex-wrap items-center gap-3 text-sm">
         {page > 1 ? (
           <Link href={href({ page: String(page - 1) })} className="underline">
@@ -216,6 +217,7 @@ export function DataTable({
           <span className="text-muted">Next</span>
         )}
       </nav>
+      ) : null}
     </div>
   );
 }
