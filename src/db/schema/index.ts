@@ -8,3 +8,4 @@ export * from "./files";
 export * from "./tasks";
 export * from "./audit";
 export * from "./finance";
+export * from "./notifications";

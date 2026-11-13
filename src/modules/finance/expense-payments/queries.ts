@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { expensePayments, expenses } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
