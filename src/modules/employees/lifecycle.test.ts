@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db, withTransaction } from "@/db";
-import { account, activityLogs, employees, roles, session, taskAssignees, user, userRoles } from "@/db/schema";
+import { account, activityLogs, employees, invitations, roles, session, taskAssignees, user, userRoles } from "@/db/schema";
 import { auth } from "@/lib/auth/auth";
 import { loadActor } from "@/lib/auth/load-actor";
 import {
@@ -12,6 +12,7 @@ import {
   createUser,
   grantPermissions,
 } from "@/test/factories";
+import { acceptInvitation, createInvitation, resendInvitation } from "@/modules/auth";
 import {
   assertAssignable,
   deactivateEmployee,
@@ -148,5 +149,46 @@ describe("assertAssignable", () => {
     await expect(withTransaction((tx) => assertAssignable(tx, w.company.id, inactive.id))).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(withTransaction((tx) => assertAssignable(tx, w.company.id, suspended.id))).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(withTransaction((tx) => assertAssignable(tx, w.company.id, foreign.id))).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("pending invitations", () => {
+  it("deactivating an employee revokes their open invitation so it can no longer be accepted", async () => {
+    const w = await world(["employees.deactivate", "users.suspend", "users.invite"]);
+    const pending = await createEmployee(w.company.id);
+    const [role] = await db.select().from(roles).where(eq(roles.companyId, w.company.id));
+    const inv = await createInvitation(w.actor, {
+      email: `${randomUUID()}@test.local`,
+      roleId: role.id,
+      employeeId: pending.id,
+    });
+    const token = new URL(inv.acceptUrl).searchParams.get("token")!;
+
+    await deactivateEmployee(w.actor, pending.id, {});
+
+    const [row] = await db.select().from(invitations).where(eq(invitations.id, inv.invitationId));
+    expect(row.revokedAt).not.toBeNull();
+    await expect(acceptInvitation({ token, name: "Late", password: "a-long-enough-password" })).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
+  });
+
+  it("refuses to accept or resend an invitation whose employee is no longer active", async () => {
+    const w = await world(["employees.deactivate", "users.suspend", "users.invite"]);
+    const pending = await createEmployee(w.company.id);
+    const [role] = await db.select().from(roles).where(eq(roles.companyId, w.company.id));
+    const inv = await createInvitation(w.actor, {
+      email: `${randomUUID()}@test.local`,
+      roleId: role.id,
+      employeeId: pending.id,
+    });
+    const token = new URL(inv.acceptUrl).searchParams.get("token")!;
+    // Bypass lock() to simulate any path that leaves the invite open.
+    await db.update(employees).set({ employmentStatus: "Suspended" }).where(eq(employees.id, pending.id));
+
+    await expect(acceptInvitation({ token, name: "Late", password: "a-long-enough-password" })).rejects.toMatchObject({
+      code: "VALIDATION",
+    });
+    await expect(resendInvitation(w.actor, inv.invitationId)).rejects.toMatchObject({ code: "VALIDATION" });
   });
 });

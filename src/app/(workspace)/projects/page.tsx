@@ -5,6 +5,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { getProgressForProjects, listProjects } from "@/modules/projects";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Projects" };
 
@@ -23,7 +24,7 @@ const COLUMNS: DataColumn[] = [
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const { rows, total } = await listProjects(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, includeArchived: status === "Archived" });
   const progress = await getProgressForProjects(actor, rows.map((r) => r.id));

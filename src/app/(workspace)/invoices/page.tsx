@@ -5,6 +5,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { getActor } from "@/lib/auth/actor";
 import { listInvoiceClients, listInvoices } from "@/modules/finance";
 import { money } from "./_components/finance-ui";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Invoices" };
 
@@ -28,7 +29,7 @@ type SP = { page?: string; status?: string; clientId?: string; sort?: string; di
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const actor = await getActor();
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const clientId = sp.clientId && UUID.test(sp.clientId) ? sp.clientId : undefined;
   const sort = (Object.keys(SORTS) as Array<keyof typeof SORTS>).find((s) => s === sp.sort);

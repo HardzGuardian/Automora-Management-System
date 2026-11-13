@@ -5,6 +5,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Clients" };
 
@@ -23,7 +24,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const actor = await requireActor();
   if (!can(actor, "clients.read")) return <p>You do not have access to clients.</p>;
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const includeArchived = sp.archived === "1";
   const { rows, total } = await listClients(actor, { page, pageSize: PAGE_SIZE, search: sp.q, includeArchived });
 

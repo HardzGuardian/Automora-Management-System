@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/lib/auth/auth";
+import { AUTH_LIMITS, clientIp, consumeRateLimit, isRateLimited } from "@/lib/auth/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
@@ -20,9 +21,23 @@ export async function signInAction(_prev: LoginState, formData: FormData): Promi
   });
   if (!parsed.success) return { error: "Enter a valid email and password." };
 
+  // Server actions call auth.api directly, which skips Better Auth's HTTP rate limiter, so limit here.
+  // Only FAILED attempts count (brute force), so a whole office behind one IP can still sign in.
+  const email = parsed.data.email.trim().toLowerCase();
+  const ip = await clientIp();
+  const ipKey = { key: `sign-in-failed:ip:${ip}`, ...AUTH_LIMITS.signInIp };
+  const emailKey = { key: `sign-in-failed:email:${email}`, ...AUTH_LIMITS.signInEmail };
+  const limited =
+    (await isRateLimited(ipKey.key, ipKey.limit, ipKey.windowMs)) || (await isRateLimited(emailKey.key, emailKey.limit, emailKey.windowMs));
+  if (limited) return { error: "Too many failed attempts. Please wait a few minutes and try again." };
+
   try {
     await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
   } catch (e) {
+    await Promise.all([
+      consumeRateLimit(ipKey.key, ipKey.limit, ipKey.windowMs),
+      consumeRateLimit(emailKey.key, emailKey.limit, emailKey.windowMs),
+    ]);
     if (e instanceof APIError && e.statusCode === 429) {
       return { error: "Too many attempts. Please wait a minute and try again." };
     }

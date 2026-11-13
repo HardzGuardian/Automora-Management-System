@@ -170,3 +170,17 @@ describe("resend / revoke", () => {
     await expect(revokeInvitation(buildActor({ companyId: company.id }), "00000000-0000-0000-0000-000000000000")).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
+
+describe("role escalation", () => {
+  it("refuses to invite into a role with permissions the inviter lacks, on create and resend", async () => {
+    const { actor, company } = await setup();
+    const strong = await grantPermissions(company.id, (await createUser(company.id)).id, ["users.invite", "finance.reports.read"], "Strong");
+    await expect(createInvitation(actor, { email: email(), roleId: strong.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const ok = await createInvitation(actor, { email: email(), roleId: (await grantPermissions(company.id, (await createUser(company.id)).id, ["users.invite"], "Same")).id });
+    // The role later gains a permission the inviter lacks.
+    const [inv] = await db.select().from(invitations).where(eq(invitations.id, ok.invitationId));
+    await db.update(invitations).set({ roleId: strong.id }).where(eq(invitations.id, inv.id));
+    await expect(resendInvitation(actor, ok.invitationId)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});

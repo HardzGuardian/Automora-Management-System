@@ -1,8 +1,8 @@
 import "server-only";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withTransaction, type Tx } from "@/db";
-import { employees, roles, session, user, userRoles } from "@/db/schema";
+import { employees, invitations, roles, session, user, userRoles } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
@@ -63,6 +63,11 @@ async function lock(
       await assertNotLastSuperAdmin(tx, actor.companyId, before.userId);
       await lockAccount(tx, before.userId, reason ?? null);
     }
+    // A pending invite must not let a locked-out employee create an account later.
+    await tx
+      .update(invitations)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(invitations.employeeId, id), eq(invitations.companyId, actor.companyId), isNull(invitations.usedAt), isNull(invitations.revokedAt)));
     const [row] = await tx
       .update(employees)
       .set({ employmentStatus: target })

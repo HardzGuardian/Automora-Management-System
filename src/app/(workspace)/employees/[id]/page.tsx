@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { Alert } from "@/components/ui/alert";
 import { BackLink } from "@/components/ui/back-link";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { DetailHeader } from "@/components/ui/detail-header";
@@ -35,12 +36,12 @@ export default async function EmployeeDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string }>;
 }) {
   const actor = await requireActor();
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, error: actionError } = await searchParams;
   const tab: TaskTab = TABS.some((t) => t.key === rawTab) ? (rawTab as TaskTab) : "assigned";
 
   let employee;
@@ -77,6 +78,7 @@ export default async function EmployeeDetailPage({
   return (
     <div className="flex flex-col gap-5">
       <BackLink href="/employees">Employees</BackLink>
+      {actionError ? <Alert tone="error">{actionError.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={employee.fullName}
         code={employee.employeeCode}

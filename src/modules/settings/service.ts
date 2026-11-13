@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, withTransaction } from "@/db";
-import { CODE_KINDS, codeSequences, companies, companySettings } from "@/db/schema";
+import { CODE_KINDS, codeSequences, companies, companySettings, expenses, invoices, payments } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
@@ -62,6 +62,14 @@ export async function updateCompanyProfile(actor: Actor, input: CompanyProfileIn
   return withTransaction(async (tx) => {
     const [before] = await tx.select().from(companies).where(eq(companies.id, actor.companyId));
     if (!before) throw new DomainError("NOT_FOUND", "Company not found");
+    if (data.currency !== before.currency) {
+      // Expense money has no currency of its own (it follows the company's), so changing it would
+      // silently relabel history. Block it once any financial record exists.
+      const [inv] = await tx.select({ id: invoices.id }).from(invoices).where(eq(invoices.companyId, actor.companyId)).limit(1);
+      const [exp] = await tx.select({ id: expenses.id }).from(expenses).where(eq(expenses.companyId, actor.companyId)).limit(1);
+      const [pay] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.companyId, actor.companyId)).limit(1);
+      if (inv || exp || pay) throw new DomainError("CONFLICT", "The currency cannot be changed after invoices, payments or expenses exist.");
+    }
     const [after] = await tx.update(companies).set(data).where(eq(companies.id, actor.companyId)).returning();
     const pick = (c: typeof before): CompanyProfile => ({ legalName: c.legalName, displayName: c.displayName, email: c.email, phone: c.phone, address: c.address, currency: c.currency, timezone: c.timezone });
     await audit.record(tx, { actor, entity: "company", entityId: actor.companyId, action: "settings.company_updated", before: pick(before), after: pick(after) });

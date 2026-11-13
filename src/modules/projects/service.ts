@@ -74,7 +74,7 @@ export async function createProject(actor: Actor, input: CreateProjectInput): Pr
       employeeId: data.ownerEmployeeId,
       membershipRole: "owner",
     });
-    const dto = toProjectDTO(row);
+    const dto = toProjectDTO(row, actor);
     await audit.record(tx, { actor, entity: "project", entityId: row.id, action: "project.created", after: dto });
     return dto;
   });
@@ -103,7 +103,7 @@ export async function updateProject(actor: Actor, id: string, input: UpdateProje
       before: toProjectDTO(before),
       after: toProjectDTO(row),
     });
-    return toProjectDTO(row);
+    return toProjectDTO(row, actor);
   });
 }
 
@@ -128,12 +128,12 @@ export async function changeProjectStatus(actor: Actor, id: string, to: ProjectS
       before: { status: before.status },
       after: { status: to },
     });
-    return toProjectDTO(updated[0]);
+    return toProjectDTO(updated[0], actor);
   });
 }
 
 export async function getProject(actor: Actor, id: string): Promise<ProjectDTO> {
-  return toProjectDTO(await loadProject(db, actor, id));
+  return toProjectDTO(await loadProject(db, actor, id), actor);
 }
 
 export async function listProjects(
@@ -161,5 +161,5 @@ export async function listProjects(
       .offset((f.page - 1) * f.pageSize),
     db.select({ total: count() }).from(projects).where(where),
   ]);
-  return { rows: rows.map(toProjectDTO), total };
+  return { rows: rows.map((r) => toProjectDTO(r, actor)), total };
 }

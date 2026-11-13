@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { notify, resetNotifier, setNotifier, type NotifyEvent } from "./notify";
 
 const event: NotifyEvent = {
@@ -28,5 +28,16 @@ describe("notify port", () => {
       throw new Error("smtp down");
     });
     await expect(notify(event)).resolves.toBeUndefined();
+  });
+});
+
+describe("notify registration", () => {
+  it("is shared through globalThis so separate module instances see the same notifier", async () => {
+    const seen: NotifyEvent[] = [];
+    setNotifier(async (e) => void seen.push(e));
+    vi.resetModules();
+    const fresh = await import("./notify");
+    await fresh.notify(event);
+    expect(seen).toEqual([event]);
   });
 });

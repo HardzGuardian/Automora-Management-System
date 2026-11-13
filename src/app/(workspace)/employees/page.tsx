@@ -5,6 +5,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Employees" };
 
@@ -26,7 +27,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const actor = await requireActor();
   if (!can(actor, "employees.read")) return <p>You do not have access to the employee directory.</p>;
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const sort = SORTS.find((s) => s === sp.sort);
   const dir = sp.dir === "desc" ? "desc" : "asc";

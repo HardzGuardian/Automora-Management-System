@@ -1,7 +1,8 @@
 import "server-only";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { companies, employees, permissions, projects, rolePermissions, taskAssignees, tasks, userRoles } from "@/db/schema";
+import { companies, employees, permissions, projects, rolePermissions, taskAssignees, tasks, user, userRoles } from "@/db/schema";
+import type { Actor } from "@/lib/auth/actor";
 import { loadActor } from "@/lib/auth/load-actor";
 import { addDays, overdueCondition, todayInTz, upcomingCondition } from "@/lib/dates";
 import { listInvoices } from "@/modules/finance";
@@ -95,13 +96,24 @@ async function invoiceReminders(companyId: string, today: string): Promise<void>
     .from(userRoles)
     .innerJoin(rolePermissions, eq(rolePermissions.roleId, userRoles.roleId))
     .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
-    .where(and(eq(userRoles.companyId, companyId), inArray(permissions.key, ["finance.notifications.receive", "finance.invoices.read"])));
+    .innerJoin(user, eq(user.id, userRoles.userId))
+    .where(and(eq(userRoles.companyId, companyId), eq(user.banned, false), inArray(permissions.key, ["finance.notifications.receive", "finance.invoices.read"])));
   const byUser = new Map<string, Set<string>>();
   for (const h of holders) byUser.set(h.userId, (byUser.get(h.userId) ?? new Set()).add(h.key));
   const eligible = [...byUser].filter(([, k]) => k.size === 2).map(([id]) => id);
   if (eligible.length === 0) return;
 
-  const actor = await loadActor(eligible[0]); // reads invoices through the finance module's own rules
+  // Reads invoices through the finance module's own rules, as the first recipient who can still load.
+  let actor: Actor | null = null;
+  for (const id of eligible) {
+    try {
+      actor = await loadActor(id);
+      break;
+    } catch {
+      // Suspended or removed since the query; try the next recipient.
+    }
+  }
+  if (!actor) return;
   const horizon = addDays(today, INVOICE_DUE_DAYS);
   for (const status of ["overdue", "issued", "partially_paid"] as const) {
     for (let page = 1; page <= 20; page++) {

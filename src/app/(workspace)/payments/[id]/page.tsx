@@ -6,12 +6,14 @@ import { DomainError } from "@/lib/errors";
 import { getReceiptDetail } from "@/modules/finance";
 import { BackLink, DetailHeader, DetailList, Section, methodLabel, money, notSet } from "../../invoices/_components/finance-ui";
 import { ReceiptActions } from "./_components/receipt-actions";
+import { isUuid } from "@/lib/pagination";
 
 export const metadata = { title: "Receipt" };
 
 export default async function ReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor();
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   let receipt: Awaited<ReturnType<typeof getReceiptDetail>>;
   try {
     receipt = await getReceiptDetail(actor, id);

@@ -65,14 +65,23 @@ export async function exportReport(actor: Actor, key: ReportKey, formatInput: st
   return new Response(body, { headers: safeHeaders(fmt, fileName) });
 }
 
+// Explicit column lists (also the export allowlist), so an empty report still gets its header row.
+const FINANCE_KEYS: Record<FinanceExportRequest["report"], string[]> = {
+  receivables: ["invoiceNumber", "clientName", "issueDate", "dueDate", "currency", "total", "confirmedReceipts", "outstanding", "status"],
+  "expense-register": ["expenseCode", "category", "projectId", "payee", "description", "expenseDate", "dueDate", "currency", "total", "confirmedPayments", "outstanding", "status"],
+  "cash-movement": ["date", "currency", "confirmedReceipts", "confirmedExpensePayments", "netCashMovement"],
+  summary: ["metric", "currency", "amount", "count", "confirmedReceipts", "confirmedExpensePayments", "netCashMovement"],
+};
+const labelFor = (k: string) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+
 /** Adapter that lets Chintan's finance export service use the shared streaming export library. */
-function financeAdapter(): FinanceExportAdapter {
+function financeAdapter(report: FinanceExportRequest["report"]): FinanceExportAdapter {
   const columnsFor = async (rows: AsyncIterable<Readonly<Record<string, string | number | null>>>) => {
     // Column list comes from the first row's keys, which are fixed per report by the finance service.
     const iterator = rows[Symbol.asyncIterator]();
     const first = await iterator.next();
-    const keys = first.done ? [] : Object.keys(first.value);
-    const columns: ExportColumn[] = keys.map((k) => ({ key: k, label: k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()) }));
+    const keys = FINANCE_KEYS[report] ?? (first.done ? [] : Object.keys(first.value));
+    const columns: ExportColumn[] = keys.map((k) => ({ key: k, label: labelFor(k) }));
     async function* all(): AsyncGenerator<ExportRow> {
       if (!first.done) yield first.value;
       for (let n = await iterator.next(); !n.done; n = await iterator.next()) yield n.value;
@@ -117,6 +126,6 @@ function financeAdapter(): FinanceExportAdapter {
 }
 
 export function exportFinanceReportResponse(actor: Actor, request: FinanceExportRequest): Promise<Response> {
-  return exportFinanceReport(actor, request, financeAdapter());
+  return exportFinanceReport(actor, request, financeAdapter(request.report));
 }
 

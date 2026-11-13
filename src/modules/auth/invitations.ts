@@ -19,6 +19,7 @@ import { env } from "@/lib/env";
 import { DomainError } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
 import { audit } from "@/modules/audit";
+import { assertCanGrantRole } from "./roles";
 import { inviteEmail } from "@/lib/email/templates";
 import {
   acceptInvitationSchema,
@@ -50,10 +51,11 @@ export async function createInvitation(
 
   const { invitationId, token } = await withTransaction(async (tx) => {
     const [role] = await tx
-      .select({ id: roles.id })
+      .select({ id: roles.id, name: roles.name, isSystem: roles.isSystem })
       .from(roles)
       .where(and(eq(roles.id, data.roleId), eq(roles.companyId, actor.companyId)));
     if (!role) throw new DomainError("NOT_FOUND", "Role not found");
+    await assertCanGrantRole(tx, actor, role);
 
     if (data.employeeId) {
       const [emp] = await tx
@@ -128,6 +130,19 @@ export async function resendInvitation(
   requirePermission(actor, "users.invite");
   const { token, email } = await withTransaction(async (tx) => {
     const inv = await loadOwnPending(tx, actor, invitationId);
+    const [role] = await tx
+      .select({ id: roles.id, name: roles.name, isSystem: roles.isSystem })
+      .from(roles)
+      .where(and(eq(roles.id, inv.roleId), eq(roles.companyId, actor.companyId)));
+    if (!role) throw new DomainError("NOT_FOUND", "Role not found");
+    await assertCanGrantRole(tx, actor, role);
+    if (inv.employeeId) {
+      const [emp] = await tx
+        .select({ status: employees.employmentStatus })
+        .from(employees)
+        .where(and(eq(employees.id, inv.employeeId), eq(employees.companyId, actor.companyId)));
+      if (!emp || emp.status !== "Active") throw new DomainError("VALIDATION", "Employee is not active");
+    }
     const t = generateToken();
     await tx
       .update(invitations)
@@ -183,6 +198,14 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<{ 
       .for("update");
     if (!inv || inv.usedAt || inv.revokedAt || inv.expiresAt <= new Date()) {
       throw new DomainError("VALIDATION", INVALID);
+    }
+
+    if (inv.employeeId) {
+      const [emp] = await tx
+        .select({ status: employees.employmentStatus })
+        .from(employees)
+        .where(and(eq(employees.id, inv.employeeId), eq(employees.companyId, inv.companyId)));
+      if (!emp || emp.status !== "Active") throw new DomainError("VALIDATION", INVALID);
     }
 
     const [dup] = await tx.select({ id: user.id }).from(user).where(sql`lower(${user.email}) = ${inv.email.toLowerCase()}`);

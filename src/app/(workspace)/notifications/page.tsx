@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/states";
 import { buttonClass, linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { listForUser, markAllRead, markRead } from "@/modules/notifications";
+import { parsePage } from "@/lib/pagination";
 
 const PAGE_SIZE = 20;
 
@@ -29,7 +30,7 @@ export const metadata = { title: "Notifications" };
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ page?: string; unread?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const unreadOnly = sp.unread === "1";
   const { rows, total } = await listForUser(actor, { page, pageSize: PAGE_SIZE, unreadOnly });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));

@@ -4,6 +4,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { getActor } from "@/lib/auth/actor";
 import { listReceipts } from "@/modules/finance";
 import { methodLabel, money } from "../invoices/_components/finance-ui";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Receipts" };
 
@@ -23,7 +24,7 @@ const COLUMNS: DataColumn[] = [
 export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string }> }) {
   const actor = await getActor();
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const result = await listReceipts(actor, { page, pageSize: PAGE_SIZE, status });
   return (

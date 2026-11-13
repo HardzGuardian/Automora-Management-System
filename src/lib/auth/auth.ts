@@ -2,7 +2,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { admin } from "better-auth/plugins";
+import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { account, rateLimit, session, user, verification } from "@/db/schema";
@@ -53,13 +53,23 @@ export const auth = betterAuth({
   databaseHooks: {
     session: {
       create: {
+        // A suspended user (user.banned, unless the ban has expired) cannot start a session.
+        before: async (s) => {
+          const [u] = await db
+            .select({ banned: user.banned, banExpires: user.banExpires })
+            .from(user)
+            .where(eq(user.id, s.userId));
+          if (u?.banned && (!u.banExpires || u.banExpires > new Date())) {
+            throw new APIError("FORBIDDEN", { message: "This account is suspended" });
+          }
+        },
         after: async (s) => {
           await db.update(user).set({ lastLoginAt: new Date() }).where(eq(user.id, s.userId));
         },
       },
     },
   },
-  plugins: [admin(), nextCookies()],
+  plugins: [nextCookies()],
 });
 
 export type Auth = typeof auth;

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/lib/auth/auth";
+import { AUTH_LIMITS, allowAll, clientIp } from "@/lib/auth/rate-limit";
 
 export type ResetState = { error?: string };
 
@@ -19,6 +20,9 @@ const schema = z
 export async function resetPasswordAction(_prev: ResetState, formData: FormData): Promise<ResetState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!(await allowAll([{ key: `reset:ip:${await clientIp()}`, ...AUTH_LIMITS.resetIp }]))) {
+    return { error: "Too many attempts. Try again in a minute." };
+  }
   try {
     await auth.api.resetPassword({
       body: { newPassword: parsed.data.password, token: parsed.data.token },

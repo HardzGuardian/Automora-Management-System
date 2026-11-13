@@ -6,6 +6,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listRoles, listUsers } from "@/modules/auth";
 import { addRoleAction, removeRoleAction } from "./actions";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Users" };
 
@@ -15,7 +16,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const actor = await requireActor();
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
-  const page = Math.max(Number.parseInt(sp.page ?? "1", 10) || 1, 1);
+  const page = parsePage(sp.page);
   const canManage = can(actor, "roles.manage") && can(actor, "roles.read");
 
   const [list, allRoles] = await Promise.all([

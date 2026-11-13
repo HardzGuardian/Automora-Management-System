@@ -112,3 +112,22 @@ describe("numbering (read-only)", () => {
     expect(rows.map((r) => r.kind)).toEqual(["TSK", "PRJ", "CLI", "EMP", "INV", "EXP"]);
   });
 });
+
+describe("currency lock", () => {
+  it("allows changing currency while there are no financial records", async () => {
+    const a = await admin();
+    const updated = await updateCompanyProfile(a.actor, { ...valid, currency: "USD" });
+    expect(updated.currency).toBe("USD");
+  });
+
+  it("refuses to change currency once an invoice exists, but still allows other edits", async () => {
+    const a = await admin();
+    const { db: database } = await import("@/db");
+    const { clients, invoices } = await import("@/db/schema");
+    const [client] = await database.insert(clients).values({ companyId: a.company.id, clientCode: "CLI-X", name: "Billed" }).returning();
+    await database.insert(invoices).values({ companyId: a.company.id, clientId: client.id, currency: "INR", status: "draft", subtotal: "0", discountTotal: "0", taxTotal: "0", total: "0" } as never);
+    await expect(updateCompanyProfile(a.actor, { ...valid, currency: "USD" })).rejects.toMatchObject({ code: "CONFLICT" });
+    const kept = await updateCompanyProfile(a.actor, { ...valid, currency: "INR", displayName: "Renamed" });
+    expect(kept).toMatchObject({ currency: "INR", displayName: "Renamed" });
+  });
+});

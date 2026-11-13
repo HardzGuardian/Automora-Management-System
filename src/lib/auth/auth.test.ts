@@ -3,15 +3,17 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { account, rateLimit, session, user } from "@/db/schema";
-import { createCompany, createUser } from "@/test/factories";
+import { loadActor } from "@/lib/auth/load-actor";
+import { suspendEmployee } from "@/modules/employees";
+import { createCompany, createEmployee, createUser, grantPermissions } from "@/test/factories";
 import { auth } from "./auth";
 
 const PASSWORD = "correct-horse-battery-1";
 
-async function makeLoginUser(o: { role?: string; banned?: boolean } = {}) {
+async function makeLoginUser(o: { banned?: boolean } = {}) {
   const company = await createCompany();
   const email = `${randomUUID()}@test.local`;
-  const u = await createUser(company.id, { email, role: o.role ?? null, banned: o.banned ?? false });
+  const u = await createUser(company.id, { email, banned: o.banned ?? false });
   const ctx = await auth.$context;
   await db.insert(account).values({
     id: randomUUID(),
@@ -69,16 +71,22 @@ describe("better auth", () => {
     expect(res.status).toBe(403);
   });
 
-  it("banning through the admin API revokes existing sessions", async () => {
-    const admin = await makeLoginUser({ role: "admin" });
+  it("suspending an employee through our own path revokes existing sessions and blocks new ones", async () => {
     const target = await makeLoginUser();
     const targetRes = await signIn(target.email, PASSWORD, "10.5.0.1");
     expect(targetRes.status).toBe(200);
-    const adminRes = await signIn(admin.email, PASSWORD, "10.5.0.2");
-    const cookie = adminRes.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
-    await auth.api.banUser({ body: { userId: target.u.id }, headers: new Headers({ cookie }) });
-    const rows = await db.select().from(session).where(eq(session.userId, target.u.id));
-    expect(rows).toHaveLength(0);
+    expect(await db.select().from(session).where(eq(session.userId, target.u.id))).toHaveLength(1);
+
+    const company = await createCompany();
+    const adminUser = await createUser(company.id);
+    await grantPermissions(company.id, adminUser.id, ["users.suspend", "employees.deactivate"], "Admin");
+    const emp = await createEmployee(company.id, { userId: target.u.id });
+    // Same company is required, so move the target account into the admin's company.
+    await db.update(user).set({ companyId: company.id }).where(eq(user.id, target.u.id));
+    await suspendEmployee(await loadActor(adminUser.id), emp.id, {});
+
+    expect(await db.select().from(session).where(eq(session.userId, target.u.id))).toHaveLength(0);
+    expect((await signIn(target.email, PASSWORD, "10.5.0.3")).status).toBe(403);
   });
 
   it("rate limits repeated failed logins from one IP", async () => {

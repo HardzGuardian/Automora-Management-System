@@ -25,12 +25,14 @@ import { loadProjectOptions } from "../_components/project-options";
 import { InvoiceActions } from "./_components/invoice-actions";
 import { InvoiceDraftEditor } from "./_components/invoice-draft-editor";
 import { NewReceiptForm } from "../../payments/_components/new-receipt-form";
+import { isUuid } from "@/lib/pagination";
 
 export const metadata = { title: "Invoice" };
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor();
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   let invoice: InvoiceDetailDTO;
   try {
     invoice = await getInvoiceDetail(actor, id);

@@ -8,6 +8,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { REPORT_KEYS, RANGE_PRESETS, runReport, type ReportFilters, type ReportKey } from "@/modules/reports";
+import { parsePage } from "@/lib/pagination";
 
 const PAGE_SIZE = 25;
 const STATUSES = ["Pending", "In Progress", "In Review", "Completed"] as const;
@@ -21,7 +22,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
   if (!(REPORT_KEYS as string[]).includes(report)) notFound();
   const key = report as ReportKey;
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const priority = PRIORITIES.find((p) => p === sp.priority);
   const preset = (RANGE_PRESETS as readonly string[]).includes(sp.preset ?? "") ? (sp.preset as ReportFilters["preset"]) : undefined;

@@ -49,6 +49,22 @@ async function loadRole(tx: Tx, actor: Actor, roleId: string) {
 
 const isSuperAdmin = (r: { name: string; isSystem: boolean }) => r.isSystem && r.name === SUPER_ADMIN;
 
+const holdsAll = (actor: Actor, keys: readonly string[]) => keys.every((k) => actor.permissions.has(k as PermissionKey));
+
+/** An actor may only hand out a role whose permissions they all hold themselves (Super Admin included). */
+export async function assertCanGrantRole(
+  tx: Pick<Tx, "select">,
+  actor: Actor,
+  role: { id: string; name: string; isSystem: boolean },
+): Promise<void> {
+  const keys = await keysFor(tx, role.id);
+  const missing = !holdsAll(actor, keys);
+  const lacksSuperAdmin = isSuperAdmin(role) && !holdsAll(actor, ALL_PERMISSION_KEYS);
+  if (missing || lacksSuperAdmin) {
+    throw new DomainError("FORBIDDEN", "You cannot grant a role with permissions you do not hold");
+  }
+}
+
 export async function listRoles(actor: Actor): Promise<RoleDTO[]> {
   requirePermission(actor, "roles.read");
   const rows = await db.select().from(roles).where(eq(roles.companyId, actor.companyId)).orderBy(roles.name);
@@ -98,6 +114,14 @@ export async function setRolePermissions(
   await withTransaction(async (tx) => {
     const role = await loadRole(tx, actor, roleId);
     if (isSuperAdmin(role)) throw new DomainError("CONFLICT", "The Super Admin role cannot be edited");
+    if (!holdsAll(actor, unique)) {
+      throw new DomainError("FORBIDDEN", "You cannot grant permissions you do not hold");
+    }
+    const [held] = await tx
+      .select({ roleId: userRoles.roleId })
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, actor.userId), eq(userRoles.roleId, role.id)));
+    if (held) throw new DomainError("FORBIDDEN", "You cannot edit a role you hold yourself");
     const before = await keysFor(tx, role.id);
 
     await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, role.id));
@@ -135,6 +159,7 @@ export async function assignRole(actor: Actor, userId: string, roleId: string): 
   await withTransaction(async (tx) => {
     const role = await loadRole(tx, actor, roleId);
     await loadTargetUser(tx, actor, userId);
+    await assertCanGrantRole(tx, actor, role);
     await tx
       .insert(userRoles)
       .values({ userId, roleId: role.id, companyId: actor.companyId })

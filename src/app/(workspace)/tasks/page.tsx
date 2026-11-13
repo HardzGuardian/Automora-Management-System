@@ -10,6 +10,7 @@ import { listTasks } from "@/modules/tasks";
 import { bulkAction } from "./actions";
 import { TaskFilters } from "./_components/task-filters";
 import { TaskTable } from "./_components/task-table";
+import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "All tasks" };
 
@@ -24,7 +25,7 @@ export default async function AllTasksPage({
 }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
+  const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
   const priority = PRIORITIES.find((p) => p === sp.priority);
   const { rows, total } = await listTasks(actor, {

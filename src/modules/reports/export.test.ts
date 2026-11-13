@@ -97,3 +97,12 @@ describe("finance report export (Chintan's service on our export library)", () =
     await expect(exportFinanceReportResponse(none.manager, { report: "summary", format: "csv", fromDate: "2026-01-01", toDate: "2026-12-31" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
+
+describe("finance export with no rows", () => {
+  it("still writes the header row", async () => {
+    const w = await workWorld([...KEYS, "finance.reports.read", "finance.reports.export"] as never[]);
+    const res = await exportFinanceReportResponse(w.manager, { report: "receivables", format: "csv", fromDate: "2020-01-01", toDate: "2020-01-02" });
+    const body = (await res.text()).replace(/^\uFEFF/, "").trim();
+    expect(body).toBe("Invoice Number,Client Name,Issue Date,Due Date,Currency,Total,Confirmed Receipts,Outstanding,Status");
+  });
+});

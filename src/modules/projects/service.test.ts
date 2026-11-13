@@ -207,3 +207,19 @@ describe("getProject / listProjects scope", () => {
     expect((await listProjects(stranger, {})).total).toBe(0);
   });
 });
+
+describe("budget visibility", () => {
+  it("hides the budget from members who cannot edit the project or use finance", async () => {
+    const w = await world();
+    const p = await createProjectSvc(w.actor, base(w, { budgetAmount: "250000.00" }));
+    expect((await getProject(w.actor, p.id)).budgetAmount).toBe("250000.00");
+
+    const memberUser = await createUser(w.company.id);
+    const memberEmp = await createEmployee(w.company.id, { userId: memberUser.id });
+    await grantPermissions(w.company.id, memberUser.id, ["tasks.comment"], "Member");
+    await db.insert(projectMembers).values({ projectId: p.id, companyId: w.company.id, employeeId: memberEmp.id, membershipRole: "member" });
+    const member = await loadActor(memberUser.id);
+    expect((await getProject(member, p.id)).budgetAmount).toBeNull();
+    expect((await listProjects(member, {})).rows[0].budgetAmount).toBeNull();
+  });
+});

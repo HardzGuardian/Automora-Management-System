@@ -16,17 +16,20 @@ export type NotifyEvent = {
 
 export type Notifier = (event: NotifyEvent) => Promise<void>;
 
-let current: Notifier | null = null;
+// Held on globalThis (like the db pool) so a notifier registered from instrumentation.ts is visible
+// to route handlers and server actions even when the bundler gives them separate module instances.
+const globalForNotify = globalThis as unknown as { __automoraNotifier?: Notifier | null };
 
 export function setNotifier(fn: Notifier): void {
-  current = fn;
+  globalForNotify.__automoraNotifier = fn;
 }
 
 export function resetNotifier(): void {
-  current = null;
+  globalForNotify.__automoraNotifier = null;
 }
 
 export async function notify(event: NotifyEvent): Promise<void> {
+  const current = globalForNotify.__automoraNotifier;
   if (!current) return;
   try {
     await current(event);

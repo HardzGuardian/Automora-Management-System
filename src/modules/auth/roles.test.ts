@@ -2,11 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { activityLogs, permissions, rolePermissions, roles, userRoles } from "@/db/schema";
+import { ALL_PERMISSION_KEYS } from "@/lib/permissions";
 import { loadActor } from "@/lib/auth/load-actor";
 import { createCompany, createUser, grantPermissions, buildActor } from "@/test/factories";
 import { assignRole, createRole, listRoles, removeRole, setRolePermissions } from "./roles";
 
-async function admin(keys: Parameters<typeof grantPermissions>[2] = ["roles.read", "roles.manage"]) {
+const GRANTABLE = ["tasks.create", "tasks.assign"] as const;
+
+async function admin(keys: Parameters<typeof grantPermissions>[2] = ["roles.read", "roles.manage", ...GRANTABLE]) {
   const company = await createCompany();
   const u = await createUser(company.id);
   await grantPermissions(company.id, u.id, keys, "Admin");
@@ -39,7 +42,7 @@ describe("roles", () => {
     await admin();
     const list = await listRoles(a.actor);
     expect(list.map((r) => r.name)).toEqual(["Admin"]);
-    expect(list[0].permissions.sort()).toEqual(["roles.manage", "roles.read"]);
+    expect(list[0].permissions.sort()).toEqual(["roles.manage", "roles.read", "tasks.assign", "tasks.create"]);
   });
 
   it("creates a role with no permissions and audits it", async () => {
@@ -100,7 +103,7 @@ describe("roles", () => {
   });
 
   it("refuses to remove the last Super Admin", async () => {
-    const a = await admin();
+    const a = await admin(["roles.read", "roles.manage", ...ALL_PERMISSION_KEYS]);
     const [sys] = await db.insert(roles).values({ companyId: a.company.id, name: "Super Admin", isSystem: true }).returning();
     const sa = await createUser(a.company.id);
     await assignRole(a.actor, sa.id, sys.id);
@@ -108,5 +111,39 @@ describe("roles", () => {
     const sa2 = await createUser(a.company.id);
     await assignRole(a.actor, sa2.id, sys.id);
     await expect(removeRole(a.actor, sa.id, sys.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("privilege escalation guards", () => {
+  it("refuses to grant permissions the actor does not hold", async () => {
+    const a = await admin();
+    const role = await createRole(a.actor, { name: "Grabby" });
+    await expect(setRolePermissions(a.actor, role.id, ["finance.reports.read"])).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await keysOfRole(role.id)).toEqual([]);
+  });
+
+  it("refuses to edit a role the actor holds themselves", async () => {
+    const a = await admin();
+    const [mine] = await db.select().from(roles).where(eq(roles.companyId, a.company.id));
+    await expect(setRolePermissions(a.actor, mine.id, ["roles.manage"])).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("refuses to assign a role holding permissions the actor lacks", async () => {
+    const a = await admin();
+    const target = await createUser(a.company.id);
+    const strong = await grantPermissions(a.company.id, (await createUser(a.company.id)).id, ["finance.reports.read"], "Strong");
+    await expect(assignRole(a.actor, target.id, strong.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await db.select().from(userRoles).where(eq(userRoles.userId, target.id))).toHaveLength(0);
+  });
+
+  it("only an actor holding every permission may assign Super Admin", async () => {
+    const a = await admin();
+    const [sys] = await db.insert(roles).values({ companyId: a.company.id, name: "Super Admin", isSystem: true }).returning();
+    const target = await createUser(a.company.id);
+    await expect(assignRole(a.actor, target.id, sys.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const full = await admin(["roles.read", "roles.manage", ...ALL_PERMISSION_KEYS]);
+    const [sys2] = await db.insert(roles).values({ companyId: full.company.id, name: "Super Admin", isSystem: true }).returning();
+    const target2 = await createUser(full.company.id);
+    await expect(assignRole(full.actor, target2.id, sys2.id)).resolves.toBeUndefined();
   });
 });

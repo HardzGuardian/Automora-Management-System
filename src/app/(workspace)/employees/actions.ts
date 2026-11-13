@@ -37,9 +37,11 @@ const idSchema = z.string().uuid();
 
 async function lifecycle(formData: FormData, op: "deactivate" | "suspend" | "reactivate"): Promise<void> {
   const actor = await requireActor();
-  const id = idSchema.parse(formData.get("id"));
+  const parsedId = idSchema.safeParse(formData.get("id"));
+  if (!parsedId.success) redirect("/employees");
+  const id = parsedId.data;
   const reason = String(formData.get("reason") ?? "") || undefined;
-  await toActionResult(() =>
+  const result = await toActionResult(() =>
     op === "deactivate"
       ? deactivateEmployee(actor, id, { reason })
       : op === "suspend"
@@ -48,6 +50,8 @@ async function lifecycle(formData: FormData, op: "deactivate" | "suspend" | "rea
   );
   revalidatePath(`/employees/${id}`);
   revalidatePath("/employees");
+  // Show why it failed (e.g. "At least one active Super Admin must remain") instead of doing nothing.
+  if (!result.ok) redirect(`/employees/${id}?error=${encodeURIComponent(result.error.message)}`);
 }
 
 export async function deactivateAction(formData: FormData): Promise<void> {

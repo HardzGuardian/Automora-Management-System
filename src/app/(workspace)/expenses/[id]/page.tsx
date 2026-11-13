@@ -27,12 +27,14 @@ import { loadProjectOptions } from "../../invoices/_components/project-options";
 import { ExpenseEditForm } from "./_components/expense-edit-form";
 import { ReceiptUploadForm } from "./_components/receipt-upload";
 import { ExpensePaymentActions, NewExpensePaymentForm } from "../_components/expense-payment-forms";
+import { isUuid } from "@/lib/pagination";
 
 export const metadata = { title: "Expense" };
 
 export default async function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor();
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   let expense: Awaited<ReturnType<typeof getExpenseDetail>>;
   try {
     expense = await getExpenseDetail(actor, id);
