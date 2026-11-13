@@ -21,6 +21,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: testDb,
       STORAGE_DRIVER: "local",
+      CRON_SECRET: "test-cron-secret-0123456789",
       STORAGE_LOCAL_DIR: ".data/test-uploads",
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "test-secret-test-secret-test-secret-123",
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
