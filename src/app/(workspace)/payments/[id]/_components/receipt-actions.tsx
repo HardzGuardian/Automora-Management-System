@@ -2,7 +2,10 @@
 
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { buttonClass } from "@/components/ui/styles";
 import { confirmReceiptAction, reverseReceiptAction } from "../../actions";
+import { FormError } from "../../../invoices/_components/finance-ui";
+import { ReasonDialog } from "../../../invoices/_components/reason-dialog";
 import type { FinanceActionResult } from "@/modules/finance";
 
 export function ReceiptActions({ paymentId, canConfirm, canReverse }: { paymentId: string; canConfirm: boolean; canReverse: boolean }) {
@@ -13,17 +16,37 @@ export function ReceiptActions({ paymentId, canConfirm, canReverse }: { paymentI
     if (confirmState?.ok || reverseState?.ok) router.refresh();
   }, [confirmState, reverseState, router]);
 
-  return <section aria-label="Receipt actions">
-    {canConfirm && <form action={confirmAction}>
-      <input type="hidden" name="paymentId" value={paymentId} />
-      {confirmState && !confirmState.ok && <p role="alert">{confirmState.error.message}</p>}
-      <button type="submit" disabled={confirming}>{confirming ? "Confirming…" : "Confirm receipt"}</button>
-    </form>}
-    {canReverse && <form action={reverseAction}>
-      <input type="hidden" name="paymentId" value={paymentId} />
-      <label>Reversal reason<input name="reason" maxLength={500} required /></label>
-      {reverseState && !reverseState.ok && <p role="alert">{reverseState.error.message}</p>}
-      <button type="submit" disabled={reversing}>{reversing ? "Reversing…" : "Reverse receipt"}</button>
-    </form>}
-  </section>;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {canConfirm && (
+        <form action={confirmAction}>
+          <input type="hidden" name="paymentId" value={paymentId} />
+          <button type="submit" disabled={confirming} className={buttonClass("primary")}>
+            {confirming ? "Confirming…" : "Confirm receipt"}
+          </button>
+        </form>
+      )}
+      {canReverse && (
+        <ReasonDialog
+          triggerLabel="Reverse receipt"
+          title="Reverse this receipt?"
+          consequence="Reversing removes this amount from the invoice’s received total, so the outstanding balance goes back up. The receipt stays on record as reversed."
+          reasonLabel="Reversal reason"
+          confirmLabel="Reverse receipt"
+          pendingLabel="Reversing…"
+          action={reverseAction}
+          pending={reversing}
+          error={reverseState && !reverseState.ok ? reverseState.error.message : null}
+          done={reverseState?.ok === true}
+          hidden={<input type="hidden" name="paymentId" value={paymentId} />}
+        />
+      )}
+      {canConfirm && <p className="basis-full text-xs text-muted">Confirming counts this amount toward the invoice and updates its balance.</p>}
+      {confirmState && !confirmState.ok && (
+        <div className="basis-full">
+          <FormError message={confirmState.error.message} />
+        </div>
+      )}
+    </div>
+  );
 }

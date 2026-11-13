@@ -18,7 +18,7 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
   await page.getByLabel("Tax rate (%)").fill("18");
   await page.getByRole("button", { name: "Create draft invoice" }).click();
   await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/);
-  await expect(page.getByText("1180.00").first()).toBeVisible();
+  await expect(page.getByText("1,180.00").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Issue invoice" }).click();
   await expect(page.getByText(/INV-\d{4}-\d{6}/).first()).toBeVisible();

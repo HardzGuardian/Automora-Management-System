@@ -1,16 +1,25 @@
+import { Alert } from "@/components/ui/alert";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { ClientForm } from "../client-form";
 
+export const metadata = { title: "New client" };
+
 export default async function NewClientPage() {
   const actor = await requireActor();
   if (!can(actor, "clients.create")) {
-    return <main className="">You do not have permission to create clients.</main>;
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader title="New client" />
+        <Alert tone="warning">You do not have permission to create clients.</Alert>
+      </div>
+    );
   }
   return (
-    <main className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">New client</h1>
+    <div className="flex flex-col gap-4">
+      <PageHeader title="New client" description="Only the name is required. You can add notes and projects afterwards." />
       <ClientForm />
-    </main>
+    </div>
   );
 }

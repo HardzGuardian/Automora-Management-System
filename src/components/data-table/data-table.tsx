@@ -131,7 +131,7 @@ export function DataTable({
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
       ) : (
         <div className="overflow-x-auto rounded-md border border-border bg-surface">
-          <table className="w-full min-w-[32rem] text-left text-sm">
+          <table className="w-full min-w-[32rem] rounded-none border-0 text-left text-sm">
             <caption className="sr-only">{caption}</caption>
             <thead className="sticky top-0 bg-primary-soft">
               {table.getHeaderGroups().map((group) => (

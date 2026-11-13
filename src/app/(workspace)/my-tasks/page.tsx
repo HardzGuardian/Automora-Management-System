@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { SegmentedNav } from "@/components/ui/segmented-nav";
+import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
@@ -6,6 +9,8 @@ import { allowedTransitions, isOwnTransitionAllowed, listTasks } from "@/modules
 import { BoardDnd } from "../tasks/_components/board-dnd";
 import { TaskFilters } from "../tasks/_components/task-filters";
 import { TaskTable } from "../tasks/_components/task-table";
+
+export const metadata = { title: "My tasks" };
 
 const STATUSES = ["Pending", "In Progress", "In Review", "Completed"] as const;
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"] as const;
@@ -45,23 +50,43 @@ export default async function MyTasksPage({
   }));
 
   return (
-    <main className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">My tasks ({total})</h1>
-        <nav className="flex gap-3 text-sm" aria-label="Layout">
-          <Link href={{ query: { ...sp, layout: "list" } }} className={layout === "list" ? "font-semibold underline" : "underline"}>
-            List
-          </Link>
-          <Link href={{ query: { ...sp, layout: "board" } }} className={layout === "board" ? "font-semibold underline" : "underline"}>
-            Board
-          </Link>
-          <Link href={{ pathname: "/tasks/calendar", query: { view: "mine" } }} className="underline">
-            Calendar
-          </Link>
-        </nav>
-      </div>
-      <TaskFilters q={sp.q} status={status} priority={priority} overdue={sp.overdue === "1"} extra={<input type="hidden" name="layout" value={layout} />} />
-      {layout === "board" ? <BoardDnd tasks={boardTasks} /> : <TaskTable rows={rows} today={today} />}
-    </main>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="My tasks"
+        description={`${total} ${total === 1 ? "task" : "tasks"} assigned to you, soonest due first.`}
+        actions={
+          <>
+            <Link href={{ pathname: "/tasks/calendar", query: { view: "mine" } }} className={buttonClass("secondary")}>
+              Calendar
+            </Link>
+            {can(actor, "tasks.create") ? (
+              <Link href="/tasks/new" className={buttonClass("primary")}>
+                New task
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+      <SegmentedNav
+        label="Layout"
+        items={[
+          { label: "List", href: { query: { ...sp, layout: "list" } }, active: layout === "list" },
+          { label: "Board", href: { query: { ...sp, layout: "board" } }, active: layout === "board" },
+        ]}
+      />
+      <TaskFilters
+        q={sp.q}
+        status={status}
+        priority={priority}
+        overdue={sp.overdue === "1"}
+        extra={<input type="hidden" name="layout" value={layout} />}
+        clearHref={layout === "board" ? "/my-tasks?layout=board" : "/my-tasks"}
+      />
+      {layout === "board" ? (
+        <BoardDnd tasks={boardTasks} />
+      ) : (
+        <TaskTable rows={rows} today={today} emptyTitle="No tasks assigned to you" emptyDescription="Tasks assigned to you will appear here, or try clearing the filters." />
+      )}
+    </div>
   );
 }

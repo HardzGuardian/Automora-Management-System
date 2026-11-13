@@ -1,4 +1,4 @@
-import { boolean, foreignKey, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, foreignKey, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { createdAt, tz, updatedAt } from "./_helpers";
 import { companies } from "./company";
 import { employees } from "./employees";
@@ -76,6 +76,14 @@ export const verification = pgTable(
   },
   (t) => [index("verification_identifier_idx").on(t.identifier)],
 );
+
+// Better Auth database-backed rate limiting (rateLimit.storage = "database"); shared across instances.
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
 
 export const invitations = pgTable(
   "invitations",

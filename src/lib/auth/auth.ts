@@ -5,7 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { account, session, user, verification } from "@/db/schema";
+import { account, rateLimit, session, user, verification } from "@/db/schema";
 import { sendEmail } from "@/lib/email/send";
 import { resetPasswordEmail } from "@/lib/email/templates";
 import { env } from "@/lib/env";
@@ -17,7 +17,7 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user, session, account, verification },
+    schema: { user, session, account, verification, rateLimit },
   }),
   emailAndPassword: {
     enabled: true,
@@ -41,6 +41,7 @@ export const auth = betterAuth({
   },
   rateLimit: {
     enabled: true, // also in dev/test; default is production-only
+    storage: "database", // shared across instances (table rate_limit)
     window: 60,
     max: 100,
     customRules: {

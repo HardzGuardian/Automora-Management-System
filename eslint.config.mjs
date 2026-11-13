@@ -5,7 +5,7 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", ".superpowers/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", ".superpowers/**", "playwright-report/**", "test-results/**", ".playwright-mcp/**", "backups/**"]),
   {
     // Rule 2: other modules only via modules/<x>/index.ts (deep imports banned; use relative inside a module)
     files: ["src/**/*.{ts,tsx}"],

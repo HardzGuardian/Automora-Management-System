@@ -7,3 +7,4 @@ export {
 } from "./invitations";
 export { assignRole, createRole, listRoles, removeRole, setRolePermissions, type RoleDTO } from "./roles";
 export { changePassword, listMySessions, revokeSession, type SessionDTO } from "./account";
+export { listUsers, type UserDTO, type UserList } from "./users";

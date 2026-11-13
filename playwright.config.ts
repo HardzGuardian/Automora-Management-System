@@ -23,6 +23,7 @@ export default defineConfig({
       BETTER_AUTH_URL: `http://localhost:${PORT}`,
       APP_URL: `http://localhost:${PORT}`,
       CRON_SECRET: "e2e-cron-secret-0123456789",
+      ALLOW_LOCAL_PRODUCTION: "true",
     },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

@@ -1,5 +1,6 @@
 import { requireActorForApi } from "@/lib/auth/api-actor";
 import { DomainError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { REPORT_KEYS, exportFinanceReportResponse, exportReport, type ReportFilters, type ReportKey } from "@/modules/reports";
 
 const FINANCE_REPORTS = ["receivables", "expense-register", "cash-movement", "summary"] as const;
@@ -50,6 +51,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ report: str
       return Response.json({ error: { code: e.code, message: e.message } }, { status: statusFor(e) });
     }
     if (e instanceof Error && e.name === "ZodError") return Response.json({ error: { code: "VALIDATION", message: "Invalid filters" } }, { status: 400 });
+    logger.error("export failed", { report, format, err: e });
     return Response.json({ error: { code: "INTERNAL", message: "Export failed" } }, { status: 500 });
   }
 }

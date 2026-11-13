@@ -19,7 +19,7 @@ export default async function ReportsPage() {
         <ul className="grid gap-3 md:grid-cols-2">
           {reports.map((r) => (
             <li key={r.key} className="rounded-md border border-border bg-surface p-4 shadow-sm">
-              <h2 className="text-base font-semibold">
+              <h2 className="m-0 text-base font-semibold">
                 <Link href={`/reports/${r.key}`} className="underline">
                   {r.title}
                 </Link>
@@ -30,9 +30,9 @@ export default async function ReportsPage() {
         </ul>
       )}
       {can(actor, "finance.reports.read") ? (
-        <p className="text-sm">
-          Financial reports are on the{" "}
-          <Link href="/finance-reports" className="underline">
+        <p className="text-sm text-muted">
+          Receivables, cash movement and the expense register are on the{" "}
+          <Link href="/finance-reports" className="font-medium text-foreground underline">
             Finance reports
           </Link>{" "}
           page.

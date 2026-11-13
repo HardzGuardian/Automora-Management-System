@@ -1,6 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { Field, fieldAria } from "@/components/ui/field";
+import { FormActions } from "@/components/ui/form-actions";
+import { formClass, inputClass } from "@/components/ui/styles";
 import { createProjectAction, type ProjectFormState } from "../actions";
 
 const initial: ProjectFormState = {};
@@ -9,38 +13,42 @@ type Option = { id: string; label: string };
 export function ProjectForm({ clients, employees, defaultOwnerId }: { clients: Option[]; employees: Option[]; defaultOwnerId: string | null }) {
   const [state, action, pending] = useActionState(createProjectAction, initial);
   const [type, setType] = useState<"Client" | "Internal">("Client");
-  const input = "rounded border border-border px-3 py-2";
   const err = (k: string) => state.fieldErrors?.[k]?.[0];
   return (
-    <form action={action} className="flex max-w-md flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        Project name
-        <input name="name" required className={input} />
-        {err("name") ? <span className="text-danger">{err("name")}</span> : null}
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Type
-        <select name="type" value={type} onChange={(e) => setType(e.target.value as "Client" | "Internal")} className={input}>
-          <option>Client</option>
-          <option>Internal</option>
-        </select>
-      </label>
-      {type === "Client" ? (
-        <label className="flex flex-col gap-1 text-sm">
-          Client
-          <select name="clientId" required className={input}>
-            <option value="">Choose a client</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
+    <form action={action} className={formClass}>
+      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      <Field id="name" label="Project name" required error={err("name")}>
+        <input id="name" name="name" required className={inputClass} {...fieldAria("name", { error: err("name") })} />
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="type" label="Type" hint="Client projects belong to a client; internal ones do not.">
+          <select
+            id="type"
+            name="type"
+            value={type}
+            onChange={(e) => setType(e.target.value as "Client" | "Internal")}
+            className={inputClass}
+            aria-describedby="type-hint"
+          >
+            <option>Client</option>
+            <option>Internal</option>
           </select>
-        </label>
-      ) : null}
-      <label className="flex flex-col gap-1 text-sm">
-        Owner
-        <select name="ownerEmployeeId" required defaultValue={defaultOwnerId ?? ""} className={input}>
+        </Field>
+        {type === "Client" ? (
+          <Field id="clientId" label="Client" required>
+            <select id="clientId" name="clientId" required className={inputClass}>
+              <option value="">Choose a client</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : null}
+      </div>
+      <Field id="ownerEmployeeId" label="Owner" required hint="The owner is added to the project team.">
+        <select id="ownerEmployeeId" name="ownerEmployeeId" required defaultValue={defaultOwnerId ?? ""} className={inputClass} aria-describedby="ownerEmployeeId-hint">
           <option value="">Choose an owner</option>
           {employees.map((e) => (
             <option key={e.id} value={e.id}>
@@ -48,35 +56,29 @@ export function ProjectForm({ clients, employees, defaultOwnerId }: { clients: O
             </option>
           ))}
         </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Description
-        <textarea name="description" rows={3} className={input} />
-      </label>
-      <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Start date
-          <input name="startDate" type="date" className={input} />
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Due date
-          <input name="dueDate" type="date" className={input} />
-          {err("dueDate") ? <span className="text-danger">{err("dueDate")}</span> : null}
-        </label>
+      </Field>
+      <Field id="description" label="Description">
+        <textarea id="description" name="description" rows={3} className={inputClass} />
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="startDate" label="Start date">
+          <input id="startDate" name="startDate" type="date" className={inputClass} />
+        </Field>
+        <Field id="dueDate" label="Due date" error={err("dueDate")}>
+          <input id="dueDate" name="dueDate" type="date" className={inputClass} {...fieldAria("dueDate", { error: err("dueDate") })} />
+        </Field>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
-        Budget (optional)
-        <input name="budgetAmount" inputMode="decimal" placeholder="0.00" className={input} />
-        {err("budgetAmount") ? <span className="text-danger">{err("budgetAmount")}</span> : null}
-      </label>
-      {state.error ? (
-        <p role="alert" className="text-sm text-danger">
-          {state.error}
-        </p>
-      ) : null}
-      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
-        {pending ? "Saving…" : "Create project"}
-      </button>
+      <Field id="budgetAmount" label="Budget (optional)" error={err("budgetAmount")} hint="Up to 2 decimals. Leave empty if there is no fixed budget.">
+        <input
+          id="budgetAmount"
+          name="budgetAmount"
+          inputMode="decimal"
+          placeholder="0.00"
+          className={inputClass}
+          {...fieldAria("budgetAmount", { error: err("budgetAmount"), hint: true })}
+        />
+      </Field>
+      <FormActions label="Create project" pending={pending} cancelHref="/projects" />
     </form>
   );
 }

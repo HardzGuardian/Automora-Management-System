@@ -76,8 +76,8 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       {key === "employee-workload" ? (
         <RangeFilter preset={sp.preset ?? "month"} from={sp.from} to={sp.to} error={failure} />
       ) : isTaskReport ? (
-        <form className="flex flex-wrap items-end gap-2" aria-label="Filters">
-          <label className="flex flex-col text-xs text-muted">
+        <form className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter report">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             Status
             <select name="status" defaultValue={status ?? ""} className={inputClass}>
               <option value="">All</option>
@@ -86,7 +86,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
               ))}
             </select>
           </label>
-          <label className="flex flex-col text-xs text-muted">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             Priority
             <select name="priority" defaultValue={priority ?? ""} className={inputClass}>
               <option value="">All</option>
@@ -95,17 +95,22 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
               ))}
             </select>
           </label>
-          <label className="flex flex-col text-xs text-muted">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             Due from
             <input type="date" name="from" defaultValue={sp.from} className={inputClass} />
           </label>
-          <label className="flex flex-col text-xs text-muted">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             Due to
             <input type="date" name="to" defaultValue={sp.to} className={inputClass} />
           </label>
           <button type="submit" className={buttonClass("secondary")}>
             Apply
           </button>
+          {status || priority || sp.from || sp.to ? (
+            <Link href={`/reports/${key}`} className={buttonClass("ghost")}>
+              Clear filters
+            </Link>
+          ) : null}
           {failure ? (
             <p role="alert" className="w-full text-sm text-danger">
               {failure}
@@ -119,8 +124,8 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       ) : result.rows.length === 0 ? (
         <EmptyState title="No rows match" description="Try a wider period or fewer filters." />
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border bg-surface">
-          <table className="w-full min-w-[40rem] text-left text-sm">
+        <div tabIndex={0} className="overflow-x-auto rounded-md border border-border bg-surface">
+          <table className="table w-full min-w-[40rem] border-0 text-left text-sm">
             <caption className="sr-only">
               {result.title}, {result.total} rows
             </caption>
@@ -135,7 +140,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
             </thead>
             <tbody>
               {result.rows.map((r, i) => (
-                <tr key={i} className="border-t border-border">
+                <tr key={i} className="border-t border-border hover:bg-background">
                   {result.columns.map((c) => (
                     <td key={c.key} className={`px-3 py-2 ${c.type === "number" ? "text-right tabular-nums" : ""}`}>
                       {r[c.key] ?? "—"}
@@ -149,7 +154,7 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
       )}
 
       {result ? (
-        <nav className="flex items-center gap-3 text-sm" aria-label="Pagination">
+        <nav className="flex flex-wrap items-center gap-3 text-sm" aria-label="Pagination">
           <span>
             {result.total} row{result.total === 1 ? "" : "s"}
           </span>
@@ -157,7 +162,9 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
             <Link href={{ query: { ...sp, page: page - 1 } }} className="underline">
               Previous
             </Link>
-          ) : null}
+          ) : (
+            <span className="text-muted">Previous</span>
+          )}
           <span>
             Page {page} of {pages}
           </span>
@@ -165,7 +172,9 @@ export default async function ReportPage({ params, searchParams }: { params: Pro
             <Link href={{ query: { ...sp, page: page + 1 } }} className="underline">
               Next
             </Link>
-          ) : null}
+          ) : (
+            <span className="text-muted">Next</span>
+          )}
         </nav>
       ) : null}
     </div>

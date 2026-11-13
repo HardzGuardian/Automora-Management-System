@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { BackLink } from "@/components/ui/back-link";
+import { ConfirmForm } from "@/components/ui/confirm-dialog";
+import { DetailHeader } from "@/components/ui/detail-header";
+import { DetailsList } from "@/components/ui/details-list";
+import { Field } from "@/components/ui/field";
+import { formatDateTime } from "@/components/ui/format";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { buttonClass, inputClass, linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -9,6 +18,8 @@ import { getClientFinanceSummary, type ClientFinanceSummary } from "@/modules/fi
 import { listProjects } from "@/modules/projects";
 import { addNoteAction, archiveClientAction } from "../actions";
 import { ClientForm } from "../client-form";
+
+export const metadata = { title: "Client" };
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireActor();
@@ -36,93 +47,133 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     listClientNotes(actor, id),
     listProjects(actor, { clientId: id, includeArchived: true, pageSize: 100 }),
   ]);
+  const canUpdate = can(actor, "clients.update");
+  const tz = actor.timezone;
 
   return (
-    <main className="flex flex-col gap-6">
-      <Link href="/clients" className="text-sm underline">
-        ← Clients
-      </Link>
-      <header>
-        <h1 className="text-2xl font-semibold">{client.name}</h1>
-        <p className="text-sm text-muted">
-          {client.clientCode} · {client.archived ? "Archived" : client.status}
-        </p>
-      </header>
+    <div className="flex flex-col gap-5">
+      <BackLink href="/clients">Clients</BackLink>
+      <DetailHeader
+        title={client.name}
+        code={client.clientCode}
+        badges={<StatusBadge status={client.archived ? "Archived" : client.status} />}
+        facts={[client.contactPerson ?? "No contact person", client.email ?? "No email", client.serviceType ?? "No service type"]}
+      />
 
       {can(actor, "clients.archive") ? (
-        <form action={archiveClientAction}>
-          <input type="hidden" name="id" value={id} />
-          {client.archived ? <input type="hidden" name="undo" value="1" /> : null}
-          <button type="submit" className="rounded border border-border px-3 py-2">
-            {client.archived ? "Unarchive" : "Archive"}
-          </button>
-        </form>
-      ) : null}
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">Projects ({projects.total})</h2>
-        {projects.rows.length === 0 ? (
-          <p className="text-sm text-muted">No projects visible to you.</p>
-        ) : (
-          <ul className="text-sm">
-            {projects.rows.map((p) => (
-              <li key={p.id}>
-                <Link href={`/projects/${p.id}`} className="underline">
-                  {p.projectCode} {p.name}
-                </Link>{" "}
-                · {p.status}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {can(actor, "finance.invoices.read") ? (
-        <section className="flex flex-col gap-2" aria-label="Finance">
-          <h2 className="text-lg font-medium">Finance</h2>
-          {financeUnavailable ? (
-            <p className="text-sm text-muted">Finance data is unavailable right now.</p>
-          ) : finance && finance.outstandingByCurrency.length > 0 ? (
-            <ul className="text-sm">
-              {finance.outstandingByCurrency.map((o) => (
-                <li key={o.currency}>
-                  Outstanding receivables: {o.amount} {o.currency}
-                </li>
-              ))}
-            </ul>
+        <div className="flex flex-wrap items-center gap-2">
+          {client.archived ? (
+            <form action={archiveClientAction}>
+              <input type="hidden" name="id" value={id} />
+              <input type="hidden" name="undo" value="1" />
+              <button type="submit" className={buttonClass("secondary")}>
+                Unarchive
+              </button>
+            </form>
           ) : (
-            <p className="text-sm text-muted">No outstanding invoices.</p>
+            <ConfirmForm
+              action={archiveClientAction}
+              label="Archive"
+              title={`Archive ${client.name}?`}
+              description="The client is hidden from the default client list and cannot be chosen for new projects. Existing projects and invoices are kept. You can unarchive it later."
+              confirmLabel="Archive client"
+            >
+              <input type="hidden" name="id" value={id} />
+            </ConfirmForm>
           )}
-        </section>
+        </div>
       ) : null}
 
-      {can(actor, "clients.update") ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">Details</h2>
-          <ClientForm client={client} />
-        </section>
-      ) : null}
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
+          <SectionCard title="Projects" count={projects.total}>
+            {projects.rows.length === 0 ? (
+              <p className="text-sm text-muted">No projects visible to you.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border text-sm">
+                {projects.rows.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                    <Link href={`/projects/${p.id}`} className={linkClass}>
+                      {p.projectCode} {p.name}
+                    </Link>
+                    <StatusBadge status={p.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">Notes</h2>
-        {can(actor, "clients.update") ? (
-          <form action={addNoteAction} className="flex max-w-md flex-col gap-2">
-            <input type="hidden" name="id" value={id} />
-            <textarea name="note" required rows={3} className="rounded border border-border px-3 py-2" />
-            <button type="submit" className="self-start rounded bg-primary px-3 py-2 text-white">
-              Add note
-            </button>
-          </form>
-        ) : null}
-        <ul className="flex flex-col gap-2 text-sm">
-          {notes.map((n) => (
-            <li key={n.id} className="rounded border border-border p-2">
-              <p className="whitespace-pre-wrap">{n.note}</p>
-              <p className="text-xs text-muted">{n.createdAt.toLocaleString()}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+          {can(actor, "finance.invoices.read") ? (
+            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4 shadow-sm">
+              <h2 className="m-0 text-base font-semibold">Finance</h2>
+              {financeUnavailable ? (
+                <p className="text-sm text-muted">Finance data is unavailable right now.</p>
+              ) : finance && finance.outstandingByCurrency.length > 0 ? (
+                <ul className="flex flex-col divide-y divide-border text-sm">
+                  {finance.outstandingByCurrency.map((o) => (
+                    <li key={o.currency} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                      <span className="text-muted">Outstanding receivables</span>
+                      <span className="font-medium tabular-nums">
+                        {o.currency} {o.amount}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted">No outstanding invoices.</p>
+              )}
+            </section>
+          ) : null}
+
+          <SectionCard title="Notes" count={notes.length}>
+            {notes.length === 0 ? (
+              <p className="text-sm text-muted">No notes yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-3 text-sm">
+                {notes.map((n) => (
+                  <li key={n.id} className="rounded-md bg-background p-3">
+                    <p className="whitespace-pre-wrap">{n.note}</p>
+                    <p className="mt-2 text-xs text-muted">{formatDateTime(n.createdAt, tz)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canUpdate ? (
+              <form action={addNoteAction} className="flex w-full max-w-xl flex-col gap-3 border-t border-border pt-3">
+                <input type="hidden" name="id" value={id} />
+                <Field id="note" label="Add a note" hint="Visible to everyone who can open this client.">
+                  <textarea id="note" name="note" required rows={3} className={inputClass} aria-describedby="note-hint" />
+                </Field>
+                <div>
+                  <button type="submit" className={buttonClass("secondary")}>
+                    Add note
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </SectionCard>
+
+          {canUpdate ? (
+            <SectionCard title="Edit client">
+              <ClientForm client={client} />
+            </SectionCard>
+          ) : null}
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-5">
+          <DetailsList
+            items={[
+              { label: "Status", value: <StatusBadge status={client.archived ? "Archived" : client.status} /> },
+              { label: "Contact", value: client.contactPerson },
+              { label: "Email", value: client.email ? <a href={`mailto:${client.email}`} className={linkClass}>{client.email}</a> : null },
+              { label: "Phone", value: client.phone },
+              { label: "Address", value: client.address ? <span className="whitespace-pre-wrap">{client.address}</span> : null },
+              { label: "Service", value: client.serviceType },
+              { label: "Created", value: formatDateTime(client.createdAt, tz) },
+            ]}
+          />
+        </aside>
+      </div>
+    </div>
   );
 }

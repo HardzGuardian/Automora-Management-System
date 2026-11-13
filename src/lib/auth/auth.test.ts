@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { account, session, user } from "@/db/schema";
+import { account, rateLimit, session, user } from "@/db/schema";
 import { createCompany, createUser } from "@/test/factories";
 import { auth } from "./auth";
 
@@ -87,5 +87,15 @@ describe("better auth", () => {
     for (let i = 0; i < 7; i++) statuses.push((await signIn(email, "bad-password-123", "10.6.0.1")).status);
     expect(statuses).toContain(429);
     expect(statuses[0]).toBe(401);
+  });
+
+  it("persists rate limit counters in the database", async () => {
+    const { email } = await makeLoginUser();
+    const ip = "10.7.0.1";
+    for (let i = 0; i < 3; i++) await signIn(email, "bad-password-123", ip);
+    const rows = await db.select().from(rateLimit);
+    const row = rows.find((r) => r.key.includes(ip) && r.key.includes("sign-in/email"));
+    expect(row).toBeDefined();
+    expect(row?.count).toBe(3);
   });
 });

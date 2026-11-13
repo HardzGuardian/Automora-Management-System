@@ -12,7 +12,7 @@ test.describe("authentication", () => {
     await page.getByLabel("Email").fill(ADMIN);
     await page.getByLabel("Password").fill("definitely-wrong-1");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.locator("p[role=alert]")).toContainText("Invalid email or password");
+    await expect(page.locator("[role=alert]", { hasText: "Invalid email or password" })).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -77,7 +77,7 @@ test.describe("workflow: client → project → task", () => {
 
     await page.getByRole("button", { name: "Move to In Progress" }).click();
     await expect(page.getByRole("button", { name: "Move to In Review" })).toBeVisible();
-    await expect(page.getByText("status_changed").first()).toBeVisible();
+    await expect(page.getByText(/changed status from Pending to In Progress/).first()).toBeVisible();
   });
 
   test("an admin creates an employee who appears in the directory", async ({ page }) => {

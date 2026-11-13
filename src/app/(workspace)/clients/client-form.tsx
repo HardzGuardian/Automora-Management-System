@@ -1,6 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { Field, fieldAria } from "@/components/ui/field";
+import { FormActions } from "@/components/ui/form-actions";
+import { formClass, inputClass } from "@/components/ui/styles";
 import type { ClientDTO } from "@/modules/clients";
 import { createClientAction, updateClientAction, type ClientFormState } from "./actions";
 
@@ -11,40 +15,36 @@ const FIELDS = [
   { name: "email", label: "Email", type: "email" },
   { name: "phone", label: "Phone" },
   { name: "address", label: "Address" },
-  { name: "serviceType", label: "Service type" },
+  { name: "serviceType", label: "Service type", hint: "For example: web design, bookkeeping, support retainer." },
 ] as const;
 
 export function ClientForm({ client }: { client?: ClientDTO }) {
   const [state, action, pending] = useActionState(client ? updateClientAction : createClientAction, initial);
+  const prefix = client ? "edit-" : "";
   return (
-    <form action={action} className="flex max-w-md flex-col gap-3">
+    <form action={action} className={formClass}>
       {client ? <input type="hidden" name="id" value={client.id} /> : null}
-      {FIELDS.map((f) => (
-        <label key={f.name} className="flex flex-col gap-1 text-sm">
-          {f.label}
-          <input
-            name={f.name}
-            type={"type" in f ? f.type : "text"}
-            required={"required" in f}
-            defaultValue={client ? (client[f.name] ?? "") : ""}
-            className="rounded border border-border px-3 py-2"
-          />
-          {state.fieldErrors?.[f.name]?.[0] ? <span className="text-danger">{state.fieldErrors[f.name][0]}</span> : null}
-        </label>
-      ))}
-      {state.error ? (
-        <p role="alert" className="text-sm text-danger">
-          {state.error}
-        </p>
-      ) : null}
-      {state.saved ? (
-        <p role="status" className="text-sm text-success">
-          Saved.
-        </p>
-      ) : null}
-      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
-        {pending ? "Saving…" : client ? "Save changes" : "Create client"}
-      </button>
+      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      {state.saved ? <Alert tone="success">Saved.</Alert> : null}
+      {FIELDS.map((f) => {
+        const id = `${prefix}${f.name}`;
+        const error = state.fieldErrors?.[f.name]?.[0];
+        const hint = "hint" in f ? f.hint : undefined;
+        return (
+          <Field key={f.name} id={id} label={f.label} required={"required" in f} error={error} hint={hint}>
+            <input
+              id={id}
+              name={f.name}
+              type={"type" in f ? f.type : "text"}
+              required={"required" in f}
+              defaultValue={client ? (client[f.name] ?? "") : ""}
+              className={inputClass}
+              {...fieldAria(id, { error, hint })}
+            />
+          </Field>
+        );
+      })}
+      <FormActions label={client ? "Save changes" : "Create client"} pending={pending} cancelHref={client ? undefined : "/clients"} />
     </form>
   );
 }

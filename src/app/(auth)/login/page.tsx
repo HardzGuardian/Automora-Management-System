@@ -1,7 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
+import { AuthShell } from "@/components/layout/auth-shell";
 import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
+
+export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({
   searchParams,
@@ -11,13 +14,9 @@ export default async function LoginPage({
   const { activated } = await searchParams;
   if (await getSession()) redirect("/");
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Sign in to Automora</h1>
-      {activated ? <p className="text-sm text-green-700">Account activated. You can sign in now.</p> : null}
+    <AuthShell title="Sign in to Automora" description="Use the work email your administrator invited.">
+      {activated ? <Alert tone="success">Account activated. You can sign in now.</Alert> : null}
       <LoginForm />
-      <Link href="/forgot-password" className="text-sm underline">
-        Forgot password?
-      </Link>
-    </main>
+    </AuthShell>
   );
 }

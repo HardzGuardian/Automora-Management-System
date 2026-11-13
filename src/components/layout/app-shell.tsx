@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { breadcrumbs, type NavGroup } from "./nav";
+import { BellIcon, NavIcon } from "./nav-icons";
 
 export type ShellUser = { name: string; email: string; roles: string[] };
 
@@ -13,7 +14,7 @@ function NavList({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathnam
     <nav aria-label="Main" className="flex flex-col gap-5">
       {groups.map((g) => (
         <div key={g.label}>
-          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{g.label}</p>
+          <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted">{g.label}</p>
           <ul className="flex flex-col gap-0.5">
             {g.items.map((i) => {
               const active = pathname === i.href || pathname.startsWith(`${i.href}/`);
@@ -24,10 +25,11 @@ function NavList({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathnam
                     onClick={onNavigate}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex min-h-10 items-center rounded-md px-3 text-sm",
+                      "flex min-h-10 items-center gap-2.5 rounded-md px-3 text-sm",
                       active ? "bg-primary-soft font-semibold text-primary" : "text-foreground hover:bg-primary-soft",
                     )}
                   >
+                    <NavIcon href={i.href} className={active ? "text-primary" : "text-muted"} />
                     {i.label}
                   </Link>
                 </li>
@@ -134,7 +136,7 @@ export function AppShell({
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
-            className="min-h-10 rounded-md border border-border px-3 text-sm lg:hidden"
+            className="min-h-10 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-primary-soft lg:hidden"
           >
             Menu
           </button>
@@ -144,14 +146,15 @@ export function AppShell({
               type="search"
               aria-label="Search"
               placeholder="Search employees, clients, projects, tasks"
-              className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+              className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted"
             />
           </form>
           <div className="ml-auto flex items-center gap-1">
-            <Link href="/notifications" className="relative flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-primary-soft">
-              Notifications
+            <Link href="/notifications" className="relative flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-primary-soft">
+              <BellIcon className="text-muted" />
+              <span className="sr-only sm:not-sr-only">Notifications</span>
               {unread > 0 ? (
-                <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-semibold text-white">
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-semibold text-white">
                   {unread > 99 ? "99+" : unread}
                   <span className="sr-only"> unread</span>
                 </span>
@@ -171,7 +174,7 @@ export function AppShell({
                     {c.label}
                   </span>
                 ) : (
-                  <Link href={c.href} className="underline">
+                  <Link href={c.href} className="hover:text-foreground hover:underline">
                     {c.label}
                   </Link>
                 )}
@@ -180,9 +183,9 @@ export function AppShell({
           </ol>
         </nav>
 
-        <div id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-6">
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-6">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

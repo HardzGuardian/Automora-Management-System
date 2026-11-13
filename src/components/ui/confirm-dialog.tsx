@@ -14,7 +14,10 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   danger = true,
   onConfirm,
+  triggerClassName,
 }: {
+  /** Optional extra classes for the trigger button (e.g. a compact size). */
+  triggerClassName?: string;
   trigger: ReactNode;
   title: string;
   description: string;
@@ -27,7 +30,7 @@ export function ConfirmDialog({
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.showModal()}>
+      <button type="button" className={buttonClass("secondary", triggerClassName)} onClick={() => ref.current?.showModal()}>
         {trigger}
       </button>
       <dialog
@@ -36,7 +39,7 @@ export function ConfirmDialog({
         className="m-auto w-[min(28rem,92vw)] rounded-md border border-border p-0 shadow-lg backdrop:bg-black/40"
       >
         <div className="flex flex-col gap-3 p-5">
-          <h2 id={titleId} className="text-lg font-semibold">
+          <h2 id={titleId} className="m-0 text-lg font-semibold">
             {title}
           </h2>
           <p className="text-sm text-muted">{description}</p>
@@ -76,10 +79,13 @@ export function ConfirmForm({
   description,
   confirmLabel,
   danger = true,
+  triggerClassName,
 }: {
+  triggerClassName?: string;
   action: (formData: FormData) => void | Promise<void>;
   children?: ReactNode;
-  label: string;
+  /** Trigger content. May include an sr-only suffix so repeated triggers have distinct names. */
+  label: ReactNode;
   title: string;
   description: string;
   confirmLabel?: string;
@@ -87,9 +93,10 @@ export function ConfirmForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form ref={formRef} action={action}>
+    <form ref={formRef} action={action} className="inline-flex">
       {children}
       <ConfirmDialog
+        triggerClassName={triggerClassName}
         trigger={label}
         title={title}
         description={description}

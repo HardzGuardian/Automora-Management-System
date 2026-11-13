@@ -19,4 +19,8 @@ export function buttonClass(variant: Variant = "primary", extra?: string): strin
 
 export const inputClass =
   "min-h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted disabled:bg-background";
+/** Inline text link inside body copy and tables. */
+export const linkClass = "text-primary underline underline-offset-2 hover:text-primary-hover";
+/** Single-column form container (max ~40rem). */
+export const formClass = "flex w-full max-w-xl flex-col gap-4";
 export const cardClass = "rounded-md border border-border bg-surface p-4 shadow-sm";

@@ -9,10 +9,12 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   const actor = await requireActor();
   const settings = can(actor, "settings.read");
   const roles = can(actor, "roles.read");
-  if (!settings && !roles) notFound();
+  const users = can(actor, "users.read");
+  if (!settings && !roles && !users) notFound();
   const tabs = [
     settings && { href: "/settings/company", label: "Company" },
     settings && { href: "/settings/preferences", label: "Preferences" },
+    users && { href: "/settings/users", label: "Users" },
     roles && { href: "/settings/roles", label: "Roles & permissions" },
     settings && { href: "/settings/numbering", label: "Numbering" },
   ].filter(Boolean) as { href: string; label: string }[];

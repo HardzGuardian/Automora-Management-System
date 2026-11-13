@@ -10,11 +10,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     console.error(error);
   }, [error]);
   return (
-    <main role="alert" className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-3 p-8 text-center">
-      <h1 className="text-xl font-semibold text-danger">Something went wrong</h1>
+    <main role="alert" className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center gap-3 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
       <p className="text-sm text-muted">Your data has not been lost. Try again, or go back to the dashboard.</p>
       {error.digest ? <p className="text-xs text-muted">Reference: {error.digest}</p> : null}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="button" onClick={reset} className={buttonClass("primary")}>
           Try again
         </button>

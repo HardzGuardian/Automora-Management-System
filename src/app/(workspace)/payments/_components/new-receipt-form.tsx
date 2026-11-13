@@ -2,7 +2,10 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Field } from "@/components/ui/field";
+import { buttonClass, inputClass } from "@/components/ui/styles";
 import { recordReceiptAction } from "../actions";
+import { FormError, PAYMENT_METHODS, Section } from "../../invoices/_components/finance-ui";
 import type { FinanceActionResult } from "@/modules/finance";
 
 export function NewReceiptForm({ invoiceId }: { invoiceId: string }) {
@@ -14,24 +17,42 @@ export function NewReceiptForm({ invoiceId }: { invoiceId: string }) {
   }, [router, state]);
 
   return (
-    <section>
-      <h2>Record receipt</h2>
-      <form action={action}>
+    <Section title="Record receipt" description="A new receipt is pending. It only reduces the outstanding balance once someone confirms it.">
+      <form action={action} className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <input type="hidden" name="invoiceId" value={invoiceId} />
         <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-        <label>Amount<input name="amount" type="number" min="0.01" step="0.01" required /></label>
-        <label>Payment date<input name="paymentDate" type="date" required /></label>
-        <label>Method
-          <select name="method" defaultValue="bank_transfer">
-            <option value="bank_transfer">Bank transfer</option><option value="upi">UPI</option>
-            <option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option>
+        <Field id="receipt-amount" label="Amount" required>
+          <input id="receipt-amount" name="amount" type="number" min="0.01" step="0.01" required className={inputClass} />
+        </Field>
+        <Field id="receipt-paymentDate" label="Payment date" required>
+          <input id="receipt-paymentDate" name="paymentDate" type="date" required className={inputClass} />
+        </Field>
+        <Field id="receipt-method" label="Method">
+          <select id="receipt-method" name="method" defaultValue="bank_transfer" className={inputClass}>
+            {PAYMENT_METHODS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
           </select>
-        </label>
-        <label>Reference<input name="reference" maxLength={120} /></label>
-        <label>Notes<textarea name="notes" maxLength={1000} /></label>
-        {state && !state.ok && <p role="alert">{state.error.message}</p>}
-        <button type="submit" disabled={pending}>{pending ? "Recording…" : "Record pending receipt"}</button>
+        </Field>
+        <Field id="receipt-reference" label="Reference" hint="Bank or UPI reference, cheque number, etc.">
+          <input id="receipt-reference" name="reference" maxLength={120} aria-describedby="receipt-reference-hint" className={inputClass} />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field id="receipt-notes" label="Notes">
+            <textarea id="receipt-notes" name="notes" rows={3} maxLength={1000} className={inputClass} />
+          </Field>
+        </div>
+        <div className="flex flex-col gap-3 sm:col-span-2">
+          <FormError message={state && !state.ok ? state.error.message : null} />
+          <div>
+            <button type="submit" disabled={pending} className={buttonClass("primary")}>
+              {pending ? "Recording…" : "Record pending receipt"}
+            </button>
+          </div>
+        </div>
       </form>
-    </section>
+    </Section>
   );
 }

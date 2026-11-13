@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Controller, type Control, type FieldPath, type FieldValues, type UseFormRegister } from "react-hook-form";
 import { Field } from "@/components/ui/field";
-import { inputClass } from "@/components/ui/styles";
+import { buttonClass, inputClass } from "@/components/ui/styles";
 import { parseMoneyInput } from "./money";
 
 /** Warns before leaving the page with unsaved edits (browser reload/close). Pair with RHF's formState.isDirty. */
@@ -89,7 +89,7 @@ export function PickerField<T extends FieldValues>({ name, label, error, require
 export function SubmitRow({ pending, label, pendingLabel = "Saving…", children }: { pending: boolean; label: string; pendingLabel?: string; children?: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <button type="submit" disabled={pending} className="min-h-10 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className={buttonClass("primary")}>
         {pending ? pendingLabel : label}
       </button>
       {children}

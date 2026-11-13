@@ -1,5 +1,10 @@
 import Link from "next/link";
+import { AuthShell } from "@/components/layout/auth-shell";
+import { Alert } from "@/components/ui/alert";
+import { linkClass } from "@/components/ui/styles";
 import { ResetForm } from "./reset-form";
+
+export const metadata = { title: "Choose a new password" };
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -7,20 +12,28 @@ export default async function ResetPasswordPage({
   searchParams: Promise<{ token?: string; error?: string }>;
 }) {
   const { token, error } = await searchParams;
+  const valid = Boolean(token && !error);
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Choose a new password</h1>
+    <AuthShell
+      title="Choose a new password"
+      description={valid ? "You will be signed out of other devices when you save." : undefined}
+      footer={
+        <Link href="/login" className={linkClass}>
+          Back to sign in
+        </Link>
+      }
+    >
       {token && !error ? (
         <ResetForm token={token} />
       ) : (
-        <p className="max-w-sm text-sm">
+        <Alert tone="error">
           This reset link is invalid or has expired.{" "}
-          <Link href="/forgot-password" className="underline">
+          <Link href="/forgot-password" className="font-medium underline">
             Request a new one
           </Link>
           .
-        </p>
+        </Alert>
       )}
-    </main>
+    </AuthShell>
   );
 }

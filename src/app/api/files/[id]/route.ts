@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { requireActorForApi } from "@/lib/auth/api-actor";
 import { DomainError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { canAccessExpenseAttachment } from "@/modules/finance";
 import { readFile } from "@/modules/files";
 import { canAccessTaskAttachment } from "@/modules/tasks";
 
 // Every file is downloaded through this handler: authenticate → find the file in the actor's
 // company → ask the owning modules whether the actor may see its parent record → stream bytes.
-// Finance receipts add their checker here when that module exists.
-const CHECKERS = [canAccessTaskAttachment];
+const CHECKERS = [canAccessTaskAttachment, canAccessExpenseAttachment];
 
 const notFound = () => new Response("Not found", { status: 404 });
 
@@ -33,6 +34,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     });
   } catch (e) {
     if (e instanceof DomainError && e.code === "NOT_FOUND") return notFound();
-    throw e;
+    logger.error("file download failed", { fileId: id, err: e });
+    return new Response("Internal error", { status: 500 });
   }
 }

@@ -10,6 +10,8 @@ export {
   setExpenseCategoryActive,
   type ExpenseCategoryDTO,
 } from "./expenses/categories";
+export { canAccessExpenseAttachment } from "./expenses/file-access";
+export { expenseAttachmentService } from "./expenses/storage-binding";
 export { createExpense, updateExpense, type ExpenseDTO } from "./expenses/service";
 export {
   getExpenseBalance,

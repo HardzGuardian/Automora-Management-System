@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { getReceiptDetail } from "@/modules/finance";
+import { BackLink, DetailHeader, DetailList, Section, methodLabel, money, notSet } from "../../invoices/_components/finance-ui";
 import { ReceiptActions } from "./_components/receipt-actions";
+
+export const metadata = { title: "Receipt" };
 
 export default async function ReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor();
@@ -15,24 +19,44 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     if (error instanceof DomainError && (error.code === "PAYMENT_NOT_FOUND" || error.code === "FORBIDDEN")) notFound();
     throw error;
   }
+  const canConfirm = actor.permissions.has("finance.payments.confirm") && receipt.status === "pending";
+  const canReverse = actor.permissions.has("finance.payments.reverse") && receipt.status === "confirmed";
+  const invoiceName = receipt.invoiceNumber ?? receipt.invoiceId;
+
   return (
-    <main>
-      <p><Link href="/payments">Receipts</Link></p>
-      <h1>Receipt</h1>
-      <p><Link href={`/invoices/${receipt.invoiceId}`}>Invoice {receipt.invoiceNumber ?? receipt.invoiceId}</Link></p>
-      <dl>
-        <dt>Status</dt><dd>{receipt.status}</dd>
-        <dt>Amount</dt><dd>{receipt.currency} {receipt.amount}</dd>
-        <dt>Payment date</dt><dd>{receipt.paymentDate}</dd>
-        <dt>Method</dt><dd>{receipt.method.replaceAll("_", " ")}</dd>
-        <dt>Reference</dt><dd>{receipt.reference ?? "—"}</dd>
-        <dt>Notes</dt><dd>{receipt.notes ?? "—"}</dd>
-      </dl>
-      <ReceiptActions
-        paymentId={receipt.id}
-        canConfirm={actor.permissions.has("finance.payments.confirm") && receipt.status === "pending"}
-        canReverse={actor.permissions.has("finance.payments.reverse") && receipt.status === "confirmed"}
+    <div className="flex flex-col gap-4">
+      <BackLink href="/payments">Receipts</BackLink>
+      <DetailHeader
+        title="Receipt"
+        badge={<StatusBadge status={receipt.status} />}
+        facts={
+          <>
+            {money(receipt.currency, receipt.amount)} · {receipt.paymentDate} ·{" "}
+            <Link href={`/invoices/${receipt.invoiceId}`} className="underline">
+              Invoice {invoiceName}
+            </Link>
+          </>
+        }
       />
-    </main>
+      {receipt.status === "pending" ? (
+        <p className="text-sm text-muted">This receipt is pending and does not reduce the invoice balance until it is confirmed.</p>
+      ) : null}
+      {receipt.status === "reversed" ? (
+        <p className="text-sm text-muted">This receipt was reversed and no longer counts toward the invoice balance.</p>
+      ) : null}
+      {canConfirm || canReverse ? <ReceiptActions paymentId={receipt.id} canConfirm={canConfirm} canReverse={canReverse} /> : null}
+
+      <Section title="Details" className="max-w-2xl">
+        <DetailList
+          rows={[
+            ["Amount", money(receipt.currency, receipt.amount)],
+            ["Payment date", receipt.paymentDate],
+            ["Method", methodLabel(receipt.method)],
+            ["Reference", receipt.reference ?? notSet],
+            ["Notes", receipt.notes ?? notSet],
+          ]}
+        />
+      </Section>
+    </div>
   );
 }

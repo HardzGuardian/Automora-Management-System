@@ -73,7 +73,7 @@ export function createExpenseAttachmentService(storage: FinanceStorageAdapter) {
       )).limit(1);
       if (!visibleExpense) throw new DomainError("EXPENSE_NOT_FOUND", "Expense was not found.");
 
-      const storageKey = `${actor.companyId}/finance/expenses/${randomUUID()}`;
+      const storageKey = `${actor.companyId}/${randomUUID()}`;
       await storage.putObject({ key: storageKey, bytes, contentType: parsed.data.contentType });
       try {
         return await withTransaction(async (tx) => {

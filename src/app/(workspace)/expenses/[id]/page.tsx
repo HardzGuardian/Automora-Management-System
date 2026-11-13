@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import {
@@ -7,8 +7,26 @@ import {
   listExpenseCategories,
   listExpensePayments,
 } from "@/modules/finance";
+import {
+  BackLink,
+  DetailHeader,
+  DetailList,
+  Figures,
+  Section,
+  TableShell,
+  methodLabel,
+  money,
+  notSet,
+  tdClass,
+  tdNumClass,
+  thClass,
+  thNumClass,
+} from "../../invoices/_components/finance-ui";
+import { loadProjectOptions } from "../../invoices/_components/project-options";
 import { ExpenseEditForm } from "./_components/expense-edit-form";
 import { ExpensePaymentActions, NewExpensePaymentForm } from "../_components/expense-payment-forms";
+
+export const metadata = { title: "Expense" };
 
 export default async function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor();
@@ -24,32 +42,95 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
   const categories = actor.permissions.has("finance.expenses.update") && payments.length === 0
     ? await listExpenseCategories(actor, true)
     : [];
+  const canEdit = categories.length > 0;
+  const projects = canEdit || expense.projectId ? await loadProjectOptions(actor, expense.projectId) : [];
+  const projectLabel = expense.projectId ? projects.find((p) => p.id === expense.projectId)?.label ?? "Linked project" : null;
+  const canPay = actor.permissions.has("finance.expenses.pay");
+  const canReverse = actor.permissions.has("finance.expenses.reverse");
+  const hasActions = payments.some((p) => (p.status === "pending" && canPay) || (p.status === "confirmed" && canReverse));
 
-  return <main>
-    <p><Link href="/expenses">Expenses</Link></p>
-    <h1>{expense.expenseCode}</h1>
-    <dl>
-      <dt>Status</dt><dd>{expense.status.replaceAll("_", " ")}</dd>
-      <dt>Payee/vendor</dt><dd>{expense.payee}</dd>
-      <dt>Description</dt><dd>{expense.description}</dd>
-      <dt>Category</dt><dd>{expense.categoryName}</dd>
-      <dt>Expense date</dt><dd>{expense.expenseDate}</dd>
-      <dt>Due date</dt><dd>{expense.dueDate ?? "—"}</dd>
-      <dt>Total</dt><dd>{expense.currency} {expense.total}</dd>
-      <dt>Confirmed payments</dt><dd>{expense.currency} {expense.confirmedPayments}</dd>
-      <dt>Outstanding</dt><dd>{expense.currency} {expense.outstanding}</dd>
-    </dl>
-    {categories.length > 0 && <ExpenseEditForm expense={expense} categories={categories} />}
-    {actor.permissions.has("finance.expenses.pay") && expense.outstanding !== "0.00" && <NewExpensePaymentForm expenseId={expense.id} />}
-    <h2>Outgoing payments</h2>
-    {payments.length === 0 ? <p>No payments recorded.</p> : <ul>{payments.map((payment) => <li key={payment.id}>
-      {payment.paymentDate} · {payment.status} · {expense.currency} {payment.amount} · {payment.method.replaceAll("_", " ")}
-      <ExpensePaymentActions
-        paymentId={payment.id}
-        status={payment.status}
-        canPay={actor.permissions.has("finance.expenses.pay")}
-        canReverse={actor.permissions.has("finance.expenses.reverse")}
+  return (
+    <div className="flex flex-col gap-4">
+      <BackLink href="/expenses">Expenses</BackLink>
+      <DetailHeader
+        title={expense.expenseCode}
+        badge={<StatusBadge status={expense.status} />}
+        facts={
+          <>
+            {expense.payee} · {expense.categoryName} · {expense.expenseDate}
+          </>
+        }
       />
-    </li>)}</ul>}
-  </main>;
+      <Figures
+        items={[
+          { label: "Total", value: money(expense.currency, expense.total) },
+          { label: "Paid", value: money(expense.currency, expense.confirmedPayments) },
+          { label: "Outstanding", value: money(expense.currency, expense.outstanding), tone: expense.status === "paid" ? "success" : "default" },
+        ]}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+          {canEdit && <ExpenseEditForm expense={expense} categories={categories} projects={projects} />}
+          {canPay && expense.outstanding !== "0.00" && <NewExpensePaymentForm expenseId={expense.id} />}
+
+          <Section title="Outgoing payments">
+            {payments.length === 0 ? (
+              <p className="text-sm text-muted">No payments recorded yet.</p>
+            ) : (
+              <TableShell caption="Outgoing payments for this expense" minWidth="34rem">
+                <thead className="bg-primary-soft">
+                  <tr>
+                    <th scope="col" className={thClass}>Date</th>
+                    <th scope="col" className={thClass}>Method</th>
+                    <th scope="col" className={thClass}>Reference</th>
+                    <th scope="col" className={thClass}>Status</th>
+                    <th scope="col" className={thNumClass}>Amount</th>
+                    {hasActions ? (
+                      <th scope="col" className={thClass}>
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    ) : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <tr key={payment.id} className="border-t border-border align-top">
+                      <td className={tdClass}>{payment.paymentDate}</td>
+                      <td className={tdClass}>{methodLabel(payment.method)}</td>
+                      <td className={tdClass}>{payment.reference ?? notSet}</td>
+                      <td className={tdClass}>
+                        <StatusBadge status={payment.status} />
+                      </td>
+                      <td className={tdNumClass}>{money(expense.currency, payment.amount)}</td>
+                      {hasActions ? (
+                        <td className={tdClass}>
+                          <ExpensePaymentActions paymentId={payment.id} status={payment.status} canPay={canPay} canReverse={canReverse} />
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </TableShell>
+            )}
+          </Section>
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-4">
+          <Section title="Details">
+            <DetailList
+              rows={[
+                ["Payee/vendor", expense.payee],
+                ["Category", expense.categoryName],
+                ["Description", expense.description],
+                ["Project", projectLabel ?? notSet],
+                ["Expense date", expense.expenseDate],
+                ["Due date", expense.dueDate ?? notSet],
+              ]}
+            />
+          </Section>
+        </aside>
+      </div>
+    </div>
+  );
 }
