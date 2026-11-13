@@ -16,14 +16,14 @@ export function CommentForm({ taskId }: { taskId: string }) {
       <input type="hidden" name="taskId" value={taskId} />
       <label className="flex flex-col gap-1 text-sm">
         Add a comment
-        <textarea name="body" required rows={3} maxLength={4000} className="rounded border border-gray-300 px-3 py-2" />
+        <textarea name="body" required rows={3} maxLength={4000} className="rounded border border-border px-3 py-2" />
       </label>
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="self-start rounded bg-black px-3 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="self-start rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
         {pending ? "Posting…" : "Post comment"}
       </button>
     </form>
@@ -46,14 +46,14 @@ export function UploadForm({ taskId }: { taskId: string }) {
           type="file"
           required
           accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt"
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded border border-border px-3 py-2"
         />
       </label>
-      <button type="submit" disabled={pending} className="rounded bg-black px-3 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
         {pending ? "Uploading…" : "Upload"}
       </button>
       {state.error ? (
-        <p role="alert" className="w-full text-sm text-red-600">
+        <p role="alert" className="w-full text-sm text-danger">
           {state.error}
         </p>
       ) : null}

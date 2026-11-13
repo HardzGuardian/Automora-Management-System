@@ -27,22 +27,22 @@ export function ClientForm({ client }: { client?: ClientDTO }) {
             type={"type" in f ? f.type : "text"}
             required={"required" in f}
             defaultValue={client ? (client[f.name] ?? "") : ""}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="rounded border border-border px-3 py-2"
           />
-          {state.fieldErrors?.[f.name]?.[0] ? <span className="text-red-600">{state.fieldErrors[f.name][0]}</span> : null}
+          {state.fieldErrors?.[f.name]?.[0] ? <span className="text-danger">{state.fieldErrors[f.name][0]}</span> : null}
         </label>
       ))}
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
       {state.saved ? (
-        <p role="status" className="text-sm text-green-700">
+        <p role="status" className="text-sm text-success">
           Saved.
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="rounded bg-black px-3 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
         {pending ? "Saving…" : client ? "Save changes" : "Create client"}
       </button>
     </form>

@@ -13,7 +13,7 @@ function Group({ title, hits }: { title: string; hits: SearchHit[] }) {
             <Link href={h.href} className="underline">
               {h.title}
             </Link>{" "}
-            <span className="text-gray-500">· {h.subtitle}</span>
+            <span className="text-muted">· {h.subtitle}</span>
           </li>
         ))}
       </ul>
@@ -26,7 +26,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { q = "" } = await searchParams;
   const results = await globalSearch(actor, q);
   return (
-    <main className="flex flex-col gap-4 p-4 sm:p-8">
+    <main className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Search</h1>
       <form className="flex gap-2">
         <input
@@ -34,14 +34,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           defaultValue={q}
           placeholder="Search employees, clients, projects, tasks"
           aria-label="Search"
-          className="w-full max-w-md rounded border border-gray-300 px-3 py-2"
+          className="w-full max-w-md rounded border border-border px-3 py-2"
         />
-        <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+        <button type="submit" className="rounded border border-border px-3 py-2">
           Search
         </button>
       </form>
-      {q.trim().length > 0 && q.trim().length < 2 ? <p className="text-sm text-gray-600">Type at least 2 characters.</p> : null}
-      {q.trim().length >= 2 && results.total === 0 ? <p className="text-sm text-gray-600">Nothing found for “{q}”.</p> : null}
+      {q.trim().length > 0 && q.trim().length < 2 ? <p className="text-sm text-muted">Type at least 2 characters.</p> : null}
+      {q.trim().length >= 2 && results.total === 0 ? <p className="text-sm text-muted">Nothing found for “{q}”.</p> : null}
       <Group title="Tasks" hits={results.tasks} />
       <Group title="Projects" hits={results.projects} />
       <Group title="Clients" hits={results.clients} />

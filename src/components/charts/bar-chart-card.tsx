@@ -36,7 +36,7 @@ export function BarChartCard({
       ) : (
         <div aria-hidden="true" style={{ height }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ top: 16, right: 16, bottom: 4, left: horizontal ? 24 : 0 }}>
+            <BarChart accessibilityLayer={false} data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ top: 16, right: 16, bottom: 4, left: horizontal ? 24 : 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#dfe4e1" vertical={!horizontal} horizontal={horizontal ? false : true} />
               {horizontal ? (
                 <>

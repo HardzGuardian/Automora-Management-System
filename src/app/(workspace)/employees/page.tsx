@@ -1,92 +1,68 @@
 import Link from "next/link";
+import { DataTable, type DataColumn } from "@/components/data-table/data-table";
+import { PageHeader } from "@/components/ui/page-header";
+import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
 
-const PAGE_SIZE = 20;
+export const metadata = { title: "Employees" };
 
-export default async function EmployeesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; page?: string; status?: string }>;
-}) {
+const PAGE_SIZE = 20;
+const STATUSES = ["Active", "Inactive", "Suspended"] as const;
+const SORTS = ["name", "code", "joined"] as const;
+
+const COLUMNS: DataColumn[] = [
+  { key: "employeeCode", header: "Code", sortable: true, sortKey: "code" },
+  { key: "fullName", header: "Name", kind: "link", href: "/employees/{id}", sortable: true, sortKey: "name" },
+  { key: "designation", header: "Designation" },
+  { key: "department", header: "Department" },
+  { key: "employmentStatus", header: "Status", kind: "status" },
+  { key: "joiningDate", header: "Joined", sortable: true, sortKey: "joined", defaultHidden: true },
+  { key: "workEmail", header: "Email", defaultHidden: true },
+];
+
+export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string; sort?: string; dir?: string }> }) {
   const actor = await requireActor();
-  if (!can(actor, "employees.read")) {
-    return <main className="p-8">You do not have access to the employee directory.</main>;
-  }
+  if (!can(actor, "employees.read")) return <p>You do not have access to the employee directory.</p>;
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
-  const status = sp.status === "Active" || sp.status === "Inactive" || sp.status === "Suspended" ? sp.status : undefined;
-  const { rows, total } = await listEmployees(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status });
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const status = STATUSES.find((s) => s === sp.status);
+  const sort = SORTS.find((s) => s === sp.sort);
+  const dir = sp.dir === "desc" ? "desc" : "asc";
+  const { rows, total } = await listEmployees(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, sort, dir });
 
   return (
-    <main className="flex flex-col gap-4 p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Employees ({total})</h1>
-        {can(actor, "employees.create") ? (
-          <Link href="/employees/new" className="rounded bg-black px-3 py-2 text-white">
-            New employee
-          </Link>
-        ) : null}
-      </div>
-      <form className="flex gap-2">
-        <input name="q" defaultValue={sp.q} placeholder="Search name, email or code" className="rounded border border-gray-300 px-3 py-2" />
-        <select name="status" defaultValue={status ?? ""} className="rounded border border-gray-300 px-3 py-2">
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Employees"
+        actions={can(actor, "employees.create") ? <Link href="/employees/new" className={buttonClass("primary")}>New employee</Link> : null}
+      />
+      <form className="flex flex-wrap gap-2" role="search" aria-label="Filter employees">
+        <input name="q" defaultValue={sp.q} aria-label="Search" placeholder="Search name, email or code" className={`${inputClass} max-w-xs`} />
+        <select name="status" defaultValue={status ?? ""} aria-label="Status" className={`${inputClass} max-w-40`}>
           <option value="">All statuses</option>
-          <option>Active</option>
-          <option>Inactive</option>
-          <option>Suspended</option>
+          {STATUSES.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
         </select>
-        <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+        <button type="submit" className={buttonClass("secondary")}>
           Filter
         </button>
       </form>
-      {rows.length === 0 ? (
-        <p className="text-sm text-gray-600">No employees match.</p>
-      ) : (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="py-2">Code</th>
-              <th>Name</th>
-              <th>Designation</th>
-              <th>Department</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((e) => (
-              <tr key={e.id} className="border-b">
-                <td className="py-2">{e.employeeCode}</td>
-                <td>
-                  <Link href={`/employees/${e.id}`} className="underline">
-                    {e.fullName}
-                  </Link>
-                </td>
-                <td>{e.designation ?? "—"}</td>
-                <td>{e.department ?? "—"}</td>
-                <td>{e.employmentStatus}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <nav className="flex items-center gap-3 text-sm">
-        {page > 1 ? (
-          <Link href={{ query: { ...sp, page: page - 1 } }} className="underline">
-            Previous
-          </Link>
-        ) : null}
-        <span>
-          Page {page} of {pages}
-        </span>
-        {page < pages ? (
-          <Link href={{ query: { ...sp, page: page + 1 } }} className="underline">
-            Next
-          </Link>
-        ) : null}
-      </nav>
-    </main>
+      <DataTable
+        caption="Employees"
+        columns={COLUMNS}
+        rows={rows.map((e) => ({ id: e.id, employeeCode: e.employeeCode, fullName: e.fullName, designation: e.designation, department: e.department, employmentStatus: e.employmentStatus, joiningDate: e.joiningDate, workEmail: e.workEmail }))}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        basePath="/employees"
+        params={{ q: sp.q, status, sort, dir: sort ? dir : undefined }}
+        emptyTitle="No employees match"
+        emptyDescription="Try a different search or filter."
+        emptyAction={can(actor, "employees.create") ? { href: "/employees/new", label: "Add an employee" } : undefined}
+      />
+    </div>
   );
 }

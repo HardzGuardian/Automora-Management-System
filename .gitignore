@@ -25,3 +25,9 @@ Thumbs.db
 
 # Local file storage (dev/test)
 .data/
+playwright-report
+test-results
+.playwright-mcp
+shot-*.png
+.data-dev.log
+backups/

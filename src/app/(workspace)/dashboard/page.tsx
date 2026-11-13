@@ -75,7 +75,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {dash.workload ? (
         <BarChartCard
           title="Open tasks per employee"
-          caption="Point in time · active employees with open work"
+          caption="Point in time · active employees with open work · red bar = has overdue tasks, green = none"
           horizontal
           valueLabel="Open tasks"
           data={dash.workload.map((w) => ({ label: w.name, value: w.open, color: w.overdue > 0 ? "#b42318" : "#167c50" }))}

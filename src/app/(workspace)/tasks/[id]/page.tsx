@@ -49,25 +49,25 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
     canAssign && can(actor, "employees.read")
       ? (await listEmployees(actor, { pageSize: 100, status: "Active" })).rows.filter((e) => !task.assignees.some((a) => a.employeeId === e.id))
       : [];
-  const btn = "rounded border border-gray-300 px-3 py-2";
+  const btn = "rounded border border-border px-3 py-2";
 
   return (
-    <main className="flex flex-col gap-6 p-4 sm:p-8">
+    <main className="flex flex-col gap-6">
       <Link href="/tasks" className="text-sm underline">
         ← Tasks
       </Link>
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{task.title}</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           {task.taskCode} · {task.status} · {task.priority} ·{" "}
-          <span className={overdue ? "font-semibold text-red-600" : ""}>
+          <span className={overdue ? "font-semibold text-danger" : ""}>
             due {task.dueDate ?? "—"}
             {overdue ? " (overdue)" : ""}
           </span>
           {task.archived ? " · Archived" : ""}
         </p>
         {task.description ? <p className="mt-2 whitespace-pre-wrap text-sm">{task.description}</p> : null}
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           Estimated {task.estimatedHours ?? "—"} h · actual {task.actualHours ?? "—"} h
         </p>
       </header>
@@ -107,7 +107,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         {candidates.length > 0 ? (
           <form action={assignAction} className="flex flex-wrap gap-2">
             <input type="hidden" name="id" value={id} />
-            <select name="employeeId" required className="rounded border border-gray-300 px-3 py-2">
+            <select name="employeeId" aria-label="Employee to assign" required className="rounded border border-border px-3 py-2">
               {candidates.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.employeeCode} {e.fullName}
@@ -125,9 +125,9 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <h2 className="text-lg font-medium">Comments ({comments.length})</h2>
         <ul className="flex flex-col gap-2 text-sm">
           {comments.map((c) => (
-            <li key={c.id} className="rounded border border-gray-200 p-2">
+            <li key={c.id} className="rounded border border-border p-2">
               <p className="whitespace-pre-wrap">{c.body}</p>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
+              <div className="flex items-center gap-3 text-xs text-muted">
                 {c.authorName} · {c.createdAt.toLocaleString()}
                 {c.edited ? " · edited" : ""}
                 {c.authorId === actor.userId || manage ? (
@@ -154,7 +154,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               <a href={`/api/files/${a.fileId}`} className="underline">
                 {a.name}
               </a>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted">
                 {Math.max(1, Math.round(a.size / 1024))} KB · {a.uploadedByName ?? "unknown"}
               </span>
               {a.uploadedBy === actor.userId || manage ? (
@@ -177,7 +177,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <ul className="flex flex-col gap-1 text-sm">
           {history.map((h) => (
             <li key={h.id}>
-              <span className="text-gray-500">{h.createdAt.toLocaleString()}</span> · {h.actorName ?? "System"} · {h.action}
+              <span className="text-muted">{h.createdAt.toLocaleString()}</span> · {h.actorName ?? "System"} · {h.action}
               {h.newValue ? ` → ${JSON.stringify(h.newValue)}` : ""}
             </li>
           ))}

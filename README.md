@@ -97,6 +97,15 @@ Uploads use the local filesystem driver by default (`STORAGE_DRIVER=local`, `.da
 
 Performance baselines at 10k tasks are in [docs/09-query-performance.md](docs/09-query-performance.md).
 
+## UI, dashboards, reports, operations
+
+- **Design system:** tokens in `src/app/globals.css` (Automora green `#167C50`, light theme, Inter). Shared components in `src/components/`; a dev-only gallery lives at `/dev/ui`. Status is always shown with an icon and text, never colour alone.
+- **Dashboards** (`modules/reports/dashboard.ts`): company, operational and personal views chosen by permission. Every figure reuses the task-list scope and the single overdue rule, and says whether it is a period total or point in time. Reconciliation tests assert the dashboard equals the lists (AC-12).
+- **Reports and exports:** task register, employee workload, project status, client summary, plus finance reports. Exports (CSV/XLSX/PDF) use the report's own query, filters and column allowlist, are formula-injection safe, require `reports.export` and are audited.
+- **Notifications and reminders:** in-app notifications with idempotent delivery; `GET /api/cron/reminders` (Bearer `CRON_SECRET`) creates due-soon/overdue task, project and invoice reminders without duplicates.
+- **Operations:** security headers + CSP, `/api/health`, error/404/loading pages, `Dockerfile`, backup and restore-drill scripts. See [docs/11-deployment-runbook.md](docs/11-deployment-runbook.md).
+- **Browser tests:** `pnpm e2e` runs Playwright against a production build and a seeded database: login, workflows (client → project → task, employee, invoice → receipt, expense → payment, reports), responsive checks at 375/768/1280 and axe accessibility on every main screen. First time: `pnpm exec playwright install chromium`.
+
 ## Status
 
-Developer 1 scope (D1-00 … D1-34) is implemented except **D1-30** (finance tabs on client/project pages), which is blocked on `@/modules/finance` summaries from Developer 2. See [docs/progress.md](docs/progress.md).
+All three developers' scopes are implemented on the `integration/shubhangi-part` branch (Sagar's foundation + Chintan's finance + Shubhangi's UI layer). Known gaps are listed in [docs/progress.md](docs/progress.md) and the runbook (no staging deployment, Dockerfile not built locally, S3 driver not run against a real bucket). Integration notes: [docs/10-integration-sagar-chintan.md](docs/10-integration-sagar-chintan.md).

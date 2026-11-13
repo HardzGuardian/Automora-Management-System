@@ -31,5 +31,6 @@ export const listEmployeesSchema = z.object({
   status: z.enum(EMPLOYMENT_STATUSES).optional(),
   department: z.string().trim().max(100).optional(),
   sort: z.enum(["name", "code", "joined"]).default("name"),
+  dir: z.enum(["asc", "desc"]).default("asc"),
 });
 export type ListEmployeesInput = z.input<typeof listEmployeesSchema>;

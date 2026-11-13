@@ -60,3 +60,26 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Base styles for plain semantic HTML inside the app shell, so every screen (including ones written
+   without utility classes) looks like one product. Utility classes on an element override these. */
+@layer base {
+  #main h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; }
+  #main h2 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+  #main h3 { font-size: 1rem; font-weight: 600; }
+  #main main { display: flex; flex-direction: column; gap: 1rem; }
+  #main a:not([class]) { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  #main table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: block; overflow-x: auto; }
+  #main thead { background: var(--primary-soft); }
+  #main th { text-align: left; font-weight: 600; padding: 0.5rem 0.75rem; white-space: nowrap; }
+  #main td { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); }
+  #main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main select, #main textarea {
+    min-height: 2.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 0.4rem 0.75rem; max-width: 100%;
+  }
+  #main label { font-weight: 500; }
+  #main button { min-height: 2.5rem; border-radius: var(--radius); padding: 0.4rem 1rem; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); }
+  #main button[type="submit"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  #main button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #main form:not([class]) { display: flex; flex-direction: column; gap: 0.75rem; max-width: 40rem; }
+  #main p[role="alert"] { color: var(--danger); }
+}

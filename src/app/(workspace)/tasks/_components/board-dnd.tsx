@@ -43,7 +43,7 @@ export function BoardDnd({ tasks }: { tasks: BoardTask[] }) {
   return (
     <div className="flex flex-col gap-3">
       {message ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {message}
         </p>
       ) : null}
@@ -65,25 +65,25 @@ export function BoardDnd({ tasks }: { tasks: BoardTask[] }) {
                 const task = tasks.find((t) => t.id === e.dataTransfer.getData("text/plain"));
                 if (task) move(task, col);
               }}
-              className={`flex min-h-24 flex-col gap-2 rounded border p-2 ${overColumn === col ? "border-black bg-gray-50" : "border-gray-200"}`}
+              className={`flex min-h-24 flex-col gap-2 rounded border p-2 ${overColumn === col ? "border-black bg-background" : "border-border"}`}
             >
               <h2 className="text-sm font-semibold">
                 {col} ({items.length})
               </h2>
-              {items.length === 0 ? <p className="text-xs text-gray-500">Nothing here.</p> : null}
+              {items.length === 0 ? <p className="text-xs text-muted">Nothing here.</p> : null}
               {items.map((t) => (
                 <article
                   key={t.id}
                   draggable={t.allowed.length > 0}
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", t.id)}
-                  className="flex cursor-grab flex-col gap-1 rounded border border-gray-200 bg-white p-2 text-sm"
+                  className="flex cursor-grab flex-col gap-1 rounded border border-border bg-white p-2 text-sm"
                 >
                   <Link href={`/tasks/${t.id}`} className="font-medium underline">
                     {t.title}
                   </Link>
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-muted">
                     {t.taskCode} · {t.priority} ·{" "}
-                    <span className={t.overdue ? "font-semibold text-red-600" : ""}>due {t.dueDate ?? "—"}</span>
+                    <span className={t.overdue ? "font-semibold text-danger" : ""}>due {t.dueDate ?? "—"}</span>
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {t.allowed.map((to) => (
@@ -92,7 +92,7 @@ export function BoardDnd({ tasks }: { tasks: BoardTask[] }) {
                         type="button"
                         disabled={pending}
                         onClick={() => move(t, to)}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-50"
+                        className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
                       >
                         → {to}
                       </button>

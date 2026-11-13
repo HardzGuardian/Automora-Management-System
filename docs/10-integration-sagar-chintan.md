@@ -25,9 +25,15 @@ Chintan's branch was written against `main` (docs only), so it could not be comp
 6. `finance/index.ts` re-exports `FinanceExportRequest` from `reports/schemas`; `reports/project-finance.ts` re-exports `ProjectFinanceCurrencySummary` from `cash-movement-math` (wrong source module before).
 7. `api/invoices/[id]/pdf/route.ts`: `renderToBuffer(InvoicePdfDocument({ data }))` (type-correct for react-pdf).
 
+## Further fixes found while building the UI/reports layer (2026-11-13) — **please review**
+Drizzle throws "…field from a subquery, which is a raw SQL field, but it doesn't have an alias declared" when a raw `sql` column inside a subquery is referenced from the outer query. Five places did that, so **the Invoices list page, the receivables report, the expense register, the finance summary (dashboard snapshot) and the expense list all failed at runtime**. Fixed by aliasing the columns:
+- `invoices/queries.ts` (`confirmedReceipts`, `outstanding`) · `reports/receivables.ts` (same) · `reports/summary.ts` (`outstanding`)
+- `expenses/queries.ts` and `reports/expense-register.ts`: payment-total subquery column aliased `paid_total` (an unqualified `"total"` was ambiguous with `expenses.total`), plus `confirmedPayments` / `outstanding`.
+Regression coverage: `src/test/finance-integration.test.ts` now runs the invoice, receipt, expense and expense-payment lists and the summary / receivables / cash-movement / expense-register reports against the real database, and `e2e/finance.spec.ts` drives invoice → receipt and expense → payment through the browser. Also `expense-payments/queries.ts`: removed two unused imports.
+
 ## Still open (not solved by this merge)
 - **Receipts download route:** add a finance `FileAccessChecker` to `CHECKERS` in `src/app/api/files/[id]/route.ts` (Chintan's attachment adapter must be bound to `@/modules/files`' `saveUpload`).
-- **Exports:** `src/app/api/exports/[report]/route.ts` and `lib/export` belong to Shubhangi and do not exist yet.
+- **Exports:** now implemented: `lib/export` (CSV/XLSX/PDF, formula-injection safe) and `/api/exports/finance-<report>` which binds your `exportFinanceReport` to it via an adapter in `modules/reports/export.ts` (CSV/XLSX; test: `src/modules/reports/export.test.ts`).
 - **Lint warnings** in `expense-payments/queries.ts` (unused `count`, `sql`) and `expenses/schemas.test.ts`.
 - Finance service functions have no DB-backed denied-request/IDOR tests beyond the ones in `src/test/finance-integration.test.ts`; add the rest per module.
 

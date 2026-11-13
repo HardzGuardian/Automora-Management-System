@@ -45,7 +45,7 @@ export default async function MyTasksPage({
   }));
 
   return (
-    <main className="flex flex-col gap-4 p-4 sm:p-8">
+    <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">My tasks ({total})</h1>
         <nav className="flex gap-3 text-sm" aria-label="Layout">

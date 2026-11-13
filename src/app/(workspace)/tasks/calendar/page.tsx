@@ -21,7 +21,7 @@ export default async function TaskCalendarPage({
   const link = (m: string, v: string) => ({ query: { month: m, view: v } });
 
   return (
-    <main className="flex flex-col gap-4 p-4 sm:p-8">
+    <main className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Task calendar · {month}</h1>
         <nav className="flex flex-wrap gap-3 text-sm" aria-label="Calendar navigation">
@@ -58,14 +58,14 @@ export default async function TaskCalendarPage({
             {grid.weeks.map((week) => (
               <tr key={week[0].date}>
                 {week.map((cell) => (
-                  <td key={cell.date} className={`h-24 border align-top p-1 ${cell.inMonth ? "" : "bg-gray-50 text-gray-400"} ${cell.date === today ? "outline outline-1 outline-black" : ""}`}>
+                  <td key={cell.date} className={`h-24 border align-top p-1 ${cell.inMonth ? "" : "bg-background text-muted"} ${cell.date === today ? "outline outline-1 outline-black" : ""}`}>
                     <div className="text-xs">{Number(cell.date.slice(8))}</div>
                     <ul className="flex flex-col gap-0.5">
                       {cell.tasks.map((t) => {
                         const overdue = t.dueDate !== null && t.dueDate < today && t.status !== "Completed";
                         return (
                           <li key={t.id} className="truncate">
-                            <Link href={`/tasks/${t.id}`} className={`underline ${overdue ? "text-red-600" : ""}`} title={`${t.taskCode} · ${t.status} · ${t.priority}`}>
+                            <Link href={`/tasks/${t.id}`} className={`underline ${overdue ? "text-danger" : ""}`} title={`${t.taskCode} · ${t.status} · ${t.priority}`}>
                               {t.title}
                             </Link>
                           </li>
@@ -79,7 +79,7 @@ export default async function TaskCalendarPage({
           </tbody>
         </table>
       </div>
-      {tasks.length === 0 ? <p className="text-sm text-gray-600">No tasks due this month.</p> : null}
+      {tasks.length === 0 ? <p className="text-sm text-muted">No tasks due this month.</p> : null}
     </main>
   );
 }

@@ -116,6 +116,21 @@ Import only from the module's `index.ts`. Every function takes `actor` first; ou
 
 Task status rules: Pending → In Progress → In Review → Completed, reopen = Completed → In Progress. Assignees may move their own task among the first three; **completing or reopening needs `tasks.update`** (a ruling; change `isOwnTransitionAllowed` if the business wants otherwise).
 
+### UI / reports / notifications / settings API as implemented (Developer 3 lane)
+
+| Import | Provides |
+|---|---|
+| `@/components/ui/*` | `Button`/`buttonClass`/`inputClass`, `Field`, `StatusBadge` (task, project, invoice, payment statuses; icon + text), `EmptyState`/`ErrorState`/`TableSkeleton`, `ConfirmDialog`/`ConfirmForm` (native `<dialog>`), `PageHeader`, `useToast` |
+| `@/components/data-table/data-table` | `DataTable`: server-side sort/pagination via URL params, optional selection and column visibility. Pass plain rows + `DataColumn[]` (`kind: text|status|link|number`) |
+| `@/components/forms/form-kit` | React Hook Form helpers: `TextField`, `DateField`, `MoneyField` (canonical via `lib/money`), `PickerField`, `SubmitRow`, `useUnsavedChangesWarning` |
+| `@/components/charts/bar-chart-card` | Accessible chart (always has a "View as table") |
+| `@/modules/notifications` | `deliver(event)` (idempotent per `eventKey`+user; finance events only to `finance.notifications.receive`), `registerNotifier()` (called from `src/instrumentation.ts`), `listForUser`, `unreadCount`, `markRead`, `markAllRead`, `runReminders()` |
+| `@/modules/reports` | `getDashboard(actor, {preset|from|to})`, `availableReports`, `runReport`, `iterateReport`, `exportReport(actor, key, "csv"|"xlsx"|"pdf", filters)`, `exportFinanceReportResponse`, `resolveRange` (company-local dates) |
+| `@/modules/settings` | `getCompanyProfile`/`updateCompanyProfile` (timezone drives "today"), `getPreferences`/`updatePreferences`, `getNumbering` |
+| `@/lib/export` | `toCsv`/`toCsvStream`, `toXlsx`/`toXlsxStream`, `toPdf`, `escapeCell` — the column list is the export allowlist |
+
+Chintan: emit `notify({ type: "payment.recorded", userIds, entity: { type: "payment", id }, eventKey: "payment:{id}", title })` after commit; `invoice.*`/`payment.*`/`expense.*`/`finance.*` events are delivered only to users with `finance.notifications.receive`. Report permissions: `reports.all.read` (all), `reports.limited.read` (task register, project status, workload if `employees.workload.read`, clients if `clients.read`), `reports.personal.read` (own task register); exporting needs `reports.export`.
+
 ## 5. Libraries exported by others
 
 | Owner | Import | Provides |

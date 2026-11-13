@@ -38,13 +38,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   ]);
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-6">
       <Link href="/clients" className="text-sm underline">
         ← Clients
       </Link>
       <header>
         <h1 className="text-2xl font-semibold">{client.name}</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           {client.clientCode} · {client.archived ? "Archived" : client.status}
         </p>
       </header>
@@ -53,7 +53,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <form action={archiveClientAction}>
           <input type="hidden" name="id" value={id} />
           {client.archived ? <input type="hidden" name="undo" value="1" /> : null}
-          <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+          <button type="submit" className="rounded border border-border px-3 py-2">
             {client.archived ? "Unarchive" : "Archive"}
           </button>
         </form>
@@ -62,7 +62,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-medium">Projects ({projects.total})</h2>
         {projects.rows.length === 0 ? (
-          <p className="text-sm text-gray-600">No projects visible to you.</p>
+          <p className="text-sm text-muted">No projects visible to you.</p>
         ) : (
           <ul className="text-sm">
             {projects.rows.map((p) => (
@@ -81,7 +81,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <section className="flex flex-col gap-2" aria-label="Finance">
           <h2 className="text-lg font-medium">Finance</h2>
           {financeUnavailable ? (
-            <p className="text-sm text-gray-600">Finance data is unavailable right now.</p>
+            <p className="text-sm text-muted">Finance data is unavailable right now.</p>
           ) : finance && finance.outstandingByCurrency.length > 0 ? (
             <ul className="text-sm">
               {finance.outstandingByCurrency.map((o) => (
@@ -91,7 +91,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-600">No outstanding invoices.</p>
+            <p className="text-sm text-muted">No outstanding invoices.</p>
           )}
         </section>
       ) : null}
@@ -108,17 +108,17 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         {can(actor, "clients.update") ? (
           <form action={addNoteAction} className="flex max-w-md flex-col gap-2">
             <input type="hidden" name="id" value={id} />
-            <textarea name="note" required rows={3} className="rounded border border-gray-300 px-3 py-2" />
-            <button type="submit" className="self-start rounded bg-black px-3 py-2 text-white">
+            <textarea name="note" required rows={3} className="rounded border border-border px-3 py-2" />
+            <button type="submit" className="self-start rounded bg-primary px-3 py-2 text-white">
               Add note
             </button>
           </form>
         ) : null}
         <ul className="flex flex-col gap-2 text-sm">
           {notes.map((n) => (
-            <li key={n.id} className="rounded border border-gray-200 p-2">
+            <li key={n.id} className="rounded border border-border p-2">
               <p className="whitespace-pre-wrap">{n.note}</p>
-              <p className="text-xs text-gray-500">{n.createdAt.toLocaleString()}</p>
+              <p className="text-xs text-muted">{n.createdAt.toLocaleString()}</p>
             </li>
           ))}
         </ul>

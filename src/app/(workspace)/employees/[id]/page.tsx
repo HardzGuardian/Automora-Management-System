@@ -46,13 +46,13 @@ export default async function EmployeeDetailPage({
   const inviteRoles = canInvite ? (await listRoles(actor)).map((r) => ({ id: r.id, name: r.name })) : [];
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-6">
       <Link href="/employees" className="text-sm underline">
         ← Employees
       </Link>
       <header>
         <h1 className="text-2xl font-semibold">{employee.fullName}</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           {employee.employeeCode} · {employee.designation ?? "No designation"} · {employee.department ?? "No department"} ·{" "}
           {employee.employmentStatus} · {employee.workEmail}
         </p>
@@ -73,7 +73,7 @@ export default async function EmployeeDetailPage({
             {can(actor, "employees.deactivate") ? (
               <form action={deactivateAction}>
                 <input type="hidden" name="id" value={id} />
-                <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+                <button type="submit" className="rounded border border-border px-3 py-2">
                   Deactivate
                 </button>
               </form>
@@ -81,7 +81,7 @@ export default async function EmployeeDetailPage({
             {can(actor, "users.suspend") ? (
               <form action={suspendAction}>
                 <input type="hidden" name="id" value={id} />
-                <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+                <button type="submit" className="rounded border border-border px-3 py-2">
                   Suspend
                 </button>
               </form>
@@ -90,7 +90,7 @@ export default async function EmployeeDetailPage({
         ) : can(actor, "employees.deactivate") ? (
           <form action={reactivateAction}>
             <input type="hidden" name="id" value={id} />
-            <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+            <button type="submit" className="rounded border border-border px-3 py-2">
               Reactivate
             </button>
           </form>
@@ -114,7 +114,7 @@ export default async function EmployeeDetailPage({
             ))}
           </nav>
           {tasks.length === 0 ? (
-            <p className="text-sm text-gray-600">No tasks here.</p>
+            <p className="text-sm text-muted">No tasks here.</p>
           ) : (
             <ul className="flex flex-col gap-1 text-sm">
               {tasks.map((t) => (

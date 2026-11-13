@@ -14,18 +14,18 @@ export function TaskFilters({
   overdue?: boolean;
   extra?: React.ReactNode;
 }) {
-  const field = "rounded border border-gray-300 px-3 py-2";
+  const field = "rounded border border-border px-3 py-2";
   return (
     <form className="flex flex-wrap items-center gap-2">
       {extra}
-      <input name="q" defaultValue={q} placeholder="Search title or code" className={field} />
-      <select name="status" defaultValue={status ?? ""} className={field}>
+      <input name="q" aria-label="Search" defaultValue={q} placeholder="Search title or code" className={field} />
+      <select name="status" aria-label="Status" defaultValue={status ?? ""} className={field}>
         <option value="">All statuses</option>
         {STATUSES.map((s) => (
           <option key={s}>{s}</option>
         ))}
       </select>
-      <select name="priority" defaultValue={priority ?? ""} className={field}>
+      <select name="priority" aria-label="Priority" defaultValue={priority ?? ""} className={field}>
         <option value="">All priorities</option>
         {PRIORITIES.map((p) => (
           <option key={p}>{p}</option>
@@ -34,7 +34,7 @@ export function TaskFilters({
       <label className="flex items-center gap-1 text-sm">
         <input type="checkbox" name="overdue" value="1" defaultChecked={overdue} /> Overdue only
       </label>
-      <button type="submit" className="rounded border border-gray-300 px-3 py-2">
+      <button type="submit" className="rounded border border-border px-3 py-2">
         Filter
       </button>
     </form>

@@ -9,14 +9,14 @@ type Option = { id: string; label: string };
 export function ProjectForm({ clients, employees, defaultOwnerId }: { clients: Option[]; employees: Option[]; defaultOwnerId: string | null }) {
   const [state, action, pending] = useActionState(createProjectAction, initial);
   const [type, setType] = useState<"Client" | "Internal">("Client");
-  const input = "rounded border border-gray-300 px-3 py-2";
+  const input = "rounded border border-border px-3 py-2";
   const err = (k: string) => state.fieldErrors?.[k]?.[0];
   return (
     <form action={action} className="flex max-w-md flex-col gap-3">
       <label className="flex flex-col gap-1 text-sm">
         Project name
         <input name="name" required className={input} />
-        {err("name") ? <span className="text-red-600">{err("name")}</span> : null}
+        {err("name") ? <span className="text-danger">{err("name")}</span> : null}
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Type
@@ -61,20 +61,20 @@ export function ProjectForm({ clients, employees, defaultOwnerId }: { clients: O
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Due date
           <input name="dueDate" type="date" className={input} />
-          {err("dueDate") ? <span className="text-red-600">{err("dueDate")}</span> : null}
+          {err("dueDate") ? <span className="text-danger">{err("dueDate")}</span> : null}
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">
         Budget (optional)
         <input name="budgetAmount" inputMode="decimal" placeholder="0.00" className={input} />
-        {err("budgetAmount") ? <span className="text-red-600">{err("budgetAmount")}</span> : null}
+        {err("budgetAmount") ? <span className="text-danger">{err("budgetAmount")}</span> : null}
       </label>
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="rounded bg-black px-3 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
         {pending ? "Saving…" : "Create project"}
       </button>
     </form>

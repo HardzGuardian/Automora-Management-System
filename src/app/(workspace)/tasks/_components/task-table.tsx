@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { TaskDTO } from "@/modules/tasks";
 
 /** Responsive list: scrolls horizontally on narrow screens. */
 export function TaskTable({ rows, today, selectFormId }: { rows: TaskDTO[]; today: string; selectFormId?: string }) {
-  if (rows.length === 0) return <p className="text-sm text-gray-600">No tasks match.</p>;
+  if (rows.length === 0) return <p className="text-sm text-muted">No tasks match.</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[40rem] text-left text-sm">
@@ -34,9 +35,11 @@ export function TaskTable({ rows, today, selectFormId }: { rows: TaskDTO[]; toda
                     {t.title}
                   </Link>
                 </td>
-                <td>{t.status}</td>
+                <td>
+                  <StatusBadge status={t.status} overdue={overdue} />
+                </td>
                 <td>{t.priority}</td>
-                <td className={overdue ? "font-semibold text-red-600" : ""}>
+                <td className={overdue ? "font-semibold text-danger" : ""}>
                   {t.dueDate ?? "—"}
                   {overdue ? " (overdue)" : ""}
                 </td>

@@ -87,36 +87,36 @@ Update the row in the same PR that finishes the task. Status: `todo` · `doing` 
 
 | ID | Task | Status | PR |
 |---|---|---|---|
-| U-01 | Design tokens + Tailwind theme + shadcn/ui setup + Inter font; light theme (dark mode out  | todo | |
-| U-02 | App shell | todo | |
-| U-03 | Nav is permission-aware (hides items the actor can't use) — convenience only, services sti | todo | |
-| U-04 | Base components | todo | |
-| U-05 | DataTable (TanStack) | todo | |
-| U-06 | Form kit (React Hook Form + Zod) | todo | |
-| U-07 | State components | todo | |
-| U-08 | Settings – company profile & preferences | todo | |
-| U-09 | Security headers + CSP in next.config.ts; Dockerfile draft | todo | |
-| U-10 | Employees, Clients, Projects list pages on the DataTable (using Sagar's services; he owns  | todo | |
-| U-11 | Settings – roles & permissions UI (matrix by permission group, confirmation on change) on  | todo | |
-| U-12 | Dashboard layout with mock data | todo | |
-| U-13 | db/schema/notifications.ts (notifications, notification_events with unique dedupe key); no | todo | |
-| U-14 | Notification centre page + header bell with unread badge; read/unread; links to entities;  | todo | |
-| U-15 | Chart components (Recharts) | todo | |
-| U-16 | Deadline list and overdue list components | todo | |
-| U-17 | Calendar component (month/week, due dates) used by Sagar's task calendar | todo | |
-| U-18 | Reports & Analytics shell | todo | |
-| U-19 | lib/export | todo | |
-| U-20 | Invoices / Payments / Expenses screens' shared parts (status badges, money display, filter | todo | |
-| U-21 | Dashboard finance snapshot widget on Chintan's getFinanceSnapshot (hidden without finance  | todo | |
-| U-22 | Financial Reports page frame + project-finance tab placeholders replaced with real data | todo | |
-| U-23 | modules/reports/dashboard.ts | todo | |
-| U-24 | KPIs | todo | |
-| U-25 | Reports | todo | |
-| U-26 | Reconciliation tests (AC-12) | todo | |
-| U-27 | PDF report interfaces for selected reports | todo | |
-| U-28 | Reminder jobs (/api/cron/*, protected by CRON_SECRET) | todo | |
-| U-29 | Accessibility pass: keyboard, focus, labels, contrast, non-colour status cues | todo | |
-| U-30 | Responsive pass on every screen; Playwright viewports (mobile/tablet/desktop) | todo | |
-| U-31 | Playwright E2E for the main workflows (login, client→project→task, employee update, invoic | todo | |
-| U-32 | Error boundaries, 404/500 pages, global loading states | todo | |
-| U-33 | Deployment | todo | |
+| U-01 | Design tokens + Tailwind theme + shadcn/ui setup + Inter font; light theme (dark mode out  | review | no shadcn package: hand-built accessible components + /dev/ui gallery |
+| U-02 | App shell | review |  |
+| U-03 | Nav is permission-aware (hides items the actor can't use) — convenience only, services sti | review |  |
+| U-04 | Base components | review |  |
+| U-05 | DataTable (TanStack) | review |  |
+| U-06 | Form kit (React Hook Form + Zod) | review |  |
+| U-07 | State components | review |  |
+| U-08 | Settings – company profile & preferences | review |  |
+| U-09 | Security headers + CSP in next.config.ts; Dockerfile draft | review | headers+CSP live; Dockerfile untested (no Docker) |
+| U-10 | Employees, Clients, Projects list pages on the DataTable (using Sagar's services; he owns  | review |  |
+| U-11 | Settings – roles & permissions UI (matrix by permission group, confirmation on change) on  | review |  |
+| U-12 | Dashboard layout with mock data | review |  |
+| U-13 | db/schema/notifications.ts (notifications, notification_events with unique dedupe key); no | review |  |
+| U-14 | Notification centre page + header bell with unread badge; read/unread; links to entities;  | review |  |
+| U-15 | Chart components (Recharts) | review |  |
+| U-16 | Deadline list and overdue list components | review |  |
+| U-17 | Calendar component (month/week, due dates) used by Sagar's task calendar | todo | task calendar exists (Sagar's page); not extracted as a shared component |
+| U-18 | Reports & Analytics shell | review |  |
+| U-19 | lib/export | review |  |
+| U-20 | Invoices / Payments / Expenses screens' shared parts (status badges, money display, filter | review |  |
+| U-21 | Dashboard finance snapshot widget on Chintan's getFinanceSnapshot (hidden without finance  | review |  |
+| U-22 | Financial Reports page frame + project-finance tab placeholders replaced with real data | review |  |
+| U-23 | modules/reports/dashboard.ts | review |  |
+| U-24 | KPIs | review |  |
+| U-25 | Reports | review |  |
+| U-26 | Reconciliation tests (AC-12) | review |  |
+| U-27 | PDF report interfaces for selected reports | review |  |
+| U-28 | Reminder jobs (/api/cron/*, protected by CRON_SECRET) | review |  |
+| U-29 | Accessibility pass: keyboard, focus, labels, contrast, non-colour status cues | review |  |
+| U-30 | Responsive pass on every screen; Playwright viewports (mobile/tablet/desktop) | review | Playwright 375/768/1280 over ~23 routes |
+| U-31 | Playwright E2E for the main workflows (login, client→project→task, employee update, invoic | review | Playwright: auth, client→project→task, employee, invoice→receipt, expense→payment, reports |
+| U-32 | Error boundaries, 404/500 pages, global loading states | review |  |
+| U-33 | Deployment | review | Dockerfile + runbook + restore drill done; image not built here (no Docker) and no staging deploy |

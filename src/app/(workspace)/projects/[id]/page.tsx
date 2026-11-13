@@ -59,16 +59,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       ? (await listEmployees(actor, { pageSize: 100, status: "Active" })).rows.filter((e) => !members.some((m) => m.employeeId === e.id))
       : [];
   const nextStatuses = PROJECT_TRANSITIONS[project.status as ProjectStatus] ?? [];
-  const btn = "rounded border border-gray-300 px-3 py-2";
+  const btn = "rounded border border-border px-3 py-2";
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className="flex flex-col gap-6">
       <Link href="/projects" className="text-sm underline">
         ← Projects
       </Link>
       <header>
         <h1 className="text-2xl font-semibold">{project.name}</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           {project.projectCode} · {project.type} · {project.status} · due {project.dueDate ?? "—"} · budget{" "}
           {project.budgetAmount ? `${project.budgetAmount} ${project.currency}` : "—"}
         </p>
@@ -113,7 +113,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         {candidates.length > 0 ? (
           <form action={addMemberAction} className="flex gap-2">
             <input type="hidden" name="id" value={id} />
-            <select name="employeeId" required className="rounded border border-gray-300 px-3 py-2">
+            <select name="employeeId" aria-label="Employee to add" required className="rounded border border-border px-3 py-2">
               {candidates.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.employeeCode} {e.fullName}
@@ -149,8 +149,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         {can(actor, "projects.milestones.manage") ? (
           <form action={addMilestoneAction} className="flex flex-wrap gap-2">
             <input type="hidden" name="id" value={id} />
-            <input name="name" required placeholder="Milestone name" className="rounded border border-gray-300 px-3 py-2" />
-            <input name="dueDate" type="date" className="rounded border border-gray-300 px-3 py-2" />
+            <input name="name" required placeholder="Milestone name" className="rounded border border-border px-3 py-2" />
+            <input name="dueDate" type="date" className="rounded border border-border px-3 py-2" />
             <button type="submit" className={btn}>
               Add milestone
             </button>
@@ -165,7 +165,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <section className="flex flex-col gap-2" aria-label="Finance">
           <h2 className="text-lg font-medium">Finance (cash basis)</h2>
           {financeUnavailable ? (
-            <p className="text-sm text-gray-600">Finance data is unavailable right now.</p>
+            <p className="text-sm text-muted">Finance data is unavailable right now.</p>
           ) : finance && finance.currencies.length > 0 ? (
             <ul className="text-sm">
               {finance.currencies.map((c) => (
@@ -175,7 +175,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-600">No confirmed receipts or expense payments yet.</p>
+            <p className="text-sm text-muted">No confirmed receipts or expense payments yet.</p>
           )}
         </section>
       ) : null}

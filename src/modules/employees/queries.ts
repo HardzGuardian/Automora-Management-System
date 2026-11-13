@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { employees } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
@@ -27,8 +27,8 @@ export async function queryEmployees(
     );
   }
   const where = and(...conds);
-  const order =
-    f.sort === "code" ? asc(employees.employeeCode) : f.sort === "joined" ? asc(employees.joiningDate) : asc(employees.fullName);
+  const dir = f.dir === "desc" ? desc : asc;
+  const order = f.sort === "code" ? dir(employees.employeeCode) : f.sort === "joined" ? dir(employees.joiningDate) : dir(employees.fullName);
 
   const [rows, [{ total }]] = await Promise.all([
     db

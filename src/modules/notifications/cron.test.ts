@@ -33,7 +33,7 @@ describe("cron route authentication", () => {
     expect(ok.headers.get("cache-control")).toBe("no-store");
     expect(await ok.json()).toMatchObject({ failures: [] });
     expect((await invoiceGET(req(`Bearer ${SECRET}`))).status).toBe(200);
-  });
+  }, 120_000); // runs the jobs for every company the shared test database has accumulated
 });
 
 describe("project reminders", () => {

@@ -21,7 +21,7 @@ export function InviteForm({
       <input type="hidden" name="email" value={email} />
       <label className="flex flex-col gap-1 text-sm">
         Role for {email}
-        <select name="roleId" required className="rounded border border-gray-300 px-3 py-2">
+        <select name="roleId" required className="rounded border border-border px-3 py-2">
           {roles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
@@ -30,16 +30,16 @@ export function InviteForm({
         </select>
       </label>
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {state.error}
         </p>
       ) : null}
       {state.acceptUrl ? (
-        <p role="status" className="break-all text-sm text-green-700">
+        <p role="status" className="break-all text-sm text-success">
           Invitation created (and emailed if mail is configured). Link: {state.acceptUrl}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="rounded bg-black px-3 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded bg-primary px-3 py-2 text-white disabled:opacity-50">
         {pending ? "Inviting…" : "Send invitation"}
       </button>
     </form>
