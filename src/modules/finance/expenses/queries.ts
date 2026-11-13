@@ -79,7 +79,7 @@ export async function listExpenses(actor: Actor, input: ExpenseListQueryInput = 
   const expenseTotals = db.select({
     expenseId: expensePayments.expenseId,
     companyId: expensePayments.companyId,
-    total: confirmedExpenseTotal,
+    total: confirmedExpenseTotal.as("paid_total"),
   }).from(expensePayments).where(and(
     eq(expensePayments.companyId, actor.companyId),
     eq(expensePayments.status, "confirmed"),
@@ -100,8 +100,8 @@ export async function listExpenses(actor: Actor, input: ExpenseListQueryInput = 
     dueDate: expenses.dueDate,
     currency: companies.currency,
     total: expenses.total,
-    confirmedPayments: sql<string>`COALESCE(${expenseTotals.total}, 0)::numeric`,
-    outstanding: sql<string>`GREATEST(${expenses.total}::numeric - COALESCE(${expenseTotals.total}, 0)::numeric, 0)::numeric`,
+    confirmedPayments: sql<string>`COALESCE(${expenseTotals.total}, 0)::numeric`.as("confirmedPayments"),
+    outstanding: sql<string>`GREATEST(${expenses.total}::numeric - COALESCE(${expenseTotals.total}, 0)::numeric, 0)::numeric`.as("outstanding"),
     status: sql<ExpenseListRow["status"]>`CASE
       WHEN GREATEST(${expenses.total}::numeric - COALESCE(${expenseTotals.total}, 0)::numeric, 0) <= 0 THEN 'paid'
       WHEN COALESCE(${expenseTotals.total}, 0)::numeric > 0 THEN 'partially_paid'

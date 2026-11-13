@@ -43,7 +43,7 @@ async function financeWorld() {
 const line = { description: "Design work", quantity: "2", unitPrice: "1000.00", discount: "0", taxRate: "18" }; // 2000 + 18% = 2360.00
 
 async function issuedInvoice(w: Awaited<ReturnType<typeof financeWorld>>) {
-  const draft = await createInvoiceDraft(w.actor, { clientId: w.client.id, projectId: w.project.id, dueDate: "2026-04-10", idempotencyKey: randomUUID(), items: [line] });
+  const draft = await createInvoiceDraft(w.actor, { clientId: w.client.id, projectId: w.project.id, dueDate: "2099-12-31", idempotencyKey: randomUUID(), items: [line] });
   const issued = await issueInvoice(w.actor, draft.id);
   return { draft, issued };
 }
@@ -197,5 +197,46 @@ describe("permissions and isolation", () => {
     expect(await code(confirmReceipt(a, r.id))).toMatch(/NOT_FOUND$/);
     expect(await code(recordReceipt(a, receipt(issued.id, "10.00")))).toMatch(/NOT_FOUND$/);
     expect(await code(createInvoiceDraft(a, { clientId: w.client.id, idempotencyKey: randomUUID(), items: [] }))).toMatch(/NOT_FOUND$/);
+  });
+});
+
+describe("finance reports run against the real database", () => {
+  it("summary, receivables, cash movement and expense register all execute and agree", async () => {
+    const { getCashMovementReport, getExpenseRegisterReport, getFinanceReportSummary, getReceivablesReport } = await import("@/modules/finance");
+    const w = await financeWorld();
+    const { issued } = await issuedInvoice(w);
+    await confirmReceipt(w.actor, (await recordReceipt(w.actor, receipt(issued.id, "1000.00"))).id);
+    const range = { fromDate: "2020-01-01", toDate: "2099-12-31" };
+
+    const summary = await getFinanceReportSummary(w.actor, range);
+    expect(summary.pointInTime.outstandingReceivablesByCurrency).toEqual([{ currency: "INR", amount: "1360.00" }]);
+
+    const receivables = await getReceivablesReport(w.actor, { ...range, page: 1, pageSize: 50 });
+    expect(JSON.stringify(receivables)).toContain("1360.00");
+
+    const cash = await getCashMovementReport(w.actor, { ...range, page: 1, pageSize: 50 });
+    expect(JSON.stringify(cash)).toContain("1000.00");
+
+    const register = await getExpenseRegisterReport(w.actor, { ...range, page: 1, pageSize: 50 } as never);
+    expect(register).toBeDefined();
+  });
+});
+
+describe("finance list pages' queries run against the real database", () => {
+  it("lists invoices, receipts, expenses and expense payments with correct balances", async () => {
+    const { listInvoices, listReceipts, listExpenses, listExpensePayments } = await import("@/modules/finance");
+    const w = await financeWorld();
+    const { issued } = await issuedInvoice(w);
+    await confirmReceipt(w.actor, (await recordReceipt(w.actor, receipt(issued.id, "1000.00"))).id);
+    const category = await createExpenseCategory(w.actor, { name: `Cat ${randomUUID().slice(0, 6)}` });
+    const expense = await createExpense(w.actor, { categoryId: category.id, projectId: w.project.id, payee: "V", description: "d", expenseDate: "2026-03-05", total: "500.00", idempotencyKey: randomUUID() } as never);
+    await confirmExpensePayment(w.actor, (await recordExpensePayment(w.actor, { expenseId: expense.id, amount: "200.00", paymentDate: "2026-03-06", method: "cash", status: "pending", idempotencyKey: randomUUID() })).id);
+
+    const invoices = await listInvoices(w.actor, { page: 1, pageSize: 25 });
+    expect(invoices.rows[0]).toMatchObject({ total: "2360.00", confirmedReceipts: "1000.00", outstanding: "1360.00", status: "partially_paid" });
+    expect((await listReceipts(w.actor, { page: 1, pageSize: 25 })).rows).toHaveLength(1);
+    const expenses = await listExpenses(w.actor, { page: 1, pageSize: 25 });
+    expect(expenses.rows[0]).toMatchObject({ total: "500.00", confirmedPayments: "200.00", outstanding: "300.00", status: "partially_paid" });
+    expect(await listExpensePayments(w.actor, expense.id)).toHaveLength(1);
   });
 });

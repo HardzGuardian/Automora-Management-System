@@ -54,8 +54,8 @@ function baseQuery(actor: Actor, filters: InvoiceListInput, today: string) {
     currency: invoices.currency,
     total: invoices.total,
     state: invoices.status,
-    confirmedReceipts: confirmedAllocationTotal,
-    outstanding: outstandingTotal,
+    confirmedReceipts: confirmedAllocationTotal.as("confirmedReceipts"),
+    outstanding: outstandingTotal.as("outstanding"),
   }).from(invoices)
     .innerJoin(clients, and(eq(clients.id, invoices.clientId), eq(clients.companyId, invoices.companyId)))
     .leftJoin(paymentAllocations, and(

@@ -42,8 +42,8 @@ export async function getReceivablesReport(actor: Actor, input: ReceivablesRepor
     dueDate: invoices.dueDate,
     currency: invoices.currency,
     total: invoices.total,
-    confirmedReceipts: paidTotal,
-    outstanding: balance,
+    confirmedReceipts: paidTotal.as("confirmedReceipts"),
+    outstanding: balance.as("outstanding"),
   }).from(invoices)
     .innerJoin(clients, and(eq(clients.id, invoices.clientId), eq(clients.companyId, invoices.companyId)))
     .leftJoin(paymentAllocations, and(

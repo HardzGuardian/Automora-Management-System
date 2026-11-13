@@ -71,7 +71,7 @@ export async function getFinanceReportSummary(actor: Actor, input: FinanceReport
 
   const invoiceBalances = db.select({
     currency: invoices.currency,
-    outstanding: sql<string>`GREATEST(${invoices.total}::numeric - ${confirmedAllocatedAmount}, 0)::numeric`,
+    outstanding: sql<string>`GREATEST(${invoices.total}::numeric - ${confirmedAllocatedAmount}, 0)::numeric`.as("outstanding"),
   })
     .from(invoices)
     .leftJoin(paymentAllocations, and(
