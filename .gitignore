@@ -32,3 +32,8 @@ shot-*.png
 .data-dev.log
 backups/
 *.tsbuildinfo
+
+# AI assistant files: local only, never committed
+AGENTS.md
+.serena/
+docs/superpowers/
