@@ -22,12 +22,20 @@ jobs:
       BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
       BETTER_AUTH_URL: http://localhost:3000
       APP_URL: http://localhost:3000
+      # Enables src/lib/storage/s3.integration.test.ts (skipped when unset).
+      S3_TEST_ENDPOINT: http://localhost:9000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Dependency audit (production dependencies)
+        run: pnpm audit --prod --audit-level=moderate
+      - name: Start MinIO (S3-compatible storage)
+        run: |
+          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin minio/minio server /data
+          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/ready && break; sleep 1; done
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -65,3 +73,39 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report
+  docker:
+    # Proves the production image builds, migrates a database, starts and answers its health check,
+    # and that sharp (profile photos) loads inside the Alpine image.
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: automora
+          POSTGRES_PASSWORD: automora
+          POSTGRES_DB: automora
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U automora" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_URL: postgres://automora:automora@localhost:5432/automora
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the application image
+        run: docker build -t automora:ci .
+      - name: Build the migration image
+        run: docker build --target migrate -t automora-migrate:ci .
+      - name: Apply migrations
+        run: docker run --rm --network host -e DATABASE_URL="$DB_URL" automora-migrate:ci
+      - name: sharp loads inside the image
+        run: docker run --rm automora:ci node -e "require('sharp'); console.log('sharp ok')"
+      - name: Start the application and wait for /api/health
+        run: |
+          docker run -d --name app --network host             -e DATABASE_URL="$DB_URL"             -e BETTER_AUTH_SECRET=ci-secret-ci-secret-ci-secret-ci-secret             -e BETTER_AUTH_URL=http://localhost:3000 -e APP_URL=http://localhost:3000             -e CRON_SECRET=ci-cron-secret-0123456789 -e ALLOW_LOCAL_PRODUCTION=true             automora:ci
+          for i in $(seq 1 40); do curl -sf http://localhost:3000/api/health && exit 0; sleep 2; done
+          docker logs app
+          exit 1
+      - name: Container logs
+        if: always()
+        run: docker logs app || true

@@ -11,7 +11,7 @@ WORKDIR /app
 RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Build-time placeholders only; real values are injected at runtime (see docs/11-deployment.md).
+# Build-time placeholders only; real values are injected at runtime (see docs/11-deployment-runbook.md).
 ENV DATABASE_URL=postgres://build:build@localhost:5432/build \
     BETTER_AUTH_SECRET=build-time-placeholder-build-time-placeholder \
     BETTER_AUTH_URL=http://localhost:3000 \

@@ -108,6 +108,8 @@ Performance baselines at 10k tasks are in [docs/09-query-performance.md](docs/09
 - **Notifications and reminders:** in-app notifications with idempotent delivery; `GET /api/cron/reminders` (Bearer `CRON_SECRET`) creates due-soon/overdue task, project and invoice reminders without duplicates.
 - **Operations:** security headers + CSP, `/api/health`, error/404/loading pages, `Dockerfile`, backup and restore-drill scripts. See [docs/11-deployment-runbook.md](docs/11-deployment-runbook.md).
 - **Browser tests:** `pnpm e2e` runs Playwright against a production build and a seeded database: login, workflows (client → project → task, employee, invoice → receipt, expense → payment, reports), responsive checks at 375/768/1280 and axe accessibility on every main screen. First time: `pnpm exec playwright install chromium`.
+- **S3 storage test:** `src/lib/storage/s3.integration.test.ts` runs the real S3 driver against a real server and is skipped unless `S3_TEST_ENDPOINT` is set. CI starts MinIO and sets it. Locally: `docker run -d -p 9000:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin minio/minio server /data`, then `S3_TEST_ENDPOINT=http://localhost:9000 pnpm test src/lib/storage/s3.integration.test.ts`.
+- **CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests, a production build, a dependency audit, the S3 test, the browser tests, and a Docker job that builds the image, migrates a database, starts the container and checks `/api/health`.
 
 ## Status
 
