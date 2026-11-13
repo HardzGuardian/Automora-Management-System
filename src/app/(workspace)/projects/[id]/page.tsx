@@ -37,6 +37,8 @@ import {
   removeMemberAction,
 } from "../actions";
 import { TaskTable } from "../../tasks/_components/task-table";
+import { loadLinkedFinance } from "../../_components/linked-data";
+import { LinkedRecords } from "../../_components/linked-records";
 import { listTasks } from "@/modules/tasks";
 
 const compact = "min-h-8 px-2.5 text-xs";
@@ -79,6 +81,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
       financeUnavailable = true; // never let a finance problem break the project page
     }
   }
+  const linked = await loadLinkedFinance(actor, { projectId: id }, { expenses: true });
   const canManageMembers = can(actor, "projects.members.manage");
   const canMilestones = can(actor, "projects.milestones.manage");
   const candidates =
@@ -287,6 +290,16 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
               )}
               <p className="text-xs text-muted">Currencies are never added together.</p>
             </section>
+          ) : null}
+
+          {linked.invoices ? (
+            <LinkedRecords title="Invoices" rows={linked.invoices.rows} total={linked.invoices.total} empty="No invoices for this project." />
+          ) : null}
+          {linked.receipts ? (
+            <LinkedRecords title="Receipts" rows={linked.receipts.rows} total={linked.receipts.total} empty="No receipts for this project." />
+          ) : null}
+          {linked.expenses ? (
+            <LinkedRecords title="Expenses" rows={linked.expenses.rows} total={linked.expenses.total} empty="No expenses for this project." />
           ) : null}
         </div>
 

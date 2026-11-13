@@ -35,8 +35,14 @@ export async function listReceipts(actor: Actor, input: ReceiptListQueryInput = 
   const where = [eq(payments.companyId, actor.companyId)];
   if (filters.invoiceId) where.push(eq(payments.invoiceId, filters.invoiceId));
   if (filters.status) where.push(eq(payments.status, filters.status));
+  // Client and project belong to the invoice, so these filters go through it.
+  if (filters.clientId) where.push(eq(invoices.clientId, filters.clientId));
+  if (filters.projectId) where.push(eq(invoices.projectId, filters.projectId));
   const condition = and(...where);
-  const [countRow] = await db.select({ value: count() }).from(payments).where(condition);
+  const [countRow] = await db.select({ value: count() }).from(payments).innerJoin(invoices, and(
+    eq(invoices.id, payments.invoiceId),
+    eq(invoices.companyId, payments.companyId),
+  )).where(condition);
   const rows = await db.select({
     id: payments.id,
     invoiceId: payments.invoiceId,

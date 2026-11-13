@@ -16,6 +16,8 @@ import { can } from "@/lib/permissions";
 import { getClient, listClientNotes } from "@/modules/clients";
 import { getClientFinanceSummary, type ClientFinanceSummary } from "@/modules/finance";
 import { listProjects } from "@/modules/projects";
+import { LinkedRecords } from "../../_components/linked-records";
+import { loadLinkedFinance, loadLinkedTasks } from "../../_components/linked-data";
 import { addNoteAction, archiveClientAction } from "../actions";
 import { ClientForm } from "../client-form";
 
@@ -43,9 +45,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       financeUnavailable = true; // never let a finance problem break the client page
     }
   }
-  const [notes, projects] = await Promise.all([
+  const [notes, projects, tasks, linked] = await Promise.all([
     listClientNotes(actor, id),
     listProjects(actor, { clientId: id, includeArchived: true, pageSize: 100 }),
+    loadLinkedTasks(actor, { clientId: id }),
+    loadLinkedFinance(actor, { clientId: id }),
   ]);
   const canUpdate = can(actor, "clients.update");
   const tz = actor.timezone;
@@ -124,6 +128,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               )}
             </section>
           ) : null}
+
+          <LinkedRecords title="Tasks" rows={tasks.rows} total={tasks.total} empty="No tasks linked to this client." />
+          {linked.invoices ? (
+            <LinkedRecords
+              title="Invoices"
+              rows={linked.invoices.rows}
+              total={linked.invoices.total}
+              empty="No invoices yet."
+              viewAllHref={`/invoices?clientId=${id}`}
+            />
+          ) : null}
+          {linked.receipts ? <LinkedRecords title="Receipts" rows={linked.receipts.rows} total={linked.receipts.total} empty="No receipts yet." /> : null}
 
           <SectionCard title="Notes" count={notes.length}>
             {notes.length === 0 ? (

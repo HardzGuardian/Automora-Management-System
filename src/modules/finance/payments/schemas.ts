@@ -44,6 +44,8 @@ export const receiptListSchema = z.object({
   page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER / 100).default(1),
   pageSize: z.number().int().positive().max(100).default(25),
   invoiceId: z.string().uuid().optional(),
+  clientId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
   status: z.enum(["pending", "confirmed", "reversed"]).optional(),
 });
 
