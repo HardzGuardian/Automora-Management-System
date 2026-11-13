@@ -22,6 +22,7 @@ describe("visibleNav", () => {
   it("shows Reports for any report scope and Settings for roles.read", () => {
     expect(labels(["reports.personal.read"])).toContain("Reports");
     expect(labels(["roles.read"])).toContain("Settings");
+    expect(labels(["audit.read"])).toContain("Settings"); // the Security tab
   });
   it("shows everything for a user with every permission", () => {
     const all = NAV.flatMap((g) => g.items.flatMap((i) => i.anyOf ?? []));

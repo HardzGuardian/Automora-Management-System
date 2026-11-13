@@ -49,6 +49,7 @@ Example: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://app.example.
 ## 7. Monitoring and incident basics
 - Uptime monitor on `/api/health` (503 = database unreachable).
 - Application errors are logged to stdout with a reference digest shown to the user; ship container logs to your log service.
+- **Security page** (Settings → Security, needs `audit.read`): failed sign-ins, blocked sign-ins (too many attempts), denied permissions and failed scheduled jobs, with 24-hour counts. Recorded automatically in `security_events` (append-only, never edited or erased). Repeated denials by the same person are logged once a minute. A cron endpoint that throws, or reports failed items (207), records a "Scheduled job failed" event. Check it daily, or after any alert from the uptime monitor. For push alerts, point your log service at the structured error lines and the cron scheduler at the 207/500 responses; the page is the in-app view, not a pager.
 - Suspected account compromise: Settings → Employees → Suspend (revokes sessions), then reset the password. Audit trail: `activity_logs` (append-only).
 - Security headers/CSP: `next.config.ts`. CSP allows inline scripts/styles because Next.js needs them; tightening to nonces is a future hardening item.
 
@@ -58,5 +59,7 @@ Example: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://app.example.
 | Dockerfile | Written following Next.js standalone output; **not built or run here (no Docker on the development machine)** |
 | Staging deployment | **Not done** (needs hosting decision, open decision #1) |
 | Health check, headers, error pages | Implemented and exercised by the browser suite |
+| Docker image, S3 driver | CI now builds the image, migrates a database, starts the container and runs the S3 driver against MinIO (`.github/workflows/ci.yml`). **Written and parsed here, not yet run: first CI run is the real check** |
+| Monitoring | Security page and `security_events` implemented and tested; no external pager or error-reporting service (decision: built-in only) |
 | Backup + restore | Scripts written and drilled locally (section 6) |
 | Rate limiting | Login/reset rate limits are in-memory (per instance); use database storage before running several instances |

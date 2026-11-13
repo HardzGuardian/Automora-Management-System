@@ -10,3 +10,4 @@ export * from "./audit";
 export * from "./finance";
 export * from "./notifications";
 export * from "./teams";
+export * from "./monitoring";

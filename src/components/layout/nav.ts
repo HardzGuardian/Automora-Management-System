@@ -29,7 +29,7 @@ export const NAV: readonly NavGroup[] = [
     label: "System",
     items: [
       { href: "/reports", label: "Reports", anyOf: ["reports.all.read", "reports.limited.read", "reports.personal.read"] },
-      { href: "/settings", label: "Settings", anyOf: ["settings.read", "roles.read"] },
+      { href: "/settings", label: "Settings", anyOf: ["settings.read", "roles.read", "users.read", "audit.read"] },
     ],
   },
 ];

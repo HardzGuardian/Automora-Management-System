@@ -7,5 +7,6 @@ export default async function SettingsIndex() {
   const actor = await requireActor();
   if (can(actor, "settings.read")) redirect("/settings/company");
   if (can(actor, "users.read")) redirect("/settings/users");
-  redirect("/settings/roles");
+  if (can(actor, "roles.read")) redirect("/settings/roles");
+  redirect("/settings/security");
 }

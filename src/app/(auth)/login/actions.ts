@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/lib/auth/auth";
 import { AUTH_LIMITS, clientIp, consumeRateLimit, isRateLimited } from "@/lib/auth/rate-limit";
+import { recordLoginFailure } from "@/modules/monitoring";
 
 const schema = z.object({
   email: z.string().email(),
@@ -29,7 +30,10 @@ export async function signInAction(_prev: LoginState, formData: FormData): Promi
   const emailKey = { key: `sign-in-failed:email:${email}`, ...AUTH_LIMITS.signInEmail };
   const limited =
     (await isRateLimited(ipKey.key, ipKey.limit, ipKey.windowMs)) || (await isRateLimited(emailKey.key, emailKey.limit, emailKey.windowMs));
-  if (limited) return { error: "Too many failed attempts. Please wait a few minutes and try again." };
+  if (limited) {
+    await recordLoginFailure({ email, ip, reason: "too_many_attempts" });
+    return { error: "Too many failed attempts. Please wait a few minutes and try again." };
+  }
 
   try {
     await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
@@ -39,11 +43,14 @@ export async function signInAction(_prev: LoginState, formData: FormData): Promi
       consumeRateLimit(emailKey.key, emailKey.limit, emailKey.windowMs),
     ]);
     if (e instanceof APIError && e.statusCode === 429) {
+      await recordLoginFailure({ email, ip, reason: "too_many_attempts" });
       return { error: "Too many attempts. Please wait a minute and try again." };
     }
     if (e instanceof APIError && e.statusCode === 403) {
+      await recordLoginFailure({ email, ip, reason: "suspended" });
       return { error: "This account is suspended. Contact your administrator." };
     }
+    await recordLoginFailure({ email, ip, reason: "invalid" });
     return { error: "Invalid email or password." };
   }
   redirect("/");

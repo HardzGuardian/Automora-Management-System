@@ -19,4 +19,9 @@ export async function register(): Promise<void> {
 
   const { registerNotifier } = await import("@/modules/notifications");
   registerNotifier();
+
+  // Denied permission checks are recorded for the Security page (throttled, never blocks a request).
+  const { registerDenialReporter } = await import("@/lib/permissions");
+  const { recordPermissionDenied } = await import("@/modules/monitoring");
+  registerDenialReporter((actor, permission) => recordPermissionDenied(actor, permission));
 }
