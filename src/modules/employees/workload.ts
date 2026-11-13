@@ -1,11 +1,11 @@
 import "server-only";
-import { and, count, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { employees, taskAssignees, tasks } from "@/db/schema";
+import { employees, projectMembers, projects, taskActivityLogs, taskAssignees, tasks } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { overdueCondition, todayInTz } from "@/lib/dates";
 import { DomainError } from "@/lib/errors";
-import { requirePermission } from "@/lib/permissions";
+import { projectScope, requirePermission, taskScope } from "@/lib/permissions";
 
 export type Workload = {
   employeeId: string;
@@ -26,6 +26,25 @@ export type EmployeeTaskRow = {
 };
 
 export type TaskTab = "assigned" | "completed" | "overdue";
+
+export type EmployeeProjectRow = {
+  id: string;
+  projectCode: string;
+  name: string;
+  status: string;
+  membershipRole: string;
+  dueDate: string | null;
+  archived: boolean;
+};
+
+export type EmployeeActivityRow = {
+  id: string;
+  action: string;
+  taskId: string;
+  taskCode: string;
+  taskTitle: string;
+  createdAt: Date;
+};
 
 /** Own workload is always allowed; anyone else's needs employees.workload.read. */
 async function resolveTarget(actor: Actor, employeeId?: string): Promise<string> {
@@ -96,4 +115,54 @@ export async function getEmployeeTasks(
     .where(and(assignedTo(actor, target), tabCondition, isNull(tasks.archivedAt)))
     .orderBy(desc(tasks.dueDate), tasks.taskCode)
     .limit(200);
+}
+
+/**
+ * Projects the employee is a member of, limited to the projects the viewer may see
+ * (same rule as the project list). Same access as the workload tabs: own, or employees.workload.read.
+ */
+export async function getEmployeeProjects(actor: Actor, employeeId: string): Promise<EmployeeProjectRow[]> {
+  const target = await resolveTarget(actor, employeeId);
+  const rows = await db
+    .select({
+      id: projects.id,
+      projectCode: projects.projectCode,
+      name: projects.name,
+      status: projects.status,
+      membershipRole: projectMembers.membershipRole,
+      dueDate: projects.dueDate,
+      archivedAt: projects.archivedAt,
+    })
+    .from(projectMembers)
+    .innerJoin(projects, and(eq(projects.id, projectMembers.projectId), eq(projects.companyId, projectMembers.companyId)))
+    .where(and(eq(projectMembers.employeeId, target), eq(projectMembers.companyId, actor.companyId), projectScope(actor)))
+    .orderBy(asc(projects.name), asc(projects.id));
+  return rows.map(({ archivedAt, ...r }) => ({ ...r, archived: archivedAt !== null }));
+}
+
+/**
+ * What the employee did recently on tasks the viewer may see (comments excluded, newest first).
+ * Same access as the workload tabs: own, or employees.workload.read.
+ */
+export async function getEmployeeActivity(actor: Actor, employeeId: string, limit = 25): Promise<EmployeeActivityRow[]> {
+  const target = await resolveTarget(actor, employeeId);
+  const [emp] = await db
+    .select({ userId: employees.userId })
+    .from(employees)
+    .where(and(eq(employees.id, target), eq(employees.companyId, actor.companyId)));
+  if (!emp?.userId) return []; // no account yet, so nothing they could have done
+  return db
+    .select({
+      id: taskActivityLogs.id,
+      action: taskActivityLogs.action,
+      taskId: tasks.id,
+      taskCode: tasks.taskCode,
+      taskTitle: tasks.title,
+      createdAt: taskActivityLogs.createdAt,
+    })
+    .from(taskActivityLogs)
+    .innerJoin(tasks, and(eq(tasks.id, taskActivityLogs.taskId), eq(tasks.companyId, taskActivityLogs.companyId)))
+    .where(and(taskScope(actor), eq(taskActivityLogs.actorId, emp.userId), sql`${taskActivityLogs.action} NOT LIKE 'comment_%'`))
+    .orderBy(desc(taskActivityLogs.createdAt), desc(taskActivityLogs.id))
+    .limit(limit);
 }

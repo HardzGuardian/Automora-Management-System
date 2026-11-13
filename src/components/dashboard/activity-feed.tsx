@@ -15,6 +15,11 @@ const VERB: Record<string, string> = {
   attachment_removed: "removed a file from",
 };
 
+/** "changed the status of", "created", ... for a task activity action. */
+export function activityVerb(action: string): string {
+  return VERB[action] ?? action.replace(/_/g, " ");
+}
+
 export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   return (
     <section aria-label="Recent activity" className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4 shadow-sm">

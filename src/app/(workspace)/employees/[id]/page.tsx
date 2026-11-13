@@ -18,17 +18,31 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
-import { getEmployee, getEmployeeTasks, getWorkload, type TaskTab } from "@/modules/employees";
+import {
+  getEmployee,
+  getEmployeeActivity,
+  getEmployeeProjects,
+  getEmployeeTasks,
+  getWorkload,
+  type EmployeeActivityRow,
+  type EmployeeProjectRow,
+  type EmployeeTaskRow,
+  type TaskTab,
+} from "@/modules/employees";
 import { listRoles } from "@/modules/auth";
 import { departmentNamesForEmployees } from "@/modules/teams";
 import { deactivateAction, reactivateAction, suspendAction } from "../actions";
 import { ProfilePhotoCard } from "../_components/profile-photo-card";
+import { ActivityPanel, ProjectsPanel } from "./_components/work-panels";
 import { InviteForm } from "./invite-form";
 
-const TABS: { key: TaskTab; label: string }[] = [
+type Tab = TaskTab | "projects" | "activity";
+const TABS: { key: Tab; label: string }[] = [
   { key: "assigned", label: "Assigned" },
   { key: "completed", label: "Completed" },
   { key: "overdue", label: "Overdue" },
+  { key: "projects", label: "Projects" },
+  { key: "activity", label: "Activity" },
 ];
 
 export const metadata = { title: "Employee" };
@@ -44,7 +58,7 @@ export default async function EmployeeDetailPage({
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
   const { tab: rawTab, error: actionError } = await searchParams;
-  const tab: TaskTab = TABS.some((t) => t.key === rawTab) ? (rawTab as TaskTab) : "assigned";
+  const tab: Tab = TABS.some((t) => t.key === rawTab) ? (rawTab as Tab) : "assigned";
 
   let employee;
   try {
@@ -59,9 +73,17 @@ export default async function EmployeeDetailPage({
   const department = teamDepartments?.join(", ") ?? employee.department;
 
   const canSeeWork = actor.employeeId === id || can(actor, "employees.workload.read");
-  const [workload, tasks] = canSeeWork
-    ? await Promise.all([getWorkload(actor, id), getEmployeeTasks(actor, id, tab)])
-    : [null, []];
+  // Only the tab being shown is loaded.
+  const isTaskTab = tab !== "projects" && tab !== "activity";
+  const none = <T,>(): Promise<T[]> => Promise.resolve([]);
+  const [workload, tasks, projectRows, activityRows]: [Awaited<ReturnType<typeof getWorkload>> | null, EmployeeTaskRow[], EmployeeProjectRow[], EmployeeActivityRow[]] = canSeeWork
+    ? await Promise.all([
+        getWorkload(actor, id),
+        isTaskTab ? getEmployeeTasks(actor, id, tab) : none<EmployeeTaskRow>(),
+        tab === "projects" ? getEmployeeProjects(actor, id) : none<EmployeeProjectRow>(),
+        tab === "activity" ? getEmployeeActivity(actor, id) : none<EmployeeActivityRow>(),
+      ])
+    : [null, [], [], []];
 
   const canInvite =
     !employee.hasAccount && employee.employmentStatus === "Active" && can(actor, "users.invite") && can(actor, "roles.read");
@@ -152,10 +174,14 @@ export default async function EmployeeDetailPage({
 
           {canSeeWork ? (
             <SectionCard
-              title="Tasks"
-              action={<SegmentedNav label="Task filter" items={TABS.map((t) => ({ label: t.label, href: { query: { tab: t.key } }, active: t.key === tab }))} />}
+              title="Work"
+              action={<SegmentedNav label="Work view" items={TABS.map((t) => ({ label: t.label, href: { query: { tab: t.key } }, active: t.key === tab }))} />}
             >
-              {tasks.length === 0 ? (
+              {tab === "projects" ? (
+                <ProjectsPanel rows={projectRows} />
+              ) : tab === "activity" ? (
+                <ActivityPanel rows={activityRows} timezone={actor.timezone} />
+              ) : tasks.length === 0 ? (
                 <EmptyState title="No tasks here" description="Nothing matches this tab." />
               ) : (
                 <div className="overflow-x-auto rounded-md border border-border">

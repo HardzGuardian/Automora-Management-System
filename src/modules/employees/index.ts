@@ -2,5 +2,15 @@ export { createEmployee, getEmployee, listEmployees, updateEmployee } from "./se
 export { canAccessProfileImage, removeProfileImage, setProfileImage } from "./profile-image";
 export type { EmployeeDTO } from "./dto";
 export type { CreateEmployeeInput, ListEmployeesInput, UpdateEmployeeInput } from "./schemas";
-export { getEmployeeTasks, getWorkload, type EmployeeTaskRow, type TaskTab, type Workload } from "./workload";
+export {
+  getEmployeeActivity,
+  getEmployeeProjects,
+  getEmployeeTasks,
+  getWorkload,
+  type EmployeeActivityRow,
+  type EmployeeProjectRow,
+  type EmployeeTaskRow,
+  type TaskTab,
+  type Workload,
+} from "./workload";
 export { assertAssignable, deactivateEmployee, reactivateEmployee, suspendEmployee } from "./lifecycle";
