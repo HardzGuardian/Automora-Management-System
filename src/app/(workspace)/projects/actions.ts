@@ -7,6 +7,8 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
 import {
   addMember,
+  assignProjectToTeam,
+  unassignProjectFromTeam,
   changeProjectStatus,
   createMilestone,
   createProject,
@@ -75,4 +77,20 @@ export async function milestoneStatusAction(fd: FormData): Promise<void> {
   const status = z.enum(["Pending", "In Progress", "Completed"]).parse(fd.get("status"));
   await toActionResult(() => updateMilestone(actor, id, uuid.parse(fd.get("milestoneId")), { status }));
   revalidatePath(`/projects/${id}`);
+}
+
+export async function assignProjectTeamAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() => assignProjectToTeam(actor, id, uuid.parse(fd.get("teamId"))));
+  revalidatePath(`/projects/${id}`);
+  if (!r.ok) redirect(`/projects/${id}?error=${encodeURIComponent(r.error.message)}`);
+}
+
+export async function unassignProjectTeamAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() => unassignProjectFromTeam(actor, id, uuid.parse(fd.get("teamId"))));
+  revalidatePath(`/projects/${id}`);
+  if (!r.ok) redirect(`/projects/${id}?error=${encodeURIComponent(r.error.message)}`);
 }

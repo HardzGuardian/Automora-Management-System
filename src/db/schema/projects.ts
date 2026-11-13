@@ -82,6 +82,8 @@ export const projectMembers = pgTable(
     companyId: uuid("company_id").notNull(),
     employeeId: uuid("employee_id").notNull(),
     membershipRole: text("membership_role").notNull().default("member"),
+    // Set when the person is a member only because their team was assigned to the project.
+    viaTeamId: uuid("via_team_id"),
     createdAt: createdAt(),
   },
   (t) => [

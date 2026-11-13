@@ -1,6 +1,6 @@
 import type { tasks } from "@/db/schema";
 
-export type TaskAssigneeDTO = { employeeId: string; fullName: string };
+export type TaskAssigneeDTO = { employeeId: string; fullName: string; viaTeamId: string | null };
 
 export type TaskDTO = {
   id: string;

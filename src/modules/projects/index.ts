@@ -18,3 +18,4 @@ export {
   type MilestoneDTO,
 } from "./milestones";
 export { calcProgress, getProgressForProjects, getProjectProgress, type Progress } from "./progress";
+export { assignProjectToTeam, listProjectTeams, syncProjectTeams, syncTeamProjects, unassignProjectFromTeam, type ProjectTeamDTO } from "./team-assignment";

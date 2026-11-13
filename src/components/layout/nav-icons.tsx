@@ -38,6 +38,14 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M10.5 3.5a2.2 2.2 0 0 1 0 4.2M12 9.8c1.2.5 2 1.5 2.2 3.2" />
     </>
   ),
+  "/teams": (
+    <>
+      <circle cx="8" cy="4.5" r="1.8" />
+      <circle cx="3.6" cy="11.6" r="1.8" />
+      <circle cx="12.4" cy="11.6" r="1.8" />
+      <path d="M7 6.1 4.6 10M9 6.1 11.4 10M5.4 11.6h5.2" />
+    </>
+  ),
   "/invoices": (
     <>
       <path d="M3.5 2h6l3 3v9h-9z" />

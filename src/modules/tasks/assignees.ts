@@ -68,6 +68,13 @@ export async function unassignTask(actor: Actor, taskId: string, employeeId: str
   requirePermission(actor, "tasks.assign");
   await withTransaction(async (tx) => {
     await loadTask(tx, actor, taskId);
+    const [current] = await tx
+      .select({ viaTeamId: taskAssignees.viaTeamId })
+      .from(taskAssignees)
+      .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.employeeId, employeeId), eq(taskAssignees.companyId, actor.companyId)));
+    if (current?.viaTeamId) {
+      throw new DomainError("CONFLICT", "This person has the task through a team. Remove the team from the task, or take them out of the team.");
+    }
     const removed = await tx
       .delete(taskAssignees)
       .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.employeeId, employeeId), eq(taskAssignees.companyId, actor.companyId)))

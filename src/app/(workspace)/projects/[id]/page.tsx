@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { Alert } from "@/components/ui/alert";
 import { BackLink } from "@/components/ui/back-link";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { DetailHeader } from "@/components/ui/detail-header";
@@ -21,10 +22,15 @@ import {
   getProjectProgress,
   listMembers,
   listMilestones,
+  listProjectTeams,
   type ProjectStatus,
 } from "@/modules/projects";
+import { TeamAssignSection } from "@/components/teams/team-assign-section";
+import { listAssignableTeams } from "@/modules/teams";
 import {
   addMemberAction,
+  assignProjectTeamAction,
+  unassignProjectTeamAction,
   addMilestoneAction,
   changeStatusAction,
   milestoneStatusAction,
@@ -42,9 +48,10 @@ const CONSEQUENCE: Partial<Record<string, string>> = {
 
 export const metadata = { title: "Project" };
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const actor = await requireActor();
   const { id } = await params;
+  const { error } = await searchParams;
   if (!z.string().uuid().safeParse(id).success) notFound();
 
   let project;
@@ -54,11 +61,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     if (e instanceof DomainError && e.code === "NOT_FOUND") notFound();
     throw e;
   }
-  const [progress, members, milestones, projectTasks] = await Promise.all([
+  const [progress, members, milestones, projectTasks, projectTeams, assignableTeams] = await Promise.all([
     getProjectProgress(actor, id),
     listMembers(actor, id),
     listMilestones(actor, id),
     listTasks(actor, { view: "all", projectId: id, pageSize: 100 }),
+    listProjectTeams(actor, id),
+    listAssignableTeams(actor, "projects.members.manage"),
   ]);
   const canSeeFinance = can(actor, "finance.invoices.read") && can(actor, "finance.expenses.read");
   let finance: ProjectFinanceSummary | null = null;
@@ -85,6 +94,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-5">
       <BackLink href="/projects">Projects</BackLink>
+      {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={project.name}
         code={project.projectCode}
@@ -183,6 +193,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             ) : null}
           </SectionCard>
 
+          <TeamAssignSection
+            id={id}
+            noun="project"
+            teams={projectTeams}
+            options={assignableTeams}
+            canRemoveAny={canManageMembers}
+            assignAction={assignProjectTeamAction}
+            unassignAction={unassignProjectTeamAction}
+          />
+
           <SectionCard title="Team" count={members.length}>
             <ul className="flex flex-col divide-y divide-border text-sm">
               {members.map((m) => (
@@ -194,7 +214,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       · {m.employeeCode} · {m.membershipRole}
                     </span>
                   </span>
-                  {canManageMembers && m.membershipRole !== "owner" ? (
+                  {canManageMembers && m.membershipRole !== "owner" && !m.viaTeamId ? (
                     <ConfirmForm
                       action={removeMemberAction}
                       triggerClassName={compact}

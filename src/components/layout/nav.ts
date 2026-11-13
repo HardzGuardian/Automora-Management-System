@@ -12,6 +12,7 @@ export const NAV: readonly NavGroup[] = [
       { href: "/projects", label: "Projects" },
       { href: "/clients", label: "Clients", anyOf: ["clients.read"] },
       { href: "/employees", label: "Employees", anyOf: ["employees.read"] },
+      { href: "/teams", label: "Teams" },
     ],
   },
   {

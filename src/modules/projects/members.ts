@@ -10,7 +10,7 @@ import { audit } from "@/modules/audit";
 import { assertAssignable } from "@/modules/employees";
 import { loadProject } from "./service";
 
-export type MemberDTO = { employeeId: string; fullName: string; employeeCode: string; membershipRole: string };
+export type MemberDTO = { employeeId: string; fullName: string; employeeCode: string; membershipRole: string; viaTeamId: string | null };
 
 const roleSchema = z.enum(["member", "viewer"]);
 
@@ -22,6 +22,7 @@ export async function listMembers(actor: Actor, projectId: string): Promise<Memb
       fullName: employees.fullName,
       employeeCode: employees.employeeCode,
       membershipRole: projectMembers.membershipRole,
+      viaTeamId: projectMembers.viaTeamId,
     })
     .from(projectMembers)
     .innerJoin(employees, and(eq(employees.id, projectMembers.employeeId), eq(employees.companyId, projectMembers.companyId)))
@@ -73,6 +74,7 @@ export async function removeMember(actor: Actor, projectId: string, employeeId: 
     await loadProject(tx, actor, projectId);
     const m = await loadMember(tx, projectId, employeeId);
     if (m.membershipRole === "owner") throw new DomainError("CONFLICT", "Change the project owner before removing them");
+    if (m.viaTeamId) throw new DomainError("CONFLICT", "This person is on the project through a team. Remove the team, or take them out of the team.");
     await tx.delete(projectMembers).where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.employeeId, employeeId)));
     await audit.record(tx, {
       actor,
@@ -125,7 +127,7 @@ export async function changeOwner(actor: Actor, projectId: string, newOwnerId: s
     await tx
       .insert(projectMembers)
       .values({ projectId, companyId: actor.companyId, employeeId: newOwnerId, membershipRole: "owner" })
-      .onConflictDoUpdate({ target: [projectMembers.projectId, projectMembers.employeeId], set: { membershipRole: "owner" } });
+      .onConflictDoUpdate({ target: [projectMembers.projectId, projectMembers.employeeId], set: { membershipRole: "owner", viaTeamId: null } });
     await tx
       .update(projects)
       .set({ ownerEmployeeId: newOwnerId })

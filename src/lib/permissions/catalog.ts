@@ -44,6 +44,8 @@ export const PERMISSION_GROUPS = {
     "tasks.status.update.own",
     "tasks.comment",
     "tasks.attach",
+    "teams.read",
+    "teams.manage",
   ],
   finance: [
     "finance.invoices.read",

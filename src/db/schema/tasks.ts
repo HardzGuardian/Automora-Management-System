@@ -80,6 +80,8 @@ export const taskAssignees = pgTable(
     companyId: uuid("company_id").notNull(),
     employeeId: uuid("employee_id").notNull(),
     assignedBy: text("assigned_by").references(() => user.id),
+    // Set when the person is here only because their team was assigned (kept in sync by the teams module).
+    viaTeamId: uuid("via_team_id"),
     assignedAt: createdAt(),
   },
   (t) => [

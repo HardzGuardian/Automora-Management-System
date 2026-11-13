@@ -96,14 +96,14 @@ export async function listTasks(actor: Actor, input: ListTasksInput): Promise<{ 
   const byTask = new Map<string, TaskAssigneeDTO[]>();
   if (rows.length > 0) {
     const assignees = await db
-      .select({ taskId: taskAssignees.taskId, employeeId: employees.id, fullName: employees.fullName })
+      .select({ taskId: taskAssignees.taskId, employeeId: employees.id, fullName: employees.fullName, viaTeamId: taskAssignees.viaTeamId })
       .from(taskAssignees)
       .innerJoin(employees, and(eq(employees.id, taskAssignees.employeeId), eq(employees.companyId, taskAssignees.companyId)))
       .where(and(inArray(taskAssignees.taskId, rows.map((r) => r.id)), eq(taskAssignees.companyId, actor.companyId)))
       .orderBy(asc(employees.fullName), asc(employees.id));
     for (const a of assignees) {
       const list = byTask.get(a.taskId) ?? [];
-      list.push({ employeeId: a.employeeId, fullName: a.fullName });
+      list.push({ employeeId: a.employeeId, fullName: a.fullName, viaTeamId: a.viaTeamId });
       byTask.set(a.taskId, list);
     }
   }

@@ -22,7 +22,7 @@ export async function loadTask(tx: Reader, actor: Actor, id: string) {
 
 export async function loadAssignees(tx: Reader, companyId: string, taskId: string): Promise<TaskAssigneeDTO[]> {
   return tx
-    .select({ employeeId: employees.id, fullName: employees.fullName })
+    .select({ employeeId: employees.id, fullName: employees.fullName, viaTeamId: taskAssignees.viaTeamId })
     .from(taskAssignees)
     .innerJoin(employees, and(eq(employees.id, taskAssignees.employeeId), eq(employees.companyId, taskAssignees.companyId)))
     .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.companyId, companyId)))

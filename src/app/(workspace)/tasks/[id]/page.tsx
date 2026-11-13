@@ -25,19 +25,24 @@ import {
   listAttachments,
   listComments,
   listTaskActivity,
+  listTaskTeams,
 } from "@/modules/tasks";
+import { listAssignableTeams } from "@/modules/teams";
+import { Alert } from "@/components/ui/alert";
+import { TeamAssignSection } from "@/components/teams/team-assign-section";
 import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
-import { archiveTaskAction, assignAction, changeStatusFormAction, unassignAction } from "../actions";
+import { archiveTaskAction, assignAction, assignTeamAction, changeStatusFormAction, unassignAction, unassignTeamAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
 
 export const metadata = { title: "Task" };
 
-export default async function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TaskDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const actor = await requireActor();
   const { id } = await params;
+  const { error } = await searchParams;
   if (!z.string().uuid().safeParse(id).success) notFound();
 
   let task;
@@ -49,10 +54,12 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
   }
   // Show the project's name (only if this user may see the project).
   const project = task.projectId ? await getProject(actor, task.projectId).catch(() => null) : null;
-  const [history, comments, attachments] = await Promise.all([
+  const [history, comments, attachments, taskTeams, assignableTeams] = await Promise.all([
     listTaskActivity(actor, id),
     listComments(actor, id),
     listAttachments(actor, id),
+    listTaskTeams(actor, id),
+    task.archived ? Promise.resolve([]) : listAssignableTeams(actor, "tasks.assign"),
   ]);
   const today = todayInTz(actor.timezone);
   const overdue = task.dueDate !== null && task.dueDate < today && task.status !== "Completed" && !task.archived;
@@ -75,6 +82,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="flex flex-col gap-5">
       <BackLink href="/tasks">Tasks</BackLink>
+      {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={task.title}
         code={task.taskCode}
@@ -135,8 +143,11 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               <ul className="flex flex-col divide-y divide-border text-sm">
                 {task.assignees.map((a) => (
                   <li key={a.employeeId} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <span className="font-medium">{a.fullName}</span>
-                    {canAssign ? (
+                    <span className="font-medium">
+                      {a.fullName}
+                      {a.viaTeamId ? <span className="font-normal text-muted"> · via team</span> : null}
+                    </span>
+                    {canAssign && !a.viaTeamId ? (
                       <ConfirmForm
                         action={unassignAction}
                         triggerClassName={compact}
@@ -173,6 +184,18 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </form>
             ) : null}
           </SectionCard>
+
+          {task.archived ? null : (
+            <TeamAssignSection
+              id={id}
+              noun="task"
+              teams={taskTeams}
+              options={assignableTeams}
+              canRemoveAny={can(actor, "tasks.assign")}
+              assignAction={assignTeamAction}
+              unassignAction={unassignTeamAction}
+            />
+          )}
 
           <SectionCard title="Comments" count={comments.length}>
             {comments.length === 0 ? (

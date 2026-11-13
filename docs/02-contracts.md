@@ -40,6 +40,7 @@ Format `area.resource.action`. Defined in `src/lib/permissions/catalog.ts`, seed
 `projects.read.all` `projects.create` `projects.update` `projects.archive` `projects.members.manage` `projects.milestones.manage`
 `tasks.read.all` `tasks.create` `tasks.update` `tasks.assign` `tasks.archive` `tasks.bulk`
 `tasks.status.update.own` `tasks.comment` `tasks.attach` *(employee-level; scoped to assigned/member tasks)*
+`teams.read` `teams.manage` *(added after v1: departments, teams and team membership; Manager and Super Admin hold both)*
 
 **Finance** *(Admin only by default; manager access is a configurable grant)*
 `finance.invoices.read` `finance.invoices.create` `finance.invoices.update` `finance.invoices.issue` `finance.invoices.cancel`

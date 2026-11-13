@@ -10,6 +10,8 @@ import {
   bulkArchive,
   bulkChangeStatus,
   assignTask,
+  assignTaskToTeam,
+  unassignTaskFromTeam,
   changeTaskStatus,
   createTask,
   unassignTask,
@@ -112,4 +114,22 @@ export async function bulkAction(fd: FormData): Promise<void> {
   revalidatePath("/my-tasks");
   if (!r.ok) redirect(`/tasks?bulkError=${encodeURIComponent(r.error.message)}`);
   redirect(`/tasks?bulk=${r.data.succeeded}-${r.data.failed}`);
+}
+
+export async function assignTeamAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() => assignTaskToTeam(actor, id, uuid.parse(fd.get("teamId"))));
+  revalidatePath(`/tasks/${id}`);
+  revalidatePath("/my-tasks");
+  if (!r.ok) redirect(`/tasks/${id}?error=${encodeURIComponent(r.error.message)}`);
+}
+
+export async function unassignTeamAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() => unassignTaskFromTeam(actor, id, uuid.parse(fd.get("teamId"))));
+  revalidatePath(`/tasks/${id}`);
+  revalidatePath("/my-tasks");
+  if (!r.ok) redirect(`/tasks/${id}?error=${encodeURIComponent(r.error.message)}`);
 }
