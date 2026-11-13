@@ -49,6 +49,8 @@ pnpm dev                        # http://localhost:3000
 
 `db:seed` prints a one-time **accept-invite link** for `SEED_ADMIN_EMAIL` (and emails it through Mailpit when it is running). Open the link, choose a password, then sign in. There is no hard-coded admin password. Set `SEED_DEMO=true` to also create labelled `[DEMO]` employees, clients, projects and tasks.
 
+**Lost or expired first-admin link?** The token is stored hashed, so it cannot be shown again, and `db:seed` will not make a second one while the first is still valid. Run `pnpm db:admin-invite` (optionally `--email=you@company.com`): it revokes the pending Super Admin invitations and prints a fresh link. It refuses once a Super Admin exists; after that use "Forgot password" or invite people from Settings > Users.
+
 Tests run against a **real PostgreSQL** (no mocks). Create an empty database, put its URL in `TEST_DATABASE_URL`, then:
 
 ```bash
@@ -60,6 +62,7 @@ pnpm lint && pnpm typecheck && pnpm build
 |---|---|
 | `pnpm db:generate` | generate a migration from `src/db/schema` (commit it; never edit merged migrations) |
 | `pnpm db:migrate` / `pnpm db:seed` | apply migrations / idempotent seed |
+| `pnpm db:admin-invite` | issue a fresh first-admin invitation link (only while no Super Admin exists) |
 | `pnpm test` | Vitest, including the 110-case security suite and the 10k-task performance suite |
 
 Uploads use the local filesystem driver by default (`STORAGE_DRIVER=local`, `.data/uploads`); set `STORAGE_DRIVER=s3` plus the `S3_*` variables for MinIO/S3.

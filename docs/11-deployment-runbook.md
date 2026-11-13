@@ -20,7 +20,7 @@ Generate secrets: `openssl rand -base64 48`.
 1. Provision PostgreSQL and the bucket (private; block public access).
 2. Build: `docker build -t automora .`
 3. Migrate: `docker build --target migrate -t automora-migrate . && docker run --rm -e DATABASE_URL=... automora-migrate`
-4. Seed (once): the same image, `pnpm db:seed` with `SEED_ADMIN_EMAIL` set. It prints/emails a one-time Super Admin invitation link. `SEED_DEMO` must be `false`.
+4. Seed (once): the same image, `pnpm db:seed` with `SEED_ADMIN_EMAIL` set. It prints/emails a one-time Super Admin invitation link. `SEED_DEMO` must be `false`. If the link is lost or expires before anyone accepts it, run `pnpm db:admin-invite` (same image, same environment) to revoke it and get a new one; it refuses once a Super Admin exists.
 5. Run: `docker run -d -p 3000:3000 --env-file prod.env automora` behind HTTPS (the app sends HSTS and a strict CSP).
 6. Verify: `GET /api/health` returns `{"status":"ok"}`; open the invitation link and set the admin password; sign in.
 

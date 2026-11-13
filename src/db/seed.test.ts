@@ -12,9 +12,10 @@ import {
   roles,
   tasks,
   user,
+  userRoles,
 } from "@/db/schema";
 import { ALL_PERMISSION_KEYS, SYSTEM_ROLES } from "@/lib/permissions";
-import { runSeed, type SeedResult } from "./seed-core";
+import { reissueAdminInvitation, runSeed, type SeedResult } from "./seed-core";
 
 const ADMIN = "admin@seed.test";
 let first: SeedResult;
@@ -85,5 +86,63 @@ describe("runSeed (demo)", () => {
     expect(cl.every((c) => c.name.startsWith("[DEMO]"))).toBe(true);
     expect((await db.select().from(employees).where(eq(employees.companyId, first.companyId))).length).toBe(3);
     expect((await db.select().from(tasks).where(eq(tasks.companyId, first.companyId))).length).toBe(5);
+  });
+});
+
+// Last in the file on purpose: these add invitation rows and a temporary admin to the seeded company.
+describe("reissueAdminInvitation (lost first-admin link)", () => {
+  const url = "http://localhost:3000";
+
+  it("revokes the pending invitation and issues a fresh, hashed one", async () => {
+    const before = await db.select().from(invitations).where(eq(invitations.companyId, first.companyId));
+    const pendingBefore = before.filter((i) => !i.usedAt && !i.revokedAt);
+    expect(pendingBefore.length).toBeGreaterThan(0);
+
+    const result = await reissueAdminInvitation({ adminEmail: "again@seed.test", appUrl: url });
+    expect(result.status).toBe("issued");
+    if (result.status !== "issued") return;
+    expect(result.revoked).toBe(pendingBefore.length);
+    expect(result.acceptUrl).toMatch(/^http:\/\/localhost:3000\/accept-invite\?token=[A-Za-z0-9_-]{20,}$/);
+
+    const after = await db.select().from(invitations).where(eq(invitations.companyId, first.companyId));
+    const pending = after.filter((i) => !i.usedAt && !i.revokedAt);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].email).toBe("again@seed.test");
+    const token = new URL(result.acceptUrl).searchParams.get("token")!;
+    expect(pending[0].tokenHash).toBe(createHash("sha256").update(token).digest("hex"));
+    expect(pending[0].tokenHash).not.toBe(token);
+    // the old links no longer work
+    for (const old of pendingBefore) {
+      const [row] = await db.select().from(invitations).where(eq(invitations.id, old.id));
+      expect(row.revokedAt).not.toBeNull();
+    }
+  });
+
+  it("can be run repeatedly and always leaves exactly one valid invitation", async () => {
+    await reissueAdminInvitation({ adminEmail: "a@seed.test", appUrl: url });
+    await reissueAdminInvitation({ adminEmail: "b@seed.test", appUrl: url });
+    const rows = await db.select().from(invitations).where(eq(invitations.companyId, first.companyId));
+    const pending = rows.filter((i) => !i.usedAt && !i.revokedAt);
+    expect(pending.map((i) => i.email)).toEqual(["b@seed.test"]);
+  });
+
+  it("refuses when a Super Admin already exists, and changes nothing", async () => {
+    const [superAdmin] = await db.select().from(roles).where(and(eq(roles.companyId, first.companyId), eq(roles.name, "Super Admin")));
+    const [u] = await db
+      .insert(user)
+      .values({ id: "seed-test-admin", name: "Existing Admin", email: "existing@seed.test", emailVerified: true, companyId: first.companyId })
+      .returning();
+    await db.insert(userRoles).values({ userId: u.id, roleId: superAdmin.id, companyId: first.companyId });
+    try {
+      const before = await db.select().from(invitations).where(eq(invitations.companyId, first.companyId));
+      const result = await reissueAdminInvitation({ adminEmail: "intruder@seed.test", appUrl: url });
+      expect(result).toEqual({ status: "admin_exists" });
+      const after = await db.select().from(invitations).where(eq(invitations.companyId, first.companyId));
+      expect(after).toHaveLength(before.length);
+      expect(after.filter((i) => !i.usedAt && !i.revokedAt).length).toBe(before.filter((i) => !i.usedAt && !i.revokedAt).length);
+    } finally {
+      await db.delete(userRoles).where(eq(userRoles.userId, u.id));
+      await db.delete(user).where(eq(user.id, u.id));
+    }
   });
 });

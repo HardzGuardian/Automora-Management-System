@@ -127,3 +127,38 @@ async function ensureAdminInvitation(
   return token;
 }
 
+export type ReissueResult = { status: "issued"; acceptUrl: string; revoked: number } | { status: "admin_exists" };
+
+/**
+ * Recovery for a first-admin link that was lost or expired. `runSeed` refuses to create a second
+ * invitation while one is still valid, and the token is stored hashed so it cannot be shown again.
+ * This revokes every pending Super Admin invitation and issues a fresh one. It never touches an
+ * installation that already has a Super Admin (use the in-app invite or password reset instead).
+ */
+export async function reissueAdminInvitation(opts: { adminEmail: string; appUrl: string }): Promise<ReissueResult> {
+  return withTransaction(async (tx) => {
+    const companyId = await ensureCompany(tx);
+    await ensurePermissions(tx);
+    const roleIds = await ensureSystemRoles(tx, companyId);
+    const roleId = roleIds["Super Admin"];
+
+    const [hasAdmin] = await tx.select({ userId: userRoles.userId }).from(userRoles).where(eq(userRoles.roleId, roleId)).limit(1);
+    if (hasAdmin) return { status: "admin_exists" as const };
+
+    const revoked = await tx
+      .update(invitations)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(invitations.companyId, companyId), eq(invitations.roleId, roleId), isNull(invitations.usedAt), isNull(invitations.revokedAt)))
+      .returning({ id: invitations.id });
+
+    const { token, tokenHash } = generateToken();
+    await tx.insert(invitations).values({
+      companyId,
+      email: opts.adminEmail,
+      roleId,
+      tokenHash,
+      expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+    });
+    return { status: "issued" as const, acceptUrl: `${opts.appUrl}/accept-invite?token=${token}`, revoked: revoked.length };
+  });
+}
