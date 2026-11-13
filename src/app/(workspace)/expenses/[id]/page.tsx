@@ -3,6 +3,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import {
+  expenseAttachmentService,
   getExpenseDetail,
   listExpenseCategories,
   listExpensePayments,
@@ -24,6 +25,7 @@ import {
 } from "../../invoices/_components/finance-ui";
 import { loadProjectOptions } from "../../invoices/_components/project-options";
 import { ExpenseEditForm } from "./_components/expense-edit-form";
+import { ReceiptUploadForm } from "./_components/receipt-upload";
 import { ExpensePaymentActions, NewExpensePaymentForm } from "../_components/expense-payment-forms";
 
 export const metadata = { title: "Expense" };
@@ -38,7 +40,10 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
     if (error instanceof DomainError && (error.code === "EXPENSE_NOT_FOUND" || error.code === "FORBIDDEN")) notFound();
     throw error;
   }
-  const payments = await listExpensePayments(actor, id);
+  const [payments, receipts] = await Promise.all([
+    listExpensePayments(actor, id),
+    expenseAttachmentService.listExpenseFiles(actor, id).catch(() => []),
+  ]);
   const categories = actor.permissions.has("finance.expenses.update") && payments.length === 0
     ? await listExpenseCategories(actor, true)
     : [];
@@ -117,6 +122,23 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
+          <Section title={`Receipts (${receipts.length})`}>
+            {receipts.length === 0 ? (
+              <p className="text-sm text-muted">No receipts attached yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-1 text-sm">
+                {receipts.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-baseline gap-x-2">
+                    <a href={`/api/files/${r.id}`} className="font-medium text-primary underline">
+                      {r.fileName}
+                    </a>
+                    <span className="text-xs text-muted">{Math.max(1, Math.round(r.size / 1024))} KB</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {actor.permissions.has("finance.expenses.update") ? <ReceiptUploadForm expenseId={expense.id} /> : null}
+          </Section>
           <Section title="Details">
             <DetailList
               rows={[

@@ -60,6 +60,15 @@ test("expense → pending payment → confirm", async ({ page }) => {
   await page.getByRole("button", { name: "Record pending payment" }).click();
   await page.getByRole("button", { name: "Confirm payment" }).click();
   await expect(page.getByText("confirmed", { exact: false }).first()).toBeVisible();
+
+  // Attach a receipt and download it through the permission-checked route.
+  await page.getByLabel("Attach a receipt").setInputFiles({ name: "receipt.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\nE2E receipt\n%%EOF\n") });
+  await page.getByRole("button", { name: "Upload receipt" }).click();
+  const link = page.getByRole("link", { name: "receipt.pdf" });
+  await expect(link).toBeVisible();
+  const res = await page.request.get((await link.getAttribute("href"))!);
+  expect(res.status()).toBe(200);
+  expect((await res.body()).subarray(0, 5).toString()).toBe("%PDF-");
 });
 
 test("finance reports page shows the period summary and exports CSV", async ({ page }) => {
