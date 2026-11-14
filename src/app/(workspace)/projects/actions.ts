@@ -17,6 +17,7 @@ import {
 } from "@/modules/projects";
 import { addProjectDocument, removeProjectDocument } from "@/modules/documents";
 import { listTeamCards } from "@/modules/teams";
+import { changeTaskStatus, createTask, getTask, setTaskAssignee } from "@/modules/tasks";
 
 export type ProjectFormState = { error?: string; fieldErrors?: Record<string, string[]> };
 
@@ -164,4 +165,61 @@ export async function removeProjectDocumentAction(fd: FormData): Promise<void> {
   await toActionResult(() => removeProjectDocument(actor, projectId, uuid.parse(fd.get("documentId"))));
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/documents");
+}
+
+const back = (projectId: string, tab: string, error?: string) =>
+  `/projects/${projectId}?tab=${tab}${error ? `&error=${encodeURIComponent(error.slice(0, 300))}` : ""}`;
+
+/** The "Add a task to this project" row: a title and one person. */
+export async function addProjectTaskAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const title = str(fd.get("title")).trim();
+  const assigneeId = str(fd.get("assigneeId"));
+  if (!title) redirect(back(projectId, "tasks", "Enter a task title."));
+  if (!assigneeId) redirect(back(projectId, "tasks", "Choose who this task is assigned to."));
+  const r = await toActionResult(() => createTask(actor, { title, priority: "Medium", projectId, assigneeIds: [assigneeId] }));
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  redirect(back(projectId, "tasks", r.ok ? undefined : r.error.message));
+}
+
+export async function projectTaskAssigneeAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const r = await toActionResult(() => setTaskAssignee(actor, uuid.parse(fd.get("taskId")), uuid.parse(fd.get("employeeId"))));
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
+}
+
+export async function projectTaskStatusAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const r = await toActionResult(() => changeTaskStatus(actor, uuid.parse(fd.get("taskId")), str(fd.get("status"))));
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
+}
+
+const PATH_TO_DONE = ["Pending", "In Progress", "In Review", "Completed"] as const;
+
+/** The round "done" button: completes a task by walking it through the review steps, or reopens a finished one. */
+export async function toggleTaskDoneAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const taskId = uuid.parse(fd.get("taskId"));
+  const r = await toActionResult(async () => {
+    const task = await getTask(actor, taskId);
+    if (task.status === "Completed") {
+      await changeTaskStatus(actor, taskId, "In Progress");
+      return;
+    }
+    for (const step of PATH_TO_DONE.slice(PATH_TO_DONE.indexOf(task.status as (typeof PATH_TO_DONE)[number]) + 1)) {
+      await changeTaskStatus(actor, taskId, step);
+    }
+  });
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
 }

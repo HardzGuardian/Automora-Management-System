@@ -56,6 +56,12 @@ async function main() {
   for (const s of ["In Progress", "In Review", "Completed"] as const) await changeTaskStatus(a, done.id, s);
   const { createExpenseCategory } = await import("../src/modules/finance/expenses/categories");
   await createExpenseCategory(a, { name: "Software & Subscriptions" });
+  // One department and team, so project/task screens that pick a team have something to show.
+  const { createDepartment, createTeam, addTeamMember } = await import("../src/modules/teams");
+  const dept = await createDepartment(a, { name: "Software Development" });
+  const team = await createTeam(a, { departmentId: dept.id, name: "Team A" });
+  await addTeamMember(a, team.id, admin.employee.id, "lead");
+  await addTeamMember(a, team.id, emp.employee.id, "member");
   void late;
   process.stdout.write(`seeded: ${ADMIN_EMAIL} / ${EMPLOYEE_EMAIL}\n`);
 }

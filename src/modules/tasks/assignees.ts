@@ -100,3 +100,28 @@ export async function reassignTask(actor: Actor, taskId: string, fromEmployeeId:
   });
   await notifyAssigned(taskId, title, assigned);
 }
+
+/**
+ * Makes `employeeId` the task's only assignee (the design gives every task exactly one).
+ * Whoever had it before is removed in the same transaction; assigning the current person is a no-op.
+ */
+export async function setTaskAssignee(actor: Actor, taskId: string, employeeId: string): Promise<void> {
+  requirePermission(actor, "tasks.assign");
+  const { assigned, title } = await withTransaction(async (tx) => {
+    const task = await loadTask(tx, actor, taskId);
+    if (task.archivedAt) throw new DomainError("VALIDATION", "Archived tasks cannot be assigned");
+    const current = await tx
+      .select({ employeeId: taskAssignees.employeeId })
+      .from(taskAssignees)
+      .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.companyId, actor.companyId)));
+    if (current.length === 1 && current[0].employeeId === employeeId) return { assigned: [] as AssignedInfo[], title: task.title };
+    // Validate the newcomer first so a bad choice leaves the task as it was.
+    await assertAssignable(tx, actor.companyId, employeeId);
+    if (current.length > 0) {
+      await tx.delete(taskAssignees).where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.companyId, actor.companyId)));
+      for (const c of current) await logTaskActivity(tx, actor, taskId, "unassigned", { employeeId: c.employeeId }, undefined);
+    }
+    return { assigned: await addAssignees(tx, actor, taskId, [employeeId]), title: task.title };
+  });
+  await notifyAssigned(taskId, title, assigned);
+}
