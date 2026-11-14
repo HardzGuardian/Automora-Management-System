@@ -29,14 +29,14 @@ export async function createDepartmentAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const r = await toActionResult(() => createDepartment(actor, { name: str(fd.get("name")), description: nullable(fd.get("description")) }));
   revalidatePath("/teams");
-  back("/teams", r.ok ? undefined : (r.error.fieldErrors?.name?.[0] ?? r.error.message));
+  back("/teams/manage", r.ok ? undefined : (r.error.fieldErrors?.name?.[0] ?? r.error.message));
 }
 
 export async function archiveDepartmentAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const r = await toActionResult(() => archiveDepartment(actor, uuid.parse(fd.get("id"))));
   revalidatePath("/teams");
-  back("/teams", r.ok ? undefined : r.error.message);
+  back("/teams/manage", r.ok ? undefined : r.error.message);
 }
 
 export async function createTeamAction(fd: FormData): Promise<void> {
@@ -45,7 +45,7 @@ export async function createTeamAction(fd: FormData): Promise<void> {
     createTeam(actor, { departmentId: str(fd.get("departmentId")), name: str(fd.get("name")), description: nullable(fd.get("description")) }),
   );
   revalidatePath("/teams");
-  if (!r.ok) back("/teams", r.error.fieldErrors?.name?.[0] ?? r.error.message);
+  if (!r.ok) back("/teams/manage", r.error.fieldErrors?.name?.[0] ?? r.error.message);
   redirect(`/teams/${r.data.id}`);
 }
 
@@ -65,7 +65,7 @@ export async function archiveTeamAction(fd: FormData): Promise<void> {
   revalidatePath("/teams");
   revalidatePath("/my-tasks");
   if (!r.ok) back(`/teams/${id}`, r.error.message);
-  redirect("/teams");
+  redirect("/teams/manage");
 }
 
 export async function addMemberAction(fd: FormData): Promise<void> {

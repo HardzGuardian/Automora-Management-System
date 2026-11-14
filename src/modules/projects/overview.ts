@@ -9,6 +9,7 @@ import { getProgressForProjects } from "./progress";
 export type ProjectOverviewRow = {
   id: string;
   name: string;
+  clientId: string | null;
   /** Null when the viewer cannot read clients. */
   clientName: string | null;
   teamName: string | null;
@@ -31,7 +32,7 @@ export async function projectsOverview(actor: Actor, input: { search?: string } 
   }
   const showClient = can(actor, "clients.read");
   const rows = await db
-    .select({ id: projects.id, name: projects.name, dueDate: projects.dueDate, status: projects.status, clientName: clients.name })
+    .select({ id: projects.id, name: projects.name, clientId: projects.clientId, dueDate: projects.dueDate, status: projects.status, clientName: clients.name })
     .from(projects)
     .leftJoin(clients, and(eq(clients.id, projects.clientId), eq(clients.companyId, projects.companyId)))
     .where(and(...conds))
@@ -62,6 +63,7 @@ export async function projectsOverview(actor: Actor, input: { search?: string } 
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
+    clientId: showClient ? r.clientId : null,
     clientName: showClient ? (r.clientName ?? "Internal") : null,
     teamName: firstTeam.get(r.id)?.teamName ?? null,
     departmentName: firstTeam.get(r.id)?.departmentName ?? null,

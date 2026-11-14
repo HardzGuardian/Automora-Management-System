@@ -46,7 +46,7 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
 
   return (
     <div className="flex flex-col gap-5">
-      <BackLink href="/teams">Teams</BackLink>
+      <BackLink href="/teams/manage">Manage teams</BackLink>
       {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={team.name}
