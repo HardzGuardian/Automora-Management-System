@@ -7,13 +7,15 @@ import { addDays, dueTodayCondition, overdueCondition, upcomingCondition } from 
 import { DomainError } from "@/lib/errors";
 import { can, clientScope, projectScope, taskScope } from "@/lib/permissions";
 import { getFinanceSnapshot, type FinanceSnapshot } from "@/modules/finance";
+import { getProgressForProjects } from "@/modules/projects";
 import { resolveRange, type RangePreset, type ResolvedRange } from "./range";
 
 export type Audience = "company" | "operational" | "personal";
 export const TASK_STATUS_ORDER = ["Pending", "In Progress", "In Review", "Completed"] as const;
 export const PRIORITY_ORDER = ["Urgent", "High", "Medium", "Low"] as const;
 
-export type DeadlineRow = { id: string; taskCode: string; title: string; status: string; priority: string; dueDate: string; href: string };
+export type DeadlineRow = { id: string; taskCode: string; title: string; status: string; priority: string; dueDate: string; href: string; projectName: string | null };
+export type ActiveProjectRow = { id: string; name: string; percent: number; openTasks: number; dueDate: string | null; href: string };
 export type WorkloadRow = { employeeId: string; name: string; open: number; overdue: number };
 export type ActivityRow = { id: string; action: string; actorName: string | null; taskId: string; taskCode: string; taskTitle: string; createdAt: Date; href: string };
 
@@ -26,6 +28,8 @@ export type Dashboard = {
     activeProjects: number;
     /** Point in time. */
     openTasks: number;
+    /** Point in time: open tasks currently In Progress. */
+    inProgressTasks: number;
     /** Period total: completed within the selected range. */
     completedTasks: number;
     /** Point in time. */
@@ -37,6 +41,7 @@ export type Dashboard = {
   taskPriority: { priority: string; count: number }[];
   upcoming: DeadlineRow[];
   overdue: DeadlineRow[];
+  activeProjectList: ActiveProjectRow[];
   workload: WorkloadRow[] | null;
   activity: ActivityRow[];
   finance: FinanceSnapshot | null;
@@ -60,7 +65,7 @@ function taskBase(actor: Actor, audience: Audience): SQL {
   return taskScope(actor);
 }
 
-const toDeadline = (r: { id: string; taskCode: string; title: string; status: string; priority: string; dueDate: string | null }): DeadlineRow => ({
+const toDeadline = (r: { id: string; taskCode: string; title: string; status: string; priority: string; dueDate: string | null; projectName: string | null }): DeadlineRow => ({
   id: r.id,
   taskCode: r.taskCode,
   title: r.title,
@@ -68,6 +73,7 @@ const toDeadline = (r: { id: string; taskCode: string; title: string; status: st
   priority: r.priority,
   dueDate: r.dueDate ?? "",
   href: `/tasks/${r.id}`,
+  projectName: r.projectName,
 });
 
 export async function getDashboard(actor: Actor, input: DashboardInput): Promise<Dashboard> {
@@ -89,20 +95,23 @@ export async function getDashboard(actor: Actor, input: DashboardInput): Promise
         completed: count(sql`CASE WHEN ${completedInRange} THEN 1 END`),
         overdue: count(sql`CASE WHEN ${overdueCondition(range.today)} THEN 1 END`),
         next7: count(sql`CASE WHEN ${upcomingCondition(range.today, 7)} THEN 1 END`),
+        inProgress: count(sql`CASE WHEN ${tasks.status} = 'In Progress' THEN 1 END`),
       })
       .from(tasks)
       .where(base),
     db.select({ status: tasks.status, n: count() }).from(tasks).where(base).groupBy(tasks.status),
     db.select({ priority: tasks.priority, n: count() }).from(tasks).where(and(base, open)).groupBy(tasks.priority),
     db
-      .select({ id: tasks.id, taskCode: tasks.taskCode, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate })
+      .select({ id: tasks.id, taskCode: tasks.taskCode, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, projectName: projects.name })
       .from(tasks)
+      .leftJoin(projects, and(eq(projects.id, tasks.projectId), eq(projects.companyId, tasks.companyId)))
       .where(and(base, upcomingCondition(range.today, 7)))
       .orderBy(asc(tasks.dueDate), asc(tasks.taskCode))
       .limit(10),
     db
-      .select({ id: tasks.id, taskCode: tasks.taskCode, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate })
+      .select({ id: tasks.id, taskCode: tasks.taskCode, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, projectName: projects.name })
       .from(tasks)
+      .leftJoin(projects, and(eq(projects.id, tasks.projectId), eq(projects.companyId, tasks.companyId)))
       .where(and(base, overdueCondition(range.today)))
       .orderBy(asc(tasks.dueDate), asc(tasks.taskCode))
       .limit(10),
@@ -112,6 +121,30 @@ export async function getDashboard(actor: Actor, input: DashboardInput): Promise
     .select({ n: count() })
     .from(projects)
     .where(and(projectScope(actor), isNull(projects.archivedAt), eq(projects.status, "Active")));
+
+  const activeRows = await db
+    .select({ id: projects.id, name: projects.name, dueDate: projects.dueDate })
+    .from(projects)
+    .where(and(projectScope(actor), isNull(projects.archivedAt), eq(projects.status, "Active")))
+    .orderBy(asc(projects.dueDate), asc(projects.name))
+    .limit(5);
+  const progress = await getProgressForProjects(actor, activeRows.map((p) => p.id));
+  const openByProject = activeRows.length
+    ? await db
+        .select({ projectId: tasks.projectId, n: count() })
+        .from(tasks)
+        .where(and(base, open, inArray(tasks.projectId, activeRows.map((p) => p.id))))
+        .groupBy(tasks.projectId)
+    : [];
+  const openMap = new Map(openByProject.map((r) => [r.projectId, r.n]));
+  const activeProjectList: ActiveProjectRow[] = activeRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    percent: progress.get(p.id)?.percent ?? 0,
+    openTasks: openMap.get(p.id) ?? 0,
+    dueDate: p.dueDate,
+    href: `/projects/${p.id}`,
+  }));
 
   const showPeople = audience !== "personal";
   const activeEmployees = showPeople && can(actor, "employees.read")
@@ -168,7 +201,6 @@ export async function getDashboard(actor: Actor, input: DashboardInput): Promise
 
   const statusCount = new Map(statusRows.map((r) => [r.status, r.n]));
   const priorityCount = new Map(priorityRows.map((r) => [r.priority, r.n]));
-  void inArray;
 
   return {
     audience,
@@ -178,6 +210,7 @@ export async function getDashboard(actor: Actor, input: DashboardInput): Promise
       activeClients,
       activeProjects: activeProjects.n,
       openTasks: c.open,
+      inProgressTasks: c.inProgress,
       completedTasks: c.completed,
       overdueTasks: c.overdue,
       dueNext7Days: c.next7,
@@ -186,6 +219,7 @@ export async function getDashboard(actor: Actor, input: DashboardInput): Promise
     taskPriority: PRIORITY_ORDER.map((priority) => ({ priority, count: priorityCount.get(priority) ?? 0 })),
     upcoming: upcoming.map(toDeadline),
     overdue: overdue.map(toDeadline),
+    activeProjectList,
     workload,
     activity: activity.map((a) => ({ ...a, href: `/tasks/${a.taskId}` })),
     finance,

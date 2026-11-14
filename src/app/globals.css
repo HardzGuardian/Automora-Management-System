@@ -79,8 +79,8 @@ body {
   #main h3 { font-size: 1rem; font-weight: 600; }
   #main a:not([class]) { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
   #main table:not([class]) { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: block; overflow-x: auto; }
-  #main thead { background: var(--primary-soft); }
-  #main th { text-align: left; font-weight: 600; padding: 0.5rem 0.75rem; white-space: nowrap; }
+  #main thead { background: transparent; }
+  #main th { text-align: left; font-weight: 500; font-size: 0.75rem; color: var(--muted); padding: 0.625rem 0.75rem; white-space: nowrap; }
   #main td { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); }
   #main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main select, #main textarea {
     min-height: 2.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 0.4rem 0.75rem; max-width: 100%;
