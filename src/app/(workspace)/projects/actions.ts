@@ -170,6 +170,33 @@ export async function removeProjectDocumentAction(fd: FormData): Promise<void> {
 const back = (projectId: string, tab: string, error?: string) =>
   `/projects/${projectId}?tab=${tab}${error ? `&error=${encodeURIComponent(error.slice(0, 300))}` : ""}`;
 
+/**
+ * Task rows appear on the project page and on the Tasks page; the form says where it came from
+ * (`returnTo`, a path in this app) so errors and refreshes land back on the same screen.
+ */
+function origin(fd: FormData): { projectId: string | null; returnTo: string | null } {
+  const raw = str(fd.get("projectId"));
+  const rt = str(fd.get("returnTo"));
+  return {
+    projectId: uuid.safeParse(raw).success ? raw : null,
+    returnTo: rt.startsWith("/") && !rt.startsWith("//") ? rt : null,
+  };
+}
+
+function taskBack(o: { projectId: string | null; returnTo: string | null }, error?: string): string {
+  if (o.returnTo) {
+    const sep = o.returnTo.includes("?") ? "&" : "?";
+    return error ? `${o.returnTo}${sep}error=${encodeURIComponent(error.slice(0, 300))}` : o.returnTo;
+  }
+  return o.projectId ? back(o.projectId, "tasks", error) : "/tasks";
+}
+
+function refreshTasks(o: { projectId: string | null }) {
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  if (o.projectId) revalidatePath(`/projects/${o.projectId}`);
+}
+
 /** The "Add a task to this project" row: a title and one person. */
 export async function addProjectTaskAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
@@ -186,20 +213,18 @@ export async function addProjectTaskAction(fd: FormData): Promise<void> {
 
 export async function projectTaskAssigneeAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
-  const projectId = uuid.parse(fd.get("projectId"));
+  const o = origin(fd);
   const r = await toActionResult(() => setTaskAssignee(actor, uuid.parse(fd.get("taskId")), uuid.parse(fd.get("employeeId"))));
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
-  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
+  refreshTasks(o);
+  if (!r.ok) redirect(taskBack(o, r.error.message));
 }
 
 export async function projectTaskStatusAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
-  const projectId = uuid.parse(fd.get("projectId"));
+  const o = origin(fd);
   const r = await toActionResult(() => changeTaskStatus(actor, uuid.parse(fd.get("taskId")), str(fd.get("status"))));
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
-  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
+  refreshTasks(o);
+  if (!r.ok) redirect(taskBack(o, r.error.message));
 }
 
 const PATH_TO_DONE = ["Pending", "In Progress", "In Review", "Completed"] as const;
@@ -207,7 +232,7 @@ const PATH_TO_DONE = ["Pending", "In Progress", "In Review", "Completed"] as con
 /** The round "done" button: completes a task by walking it through the review steps, or reopens a finished one. */
 export async function toggleTaskDoneAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
-  const projectId = uuid.parse(fd.get("projectId"));
+  const o = origin(fd);
   const taskId = uuid.parse(fd.get("taskId"));
   const r = await toActionResult(async () => {
     const task = await getTask(actor, taskId);
@@ -219,7 +244,6 @@ export async function toggleTaskDoneAction(fd: FormData): Promise<void> {
       await changeTaskStatus(actor, taskId, step);
     }
   });
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
-  if (!r.ok) redirect(back(projectId, "tasks", r.error.message));
+  refreshTasks(o);
+  if (!r.ok) redirect(taskBack(o, r.error.message));
 }

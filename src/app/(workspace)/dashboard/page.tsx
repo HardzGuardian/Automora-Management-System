@@ -48,8 +48,8 @@ export default async function DashboardPage() {
   const recentDocs = (await listDocuments(actor)).rows.slice(0, 3);
   const c = dash.counts;
   const personal = dash.audience === "personal";
-  const tasksHref = personal ? "/my-tasks" : "/tasks";
-  const overdueHref = `${tasksHref}?overdue=1`;
+  const tasksHref = personal ? "/tasks?show=mine" : "/tasks";
+  const overdueHref = "/tasks?show=overdue";
 
   // Design: one "Due soon" table, overdue work first, then what is coming up.
   const dueSoon = [...dash.overdue.map((t) => ({ ...t, late: true })), ...dash.upcoming.map((t) => ({ ...t, late: false }))].slice(0, 6);
