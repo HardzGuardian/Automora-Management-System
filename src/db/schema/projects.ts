@@ -12,6 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { createdAt, inList, tz, updatedAt } from "./_helpers";
+import { files } from "./files";
 import { clients } from "./clients";
 import { companies } from "./company";
 import { employees } from "./employees";
@@ -122,5 +123,23 @@ export const projectMilestones = pgTable(
     }),
     check("milestones_status_chk", inList("status", MILESTONE_STATUSES)),
     index("milestones_project_idx").on(t.projectId),
+  ],
+);
+
+/** A reference document (brief, contract, design) attached to a project. Everyone who can see the project can open it. */
+export const projectDocuments = pgTable(
+  "project_documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    fileId: uuid("file_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ columns: [t.projectId, t.companyId], foreignColumns: [projects.id, projects.companyId] }),
+    foreignKey({ columns: [t.fileId, t.companyId], foreignColumns: [files.id, files.companyId] }),
+    unique().on(t.fileId),
+    index("project_documents_project_idx").on(t.projectId),
   ],
 );

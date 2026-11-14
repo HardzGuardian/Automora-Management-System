@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ErrorState } from "@/components/ui/states";
 import { linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
+import { listDocuments } from "@/modules/documents";
 import { getDashboard } from "@/modules/reports";
 
 export const metadata = { title: "Dashboard" };
@@ -43,6 +45,7 @@ export default async function DashboardPage() {
     }
     throw e;
   }
+  const recentDocs = (await listDocuments(actor)).rows.slice(0, 3);
   const c = dash.counts;
   const personal = dash.audience === "personal";
   const tasksHref = personal ? "/my-tasks" : "/tasks";
@@ -133,6 +136,30 @@ export default async function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      <Card title="Recent documents" action={{ href: "/documents", label: "All documents" }}>
+        {recentDocs.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-muted">No documents yet. Admins add files from inside a project.</p>
+        ) : (
+          <ul className="m-0 grid list-none grid-cols-1 p-0 md:grid-cols-3">
+            {recentDocs.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 border-t border-border px-5 py-3.5 first:border-t-0 md:border-r md:border-t-0 md:last:border-r-0">
+                <span className="inline-flex size-9 flex-none items-center justify-center rounded-lg bg-primary-soft text-primary-ink">
+                  <Icon name="documents" size={18} />
+                </span>
+                <span className="min-w-0">
+                  <a href={`/api/files/${d.fileId}`} className="block truncate font-medium text-foreground hover:text-primary-ink">
+                    {d.name}
+                  </a>
+                  <span className="block truncate text-xs text-muted">
+                    {d.projectName} · {d.createdAt.toISOString().slice(0, 10)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

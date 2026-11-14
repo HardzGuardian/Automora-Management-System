@@ -2,6 +2,7 @@ import { z } from "zod";
 import { requireActorForApi } from "@/lib/auth/api-actor";
 import { DomainError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { canAccessProjectDocument } from "@/modules/documents";
 import { canAccessProfileImage } from "@/modules/employees";
 import { canAccessExpenseAttachment } from "@/modules/finance";
 import { readFile } from "@/modules/files";
@@ -9,7 +10,7 @@ import { canAccessTaskAttachment } from "@/modules/tasks";
 
 // Every file is downloaded through this handler: authenticate → find the file in the actor's
 // company → ask the owning modules whether the actor may see its parent record → stream bytes.
-const CHECKERS = [canAccessTaskAttachment, canAccessExpenseAttachment, canAccessProfileImage];
+const CHECKERS = [canAccessTaskAttachment, canAccessExpenseAttachment, canAccessProfileImage, canAccessProjectDocument];
 
 const notFound = () => new Response("Not found", { status: 404 });
 

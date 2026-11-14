@@ -17,5 +17,6 @@ export {
   updateMilestone,
   type MilestoneDTO,
 } from "./milestones";
+export { projectsOverview, type ProjectOverviewRow } from "./overview";
 export { calcProgress, getProgressForProjects, getProjectProgress, type Progress } from "./progress";
 export { assignProjectToTeam, listProjectTeams, syncProjectTeams, syncTeamProjects, unassignProjectFromTeam, type ProjectTeamDTO } from "./team-assignment";

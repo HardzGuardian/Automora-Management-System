@@ -1,69 +1,114 @@
 import Link from "next/link";
-import { DataTable, type DataColumn } from "@/components/data-table/data-table";
-import { PageHeader } from "@/components/ui/page-header";
-import { buttonClass, inputClass } from "@/components/ui/styles";
+import { FilterPills } from "@/components/ui/filter-pills";
+import { Icon } from "@/components/ui/icons";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
-import { getProgressForProjects, listProjects } from "@/modules/projects";
-import { parsePage } from "@/lib/pagination";
-import { FilterBar } from "@/components/ui/filter-bar";
+import { projectsOverview } from "@/modules/projects";
 
 export const metadata = { title: "Projects" };
 
-const PAGE_SIZE = 20;
-const STATUSES = ["Planning", "Active", "On Hold", "Completed", "Cancelled", "Archived"] as const;
-const COLUMNS: DataColumn[] = [
-  { key: "projectCode", header: "Code" },
-  { key: "name", header: "Name", kind: "link", href: "/projects/{id}" },
-  { key: "type", header: "Type" },
-  { key: "status", header: "Status", kind: "status" },
-  { key: "dueDate", header: "Due" },
-  { key: "progress", header: "Progress", kind: "number" },
-  { key: "budget", header: "Budget", kind: "number", defaultHidden: true },
-];
+// Design pills. Planning and Cancelled projects still show under All.
+const PILLS = [
+  { label: "All", status: null },
+  { label: "Active", status: "Active" },
+  { label: "On hold", status: "On Hold" },
+  { label: "Completed", status: "Completed" },
+] as const;
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const page = parsePage(sp.page);
-  const status = STATUSES.find((s) => s === sp.status);
-  const { rows, total } = await listProjects(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, includeArchived: status === "Archived" });
-  const progress = await getProgressForProjects(actor, rows.map((r) => r.id));
+  const all = await projectsOverview(actor);
+  const current = PILLS.find((p) => p.label === sp.status) ?? PILLS[0];
+  const rows = current.status ? all.filter((r) => r.status === current.status) : all;
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Projects" actions={can(actor, "projects.create") ? <Link href="/projects/new" className={buttonClass("primary")}>New project</Link> : null} />
-      <FilterBar label="Filter projects">
-        <input name="q" defaultValue={sp.q} aria-label="Search" placeholder="Search projects" className={`${inputClass} max-w-xs`} />
-        <select name="status" defaultValue={status ?? ""} aria-label="Status" className={`${inputClass} max-w-40`}>
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-      </FilterBar>
-      <DataTable
-        caption="Projects"
-        columns={COLUMNS}
-        rows={rows.map((p) => ({
-          id: p.id,
-          projectCode: p.projectCode,
-          name: p.name,
-          type: p.type,
-          status: p.status,
-          dueDate: p.dueDate,
-          progress: `${progress.get(p.id)?.percent ?? 0}%`,
-          budget: p.budgetAmount ? `${p.currency} ${p.budgetAmount}` : null,
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Projects</h1>
+          <p className="mt-1 text-muted">Create a project, add its documents and give it to a team.</p>
+        </div>
+        {can(actor, "projects.create") ? (
+          <Link href="/projects/new" className={buttonClass("primary", "gap-2")}>
+            <Icon name="plus" size={18} strokeWidth={2.2} />
+            New project
+          </Link>
+        ) : null}
+      </div>
+
+      <FilterPills
+        label="Filter by status"
+        pills={PILLS.map((p) => ({
+          label: p.label,
+          href: p.status ? `/projects?status=${encodeURIComponent(p.label)}` : "/projects",
+          count: p.status ? all.filter((r) => r.status === p.status).length : all.length,
+          active: p.label === current.label,
         }))}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        basePath="/projects"
-        params={{ q: sp.q, status }}
-        emptyTitle="No projects match"
-        emptyDescription="Projects you can see will be listed here."
-        emptyAction={can(actor, "projects.create") ? { href: "/projects/new", label: "Create a project" } : undefined}
       />
+
+      <section aria-label="Projects" className="overflow-x-auto rounded-lg border border-border bg-surface">
+        {rows.length === 0 ? (
+          <p className="px-6 py-10 text-sm text-muted">
+            {all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}
+          </p>
+        ) : (
+          <table className="w-full min-w-[700px] border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted">
+                <th scope="col" className="w-[32%] py-3.5 pl-6 pr-3 font-medium">Project</th>
+                <th scope="col" className="w-[20%] px-3 py-3.5 font-medium">Team</th>
+                <th scope="col" className="w-[22%] px-3 py-3.5 font-medium">Progress</th>
+                <th scope="col" className="w-[12%] px-3 py-3.5 font-medium">Due</th>
+                <th scope="col" className="w-[14%] py-3.5 pl-3 pr-6 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t border-border align-top">
+                  <td className="py-[18px] pl-6 pr-3">
+                    <Link href={`/projects/${r.id}`} className="font-semibold text-foreground hover:text-primary-ink">
+                      {r.name}
+                    </Link>
+                    {r.clientName ? <div className="mt-0.5 text-xs text-muted">{r.clientName}</div> : null}
+                  </td>
+                  <td className="px-3 py-[18px]">
+                    {r.teamName ? (
+                      <>
+                        <div className="font-medium">{r.teamName}</div>
+                        <div className="mt-0.5 text-xs text-muted">{r.departmentName}</div>
+                      </>
+                    ) : (
+                      <span className="text-muted">No team yet</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-[18px]">
+                    <div
+                      className="h-1.5 overflow-hidden rounded-sm bg-primary-soft"
+                      role="progressbar"
+                      aria-label={`${r.name} progress`}
+                      aria-valuenow={r.percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <div className="h-1.5 bg-primary" style={{ width: `${r.percent}%` }} />
+                    </div>
+                    <div className="mt-1.5 text-xs tabular-nums text-muted">
+                      {r.percent}% · {r.openTasks} open
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-[18px] tabular-nums text-body">{r.dueDate ?? "—"}</td>
+                  <td className="py-[18px] pl-3 pr-6">
+                    <StatusBadge status={r.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </div>
   );
 }
