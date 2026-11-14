@@ -22,6 +22,11 @@ export const PATHS = {
   chevronDown: "M6 9l6 6 6-6",
   chevronLeft: "M15 6l-6 6 6 6",
   download: "M12 4v12 M7 11l5 5 5-5 M4 19h16",
+  mail: "M3 6h18v12H3z M3 7l9 7 9-7",
+  lock: "M6 11h12v9H6z M8 11V8a4 4 0 0 1 8 0v3",
+  arrowRight: "M5 12h14 M13 6l6 6-6 6",
+  comment: "M4 5h16v11H9l-5 4z",
+  warning: "M12 3l10 18H2z M12 10v5 M12 18v.01",
   upload: "M12 16V4 M7 9l5-5 5 5 M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3",
   // status
   inProgress: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 3v18",

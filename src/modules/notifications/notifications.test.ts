@@ -5,7 +5,7 @@ import { notificationEvents, notifications } from "@/db/schema";
 import { loadActor } from "@/lib/auth/load-actor";
 import { notify, resetNotifier, type NotifyEvent } from "@/lib/notify";
 import { createCompany, createUser, grantPermissions } from "@/test/factories";
-import { deliver, hrefFor, listForUser, markAllRead, markRead, registerNotifier, unreadCount } from "./service";
+import { deliver, hrefFor, listForUser, markAllRead, markRead, markUnread, registerNotifier, unreadCount } from "./service";
 
 afterEach(() => resetNotifier());
 
@@ -90,6 +90,17 @@ describe("read state and listing", () => {
     await markAllRead(p.actorA);
     expect(await unreadCount(p.actorA)).toBe(0);
     expect((await listForUser(p.actorA, {})).total).toBe(3);
+  });
+
+  it("marks a read notification unread again, only for its owner", async () => {
+    const p = await people();
+    await deliver(ev({ userIds: [p.a.id], eventKey: "toggle" }));
+    const n = (await listForUser(p.actorA, {})).rows[0];
+    await markRead(p.actorA, n.id);
+    expect(await unreadCount(p.actorA)).toBe(0);
+    await expect(markUnread(p.actorB, n.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await markUnread(p.actorA, n.id);
+    expect(await unreadCount(p.actorA)).toBe(1);
   });
 
   it("never lets one user read or mark another's notifications", async () => {

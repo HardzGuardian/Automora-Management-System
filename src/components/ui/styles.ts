@@ -23,4 +23,4 @@ export const inputClass =
 export const linkClass = "text-primary-ink underline underline-offset-2 hover:text-primary-hover";
 /** Single-column form container (max ~40rem). */
 export const formClass = "flex w-full max-w-xl flex-col gap-4";
-export const cardClass = "rounded-md border border-border bg-surface p-4";
+export const cardClass = "rounded-lg border border-border bg-surface p-5";

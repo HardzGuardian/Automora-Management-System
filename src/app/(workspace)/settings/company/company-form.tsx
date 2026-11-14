@@ -14,7 +14,7 @@ export function CompanyForm({ profile, canEdit }: { profile: CompanyProfile; can
   const err = (k: string) => state.fieldErrors?.[k]?.[0];
   const zones = TIMEZONES.includes(profile.timezone) ? TIMEZONES : [profile.timezone, ...TIMEZONES];
   return (
-    <form action={action} className={`${cardClass} flex max-w-2xl flex-col gap-4`}>
+    <form action={action} className={`${cardClass} flex flex-col gap-4`}>
       <div>
         <h2 className="m-0 text-base font-semibold">Company profile</h2>
         <p className="mt-1 text-sm text-muted">Shown on invoices and exports. Currency and timezone apply company-wide.</p>

@@ -12,6 +12,7 @@
   --primary: #167c50;
   --primary-hover: #0f6b43;
   --primary-ink: #0f6b43;
+  --brand-deep: #0c3a27;
   --primary-soft: #e7f4ed;
   --success: #0f6b43;
   --success-soft: #e7f4ed;
@@ -35,6 +36,7 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-ink: var(--primary-ink);
+  --color-brand-deep: var(--brand-deep);
   --color-primary-soft: var(--primary-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);

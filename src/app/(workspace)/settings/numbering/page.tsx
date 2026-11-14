@@ -7,7 +7,7 @@ export const metadata = { title: "Numbering" };
 export default async function NumberingPage() {
   const rows = await getNumbering(await requireActor());
   return (
-    <section className={`${cardClass} flex max-w-xl flex-col gap-3`}>
+    <section className={`${cardClass} flex flex-col gap-3`}>
       <div>
         <h2 className="m-0 text-base font-semibold">Document numbers</h2>
         <p className="mt-1 text-sm text-muted">Numbers are allocated automatically and never reused. This shows the next number each type will receive.</p>

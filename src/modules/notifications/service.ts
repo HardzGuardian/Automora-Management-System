@@ -145,6 +145,15 @@ export async function markRead(actor: Actor, id: string): Promise<void> {
   if (updated.length === 0) throw new DomainError("NOT_FOUND", "Notification not found");
 }
 
+export async function markUnread(actor: Actor, id: string): Promise<void> {
+  const updated = await db
+    .update(notifications)
+    .set({ readAt: null })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, actor.userId), eq(notifications.companyId, actor.companyId)))
+    .returning({ id: notifications.id });
+  if (updated.length === 0) throw new DomainError("NOT_FOUND", "Notification not found");
+}
+
 export async function markAllRead(actor: Actor): Promise<void> {
   await db
     .update(notifications)

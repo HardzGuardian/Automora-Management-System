@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { signOutAction } from "@/app/(auth)/login/actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { visibleNav } from "@/components/layout/nav";
 import { ToastProvider } from "@/components/ui/toast";
@@ -23,7 +22,6 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
         quickTask={canCreateTask ? { load: loadQuickTaskOptions, create: createQuickTaskAction } : null}
         user={{ name: session?.user.name ?? "User", email: session?.user.email ?? "", roles: actor.roles }}
         unread={unread}
-        signOut={signOutAction}
       >
         {children}
       </AppShell>

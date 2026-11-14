@@ -59,29 +59,15 @@ function Sidebar({
   );
 }
 
-function AvatarMenu({ user, signOut }: { user: ShellUser; signOut: () => Promise<void> }) {
+function Avatar({ user }: { user: ShellUser }) {
   return (
-    <details className="relative">
-      <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full hover:bg-primary-soft">
-        <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-          {user.name.slice(0, 1).toUpperCase()}
-        </span>
-        <span className="sr-only">Account menu for {user.name}</span>
-      </summary>
-      <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-border bg-surface p-2 shadow-lg">
-        <p className="px-2 pt-1 text-sm font-medium text-foreground">{user.name}</p>
-        <p className="truncate px-2 text-xs text-muted">{user.email}</p>
-        <p className="px-2 pb-2 text-xs text-muted">{user.roles.join(", ") || "No role"}</p>
-        <Link href="/profile" className="flex min-h-11 items-center rounded-md px-2 text-sm hover:bg-primary-soft">
-          My account
-        </Link>
-        <form action={signOut}>
-          <button type="submit" className="flex min-h-11 w-full items-center rounded-md px-2 text-left text-sm hover:bg-primary-soft">
-            Sign out
-          </button>
-        </form>
-      </div>
-    </details>
+    <Link
+      href="/profile"
+      aria-label={`My account (${user.name})`}
+      className="inline-flex size-11 items-center justify-center rounded-full bg-primary font-semibold text-white hover:bg-primary-hover"
+    >
+      {user.name.slice(0, 1).toUpperCase()}
+    </Link>
   );
 }
 
@@ -91,7 +77,6 @@ export function AppShell({
   user,
   unread,
   quickTask,
-  signOut,
   children,
 }: {
   main: NavItem[];
@@ -100,7 +85,6 @@ export function AppShell({
   unread: number;
   /** Admin-only: when given, the top bar shows the quick "New task" panel. */
   quickTask: QuickTaskActions | null;
-  signOut: () => Promise<void>;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -221,7 +205,7 @@ export function AppShell({
                 </span>
               ) : null}
             </Link>
-            <AvatarMenu user={user} signOut={signOut} />
+            <Avatar user={user} />
           </div>
         </header>
 
