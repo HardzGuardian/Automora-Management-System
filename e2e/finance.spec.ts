@@ -12,7 +12,7 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
 
   await page.goto("/invoices/new");
   await pickClient(page);
-  await page.getByLabel("Due date").fill("2099-12-31");
+  await page.locator("main").getByLabel("Due date").fill("2099-12-31");
   await page.getByLabel("Description").fill("E2E consulting");
   await page.getByLabel("Unit price").fill("1000");
   await page.getByLabel("Tax rate (%)").fill("18");
@@ -38,9 +38,9 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
   await page.goto(invoiceUrl);
   await expect(page.getByText("680.00").first()).toBeVisible(); // 1180 - 500 outstanding
 
-  // The dashboard's finance snapshot reflects it (point-in-time outstanding receivables).
-  await page.goto("/dashboard");
-  await expect(page.getByRole("region", { name: "Finance snapshot" })).toContainText("680.00");
+  // The Finance page's summary reflects it (point-in-time outstanding receivables).
+  await page.goto("/finance");
+  await expect(page.getByRole("region", { name: "Finance summary" })).toContainText("680.00");
 });
 
 test("expense → pending payment → confirm", async ({ page }) => {

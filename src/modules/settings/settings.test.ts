@@ -96,7 +96,7 @@ describe("preferences", () => {
   it("keeps each company's preferences separate", async () => {
     const a = await admin();
     const b = await admin();
-    await updatePreferences(a.actor, { "tasks.defaultPriority": "Urgent" });
+    await updatePreferences(a.actor, { "tasks.defaultPriority": "High" });
     expect((await getPreferences(b.actor))["tasks.defaultPriority"]).toBe("Medium");
   });
 });

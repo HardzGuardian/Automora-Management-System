@@ -57,6 +57,13 @@
       "when": 1794671464671,
       "tag": "0007_nice_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794673941314,
+      "tag": "0008_perpetual_justice",
+      "breakpoints": true
     }
   ]
 }

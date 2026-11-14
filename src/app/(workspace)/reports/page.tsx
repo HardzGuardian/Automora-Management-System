@@ -103,7 +103,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </form>
       </div>
 
-      <section aria-label={current.title} className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <section aria-label={current.title} tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
         <div className="border-b border-border px-5 py-[18px]">
           <h2 className="m-0 text-base font-semibold text-foreground">{current.title}</h2>
           <p className="mb-0 mt-0.5 text-xs text-muted">

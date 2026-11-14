@@ -19,7 +19,7 @@ async function seeded() {
   const today = todayInTz(w.manager.timezone);
   const d = (n: number) => addDays(today, n);
   const mk = (title: string, o: Record<string, unknown>) => createTask(w.manager, { title, projectId: project.id, ...o } as never);
-  const a = await mk("a late", { priority: "Urgent", dueDate: d(-2), assigneeIds: [e1.employeeId] });
+  const a = await mk("a late", { priority: "High", dueDate: d(-2), assigneeIds: [e1.employeeId] });
   const b = await mk("b soon", { priority: "Low", dueDate: d(3), assigneeIds: [e1.employeeId, e2.employeeId] });
   const c = await mk("c done", { priority: "High", dueDate: d(-5), assigneeIds: [e2.employeeId] });
   for (const s of ["In Progress", "In Review", "Completed"] as const) await changeTaskStatus(w.manager, c.id, s);
@@ -65,7 +65,7 @@ describe("task register reconciles with the task list (AC-12)", () => {
     const s = await seeded();
     const rep = await runReport(s.w.manager, "task-register", { pageSize: 100 });
     const late = rep.rows.find((r) => r.title === "a late")!;
-    expect(late).toMatchObject({ status: "Pending", priority: "Urgent", overdue: "Yes", client: "Acme" });
+    expect(late).toMatchObject({ status: "Pending", priority: "High", overdue: "Yes", client: "Acme" });
     expect(late.assignees).toContain("");
     const dash = await getDashboard(s.w.manager, { preset: "month" });
     expect(rep.rows.filter((r) => r.overdue === "Yes").length).toBe(dash.counts.overdueTasks);

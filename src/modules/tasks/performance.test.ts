@@ -26,7 +26,7 @@ beforeAll(async () => {
   await db.execute(sql`
     INSERT INTO tasks (company_id, task_code, title, priority, status, due_date, completed_at)
     SELECT ${w.company.id}, 'PERF-' || lpad(g::text, 6, '0'), 'Perf task ' || g,
-           (ARRAY['Low','Medium','High','Urgent'])[1 + g % 4],
+           (ARRAY['Low','Medium','High'])[1 + g % 3],
            (ARRAY['Pending','In Progress','In Review','Completed'])[1 + (g / 4) % 4],
            date '2026-01-01' + (g % 200),
            CASE WHEN (g / 4) % 4 = 3 THEN now() END
@@ -48,7 +48,7 @@ describe("query performance at ~10k tasks", () => {
   });
 
   it("filters, search and priority sort stay fast", async () => {
-    const a = await timed(() => listTasks(w.manager, { view: "all", status: ["Pending"], priority: ["Urgent", "High"], sort: "priority" }));
+    const a = await timed(() => listTasks(w.manager, { view: "all", status: ["Pending"], priority: ["High"], sort: "priority" }));
     expect(a.ms).toBeLessThan(BOUND_MS);
     const b = await timed(() => listTasks(w.manager, { view: "all", search: "Perf task 77" }));
     expect(b.value.total).toBeGreaterThan(0);

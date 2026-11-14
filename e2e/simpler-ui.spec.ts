@@ -13,65 +13,38 @@ test("shell: no breadcrumb bar, and the sidebar has no copies of the bell or acc
   await expect(page.getByRole("banner").getByRole("link", { name: /Notifications/ })).toBeVisible();
 });
 
-test("lists: filters apply by themselves, Clear appears only while filtering, no pager on one page", async ({ page }) => {
+test("tasks: filter pills carry counts, Overdue narrows the list, All brings it back", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/tasks");
-  await expect(page.getByRole("button", { name: "Filter", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Clear" })).toHaveCount(0);
+  const pills = page.getByRole("navigation", { name: "Filter tasks" });
+  await expect(pills.getByRole("link", { name: /^All \d+$/ })).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("navigation", { name: "Pagination" })).toHaveCount(0);
 
   const before = await page.locator("tbody tr").count();
-  await page.getByLabel("Status").selectOption("Completed");
-  await expect(page).toHaveURL(/status=Completed/);
-  await expect(page.getByRole("link", { name: "Clear" })).toBeVisible();
+  await pills.getByRole("link", { name: /^Overdue/ }).click();
+  await expect(page).toHaveURL(/show=overdue/);
   await expect.poll(() => page.locator("tbody tr").count()).toBeLessThan(before);
 
-  await page.getByRole("link", { name: "Clear" }).click();
-  await expect(page).not.toHaveURL(/status=/);
+  await pills.getByRole("link", { name: /^All/ }).click();
+  await expect(page).not.toHaveURL(/show=/);
   await expect.poll(() => page.locator("tbody tr").count()).toBe(before);
 
-  // typing is debounced, then applied
-  await page.getByRole("search", { name: "Filter tasks" }).getByLabel("Search").fill("login");
-  await expect(page).toHaveURL(/q=login/);
+  // List and Board are two views of the same tasks.
+  await page.getByRole("navigation", { name: "Layout" }).getByRole("link", { name: "Board" }).click();
+  await expect(page).toHaveURL(/layout=board/);
+  await expect(page.getByRole("region", { name: "In progress" })).toBeVisible();
 });
 
-test("tasks: the bulk bar appears only when rows are ticked", async ({ page }) => {
-  await login(page, ADMIN);
-  await page.goto("/tasks");
-  await expect(page.getByText(/\d+ selected/)).toBeHidden();
-  await expect(page.getByLabel("Bulk action")).toBeHidden();
-
-  await page.getByRole("checkbox", { name: /^Select TSK/ }).first().check();
-  await expect(page.getByRole("status").filter({ hasText: "1 selected" })).toBeVisible();
-  await expect(page.getByLabel("Bulk action")).toBeVisible();
-  await page.screenshot({ path: "test-results/ui2-tasks-bulk.png" });
-
-  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
-  const rows = await page.locator("tbody tr").count();
-  await expect(page.getByRole("status").filter({ hasText: `${rows} selected` })).toBeVisible();
-
-  await page.getByRole("button", { name: "Clear selection" }).click();
-  await expect(page.getByLabel("Bulk action")).toBeHidden();
-});
-
-test("dashboard: four headline numbers, the rest behind 'More figures', one period picker", async ({ page }) => {
+test("dashboard: four stat cards, due soon, active projects and recent documents", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "Company dashboard" })).toBeVisible();
-  for (const label of ["Open tasks", "Overdue tasks", "Due in next 7 days"]) {
-    await expect(page.getByRole("region", { name: "Key figures" }).getByText(label, { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  for (const label of ["Open tasks", "In progress", "Overdue", "Active projects"]) {
+    await expect(page.getByRole("region", { name: "Key numbers" }).getByText(label, { exact: true })).toBeVisible();
   }
-  await expect(page.getByText("Active employees", { exact: true })).toBeHidden();
-  await page.getByText("More figures").click();
-  await expect(page.getByText("Active employees", { exact: true })).toBeVisible();
-  // The tiles no longer repeat "point in time"; the money snapshot below keeps its own labels.
-  await expect(page.getByRole("region", { name: "Key figures" }).getByText("point in time")).toHaveCount(0);
-
-  await expect(page.getByLabel("From")).toHaveCount(0);
-  await page.getByLabel("Period").selectOption("week");
-  await expect(page).toHaveURL(/preset=week/);
-  await page.getByLabel("Period").selectOption("custom");
-  await expect(page.getByLabel("From")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Due soon" })).toContainText("Fix login bug");
+  await expect(page.getByRole("region", { name: "Active projects" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Recent documents" })).toBeVisible();
   await page.screenshot({ path: "test-results/ui2-dashboard.png", fullPage: true });
 });
 

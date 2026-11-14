@@ -55,7 +55,7 @@ export default function UiKitPage() {
           <KpiCard label="Due soon" value={5} basis="point in time" tone="info" />
         </section>
 
-        <BarChartCard title="Sample chart" caption="Colour never carries meaning alone: labels and a table are always available" data={[{ label: "Urgent", value: 2, color: "#b42318" }, { label: "High", value: 4, color: "#a15c00" }, { label: "Medium", value: 6, color: "#1d5fb8" }, { label: "Low", value: 1, color: "#5b6770" }]} />
+        <BarChartCard title="Sample chart" caption="Colour never carries meaning alone: labels and a table are always available" data={[{ label: "High", value: 4, color: "#a15c00" }, { label: "Medium", value: 6, color: "#1d5fb8" }, { label: "Low", value: 1, color: "#5b6770" }]} />
 
         <section aria-label="States" className="grid gap-4 md:grid-cols-2">
           <EmptyState title="Nothing here yet" description="Empty states explain what to do next." action={{ href: "#", label: "Create the first one" }} />

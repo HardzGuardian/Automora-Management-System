@@ -29,7 +29,6 @@ export function TaskForm({ projects, employees }: { projects: Option[]; employee
             <option>Low</option>
             <option>Medium</option>
             <option>High</option>
-            <option>Urgent</option>
           </select>
         </Field>
         <Field id="dueDate" label="Due date" error={err("dueDate")}>
@@ -47,16 +46,16 @@ export function TaskForm({ projects, employees }: { projects: Option[]; employee
         </select>
       </Field>
       {employees.length > 0 ? (
-        <fieldset className="flex min-w-0 flex-col gap-1">
-          <legend className="mb-1 p-0 text-sm font-medium">Assign to</legend>
-          <div className="flex max-h-48 flex-col overflow-y-auto rounded-md border border-border bg-surface p-1">
+        <Field id="assigneeIds" label="Assign to" hint="One person owns each task.">
+          <select id="assigneeIds" name="assigneeIds" defaultValue="" className={inputClass} aria-describedby="assigneeIds-hint">
+            <option value="">Nobody yet</option>
             {employees.map((e) => (
-              <label key={e.id} className="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-background">
-                <input type="checkbox" name="assigneeIds" value={e.id} className="size-4 accent-primary" /> {e.label}
-              </label>
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
             ))}
-          </div>
-        </fieldset>
+          </select>
+        </Field>
       ) : null}
       <MoreOptions>
         <Field id="startDate" label="Start date">

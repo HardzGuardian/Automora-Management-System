@@ -63,7 +63,7 @@ describe("createTask", () => {
     await expect(createTask(w.manager, { title: "x", estimatedHours: "-1" })).rejects.toThrow();
     await expect(createTask(w.manager, { title: "x", estimatedHours: "1.234" })).rejects.toThrow();
     await expect(createTask(w.manager, { title: "x", priority: "Critical" as never })).rejects.toThrow();
-    expect((await createTask(w.manager, { title: "ok", estimatedHours: "12.5", priority: "Urgent" })).estimatedHours).toBe("12.50");
+    expect((await createTask(w.manager, { title: "ok", estimatedHours: "12.5", priority: "High" })).estimatedHours).toBe("12.50");
   });
 
   it("defaults the client from the project and rejects a mismatched client", async () => {

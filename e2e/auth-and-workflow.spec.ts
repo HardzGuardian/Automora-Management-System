@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN, EMPLOYEE, login, optionValue } from "./helpers";
+import { ADMIN, EMPLOYEE, login } from "./helpers";
 
 test.describe("authentication", () => {
   test("unauthenticated visitors are sent to login", async ({ page }) => {
@@ -18,9 +18,9 @@ test.describe("authentication", () => {
 
   test("sign in, see the shell, sign out", async ({ page }) => {
     await login(page, ADMIN);
-    await expect(page.getByRole("heading", { name: "Company dashboard" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Invoices" })).toBeVisible();
-    await page.locator("header details > summary").click();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Finance" })).toBeVisible();
+    await page.getByRole("link", { name: /My account/ }).click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login/);
   });
@@ -29,16 +29,20 @@ test.describe("authentication", () => {
 test.describe("permission-aware navigation and access", () => {
   test("an employee sees a reduced menu, a personal dashboard, and cannot open admin pages", async ({ page }) => {
     await login(page, EMPLOYEE);
-    await expect(page.getByRole("heading", { name: "My dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     const nav = page.getByRole("navigation", { name: "Main" });
-    for (const hidden of ["Invoices", "Payments", "Expenses", "Employees", "Clients", "Settings", "Finance reports"]) {
+    for (const hidden of ["Finance", "Clients", "Settings"]) {
       await expect(nav.getByRole("link", { name: hidden, exact: true })).toHaveCount(0);
     }
-    await expect(nav.getByRole("link", { name: "My tasks" })).toBeVisible();
+    for (const shown of ["Dashboard", "Projects", "Tasks", "Documents", "Team"]) {
+      await expect(nav.getByRole("link", { name: shown, exact: true })).toBeVisible();
+    }
+    // Only admins get the quick New task button.
+    await expect(page.getByRole("button", { name: "New task" })).toHaveCount(0);
     // Direct URL access is still refused by the server, not just hidden.
     for (const url of ["/settings/company", "/finance-reports", "/employees", "/clients"]) {
       await page.goto(url);
-      await expect(page.getByText(/not found|do not have|can.t find/i).first()).toBeVisible();
+      await expect(page.getByText(/not found|do not have|can.t find|cannot find/i).first()).toBeVisible();
     }
   });
 
@@ -63,21 +67,30 @@ test.describe("workflow: client → project → task", () => {
     await expect(page.getByRole("heading", { name: `E2E Client ${unique}` })).toBeVisible();
 
     await page.goto("/projects/new");
-    await page.getByLabel("Project name").fill(`E2E Project ${unique}`);
-    await page.locator("select[name=clientId]").selectOption(await optionValue(page, "select[name=clientId]", `E2E Client ${unique}`));
-    await page.getByLabel("Owner").selectOption({ index: 1 });
+    await page.locator("#np-name").fill(`E2E Project ${unique}`);
+    await page.locator("#np-client").selectOption({ label: `E2E Client ${unique}` });
+    await page.getByRole("button", { name: /Team A/ }).click();
     await page.getByRole("button", { name: "Create project" }).click();
+    await expect(page.getByText("Project created")).toBeVisible();
+    await page.getByRole("link", { name: "Open project" }).click();
     await expect(page.getByRole("heading", { name: `E2E Project ${unique}` })).toBeVisible();
 
-    await page.goto("/tasks/new");
-    await page.getByLabel("Title").fill(`E2E Task ${unique}`);
-    await page.locator("select[name=projectId]").selectOption(await optionValue(page, "select[name=projectId]", `E2E Project ${unique}`));
-    await page.getByRole("button", { name: "Create task" }).click();
-    await expect(page.getByRole("heading", { name: `E2E Task ${unique}` })).toBeVisible();
+    // The quick New task panel in the top bar: title, project, one person.
+    await page.getByRole("button", { name: "New task" }).click();
+    const panel = page.getByRole("dialog");
+    await panel.getByLabel("Task title").fill(`E2E Task ${unique}`);
+    await panel.getByLabel("Project").selectOption({ label: `E2E Project ${unique}` });
+    await panel.getByLabel(/Ravi Employee/).check();
+    await panel.getByRole("button", { name: "Create task" }).click();
+    await expect(panel.getByText("Task created")).toBeVisible();
+    await panel.getByRole("button", { name: "Done" }).click();
 
-    await page.getByRole("button", { name: "Move to In Progress" }).click();
-    await expect(page.getByRole("button", { name: "Move to In Review" })).toBeVisible();
-    await expect(page.getByText(/changed status from Pending to In Progress/).first()).toBeVisible();
+    await page.goto("/tasks");
+    const row = page.getByRole("row", { name: new RegExp(`E2E Task ${unique}`) });
+    await expect(row).toBeVisible();
+    await expect(row.getByLabel(/Assigned to for/)).toHaveValue(/.+/);
+    await row.getByLabel(/Status for/).selectOption("In Progress");
+    await expect(page.getByRole("row", { name: new RegExp(`E2E Task ${unique}`) }).getByLabel(/Status for/)).toHaveValue("In Progress");
   });
 
   test("an admin creates an employee who appears in the directory", async ({ page }) => {
@@ -99,7 +112,8 @@ test.describe("reports and exports", () => {
     await page.goto("/reports");
     await page.getByRole("link", { name: "Task register" }).click();
     await expect(page.getByRole("table")).toContainText("Design homepage");
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Export CSV" }).click()]);
+    await page.getByText("Export", { exact: true }).click();
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("menuitem", { name: "Export as CSV" }).click()]);
     expect(download.suggestedFilename()).toMatch(/^task-register-.*\.csv$/);
     const body = (await (await download.createReadStream()).toArray()).map((c) => c.toString()).join("");
     expect(body).toContain("Code,Title,Status");

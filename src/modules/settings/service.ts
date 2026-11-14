@@ -79,7 +79,7 @@ export async function updateCompanyProfile(actor: Actor, input: CompanyProfileIn
 
 // ---- Preferences: a small, typed set. Unknown keys are rejected, never stored. ----
 const PREFS = {
-  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High", "Urgent"]), fallback: "Medium" as string | number | boolean },
+  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High"]), fallback: "Medium" as string | number | boolean },
   "invoices.defaultDueDays": { schema: z.number().int().min(0).max(365), fallback: 30 as string | number | boolean },
   "finance.requireSecondConfirmer": { schema: z.boolean(), fallback: false as string | number | boolean },
 } as const;

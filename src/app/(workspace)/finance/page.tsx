@@ -132,7 +132,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       <FilterPills label="Finance sections" pills={tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, count: counts[t], active: t === tab }))} />
 
-      <section aria-label={TAB_LABEL[tab]} className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <section aria-label={TAB_LABEL[tab]} tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
         {tab === "invoices" && invoices ? (
           invoices.rows.length === 0 ? (
             <p className="px-5 py-10 text-center text-muted">No invoices yet.</p>

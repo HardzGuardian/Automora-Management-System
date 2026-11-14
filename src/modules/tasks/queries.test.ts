@@ -21,9 +21,9 @@ async function seeded() {
     return d.toISOString().slice(0, 10);
   };
   const t = {
-    a: await createTask(w.manager, { title: "Alpha late", priority: "Urgent", dueDate: day(-3), assigneeIds: [e1.employeeId] }),
+    a: await createTask(w.manager, { title: "Alpha late", priority: "High", dueDate: day(-3), assigneeIds: [e1.employeeId] }),
     b: await createTask(w.manager, { title: "Beta soon", priority: "Low", dueDate: day(2), assigneeIds: [e1.employeeId, e2.employeeId] }),
-    c: await createTask(w.manager, { title: "Gamma proj", priority: "High", projectId: p.id, dueDate: day(10) }),
+    c: await createTask(w.manager, { title: "Gamma proj", priority: "Medium", projectId: p.id, dueDate: day(10) }),
     d: await createTask(w.manager, { title: "Delta e2", priority: "Medium", assigneeIds: [e2.employeeId] }),
   };
   await changeTaskStatus(w.manager, t.d.id, "In Progress");
@@ -62,7 +62,7 @@ describe("filters", () => {
     const s = await seeded();
     const m = s.w.manager;
     expect(titles(await listTasks(m, { view: "all", status: ["In Progress"] }))).toEqual(["Delta e2"]);
-    expect(titles(await listTasks(m, { view: "all", priority: ["Urgent", "High"], sort: "title" }))).toEqual(["Alpha late", "Gamma proj"]);
+    expect(titles(await listTasks(m, { view: "all", priority: ["High"], sort: "title" }))).toEqual(["Alpha late"]);
     expect(titles(await listTasks(m, { view: "all", projectId: s.p.id }))).toEqual(["Gamma proj"]);
     expect(titles(await listTasks(m, { view: "all", clientId: s.c.id }))).toEqual(["Gamma proj"]);
     expect(titles(await listTasks(m, { view: "all", assigneeId: s.e2.employeeId, sort: "title" }))).toEqual(["Beta soon", "Delta e2"]);
@@ -96,7 +96,7 @@ describe("filters", () => {
 });
 
 describe("sorting, paging and shape", () => {
-  it("sorts by priority (Urgent first), due date and title", async () => {
+  it("sorts by priority (High first), due date and title", async () => {
     const s = await seeded();
     const m = s.w.manager;
     expect(titles(await listTasks(m, { view: "all", sort: "priority" }))).toEqual(["Alpha late", "Gamma proj", "Delta e2", "Beta soon"]);

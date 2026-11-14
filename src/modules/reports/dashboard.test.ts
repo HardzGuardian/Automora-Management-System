@@ -24,7 +24,7 @@ async function seeded(keys = COMPANY_KEYS) {
   void client;
   const mk = (title: string, o: Record<string, unknown>) => createTask(w.manager, { title, ...o } as never);
   const t = {
-    late: await mk("late", { priority: "Urgent", dueDate: d(-3), assigneeIds: [e1.employeeId] }),
+    late: await mk("late", { priority: "High", dueDate: d(-3), assigneeIds: [e1.employeeId] }),
     todayDue: await mk("today", { priority: "High", dueDate: d(0), assigneeIds: [e1.employeeId, e2.employeeId] }),
     soon: await mk("soon", { priority: "Low", dueDate: d(5), assigneeIds: [e2.employeeId] }),
     far: await mk("far", { priority: "Medium", dueDate: d(30), assigneeIds: [e2.employeeId] }),
@@ -77,7 +77,7 @@ describe("reconciliation with the task list (AC-12)", () => {
     const s = await seeded();
     const dash = await getDashboard(s.w.manager, { preset: "month" });
     expect(dash.taskPriority.reduce((n, x) => n + x.count, 0)).toBe(dash.counts.openTasks);
-    expect(dash.taskPriority.find((x) => x.priority === "High")?.count).toBe(1); // the completed High task is excluded
+    expect(dash.taskPriority.find((x) => x.priority === "High")?.count).toBe(2); // late + today; the completed High task is excluded
   });
 
   it("completed-in-period depends on the range", async () => {

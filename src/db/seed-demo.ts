@@ -83,7 +83,7 @@ export async function seedDemoData(tx: Tx, companyId: string): Promise<void> {
   const taskDefs = [
     { title: "[DEMO] Design homepage", project: clientProject, assignee: emps[2], status: "In Progress", priority: "High" },
     { title: "[DEMO] Build contact form", project: clientProject, assignee: emps[1], status: "Pending", priority: "Medium" },
-    { title: "[DEMO] Review launch checklist", project: clientProject, assignee: emps[0], status: "In Review", priority: "Urgent" },
+    { title: "[DEMO] Review launch checklist", project: clientProject, assignee: emps[0], status: "In Review", priority: "High" },
     { title: "[DEMO] Set up CI", project: internalProject, assignee: emps[1], status: "Completed", priority: "Low" },
     { title: "[DEMO] Draft onboarding doc", project: internalProject, assignee: emps[0], status: "Pending", priority: "Medium" },
   ];

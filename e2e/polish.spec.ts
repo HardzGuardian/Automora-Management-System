@@ -67,7 +67,7 @@ test("two-person rule: the recorder is told to wait and gets no Confirm button",
   try {
     await page.goto("/invoices/new");
     await page.locator("select[name=clientId]").selectOption({ index: 1 });
-    await page.getByLabel("Due date").fill("2099-12-31");
+    await page.locator("main").getByLabel("Due date").fill("2099-12-31");
     await page.getByLabel("Description").fill("Two-person check");
     await page.getByLabel("Unit price").fill("100");
     await page.getByRole("button", { name: "Create draft invoice" }).click();

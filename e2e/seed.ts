@@ -50,7 +50,7 @@ async function main() {
   const { addMember } = await import("../src/modules/projects");
   await addMember(a, project.id, emp.employee.id);
   await createTask(a, { title: "Design homepage", projectId: project.id, priority: "High", dueDate: addDays(today, 2), assigneeIds: [emp.employee.id] });
-  const late = await createTask(a, { title: "Fix login bug", projectId: project.id, priority: "Urgent", dueDate: addDays(today, -3), assigneeIds: [emp.employee.id] });
+  const late = await createTask(a, { title: "Fix login bug", projectId: project.id, priority: "High", dueDate: addDays(today, -3), assigneeIds: [emp.employee.id] });
   await createTask(a, { title: "Write launch plan", projectId: project.id, priority: "Medium", dueDate: addDays(today, 9) });
   const done = await createTask(a, { title: "Set up hosting", projectId: project.id, priority: "Low", dueDate: addDays(today, -1), assigneeIds: [admin.employee.id] });
   for (const s of ["In Progress", "In Review", "Completed"] as const) await changeTaskStatus(a, done.id, s);

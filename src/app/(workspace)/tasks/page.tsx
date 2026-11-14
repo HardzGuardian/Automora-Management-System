@@ -114,7 +114,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       </div>
 
       {!board ? (
-        <section aria-label="Tasks" className="overflow-x-auto rounded-lg border border-border bg-surface">
+        <section aria-label="Tasks" tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
           {rows.length === 0 ? (
             <p className="px-5 py-10 text-center text-muted">No tasks match these filters. Choose All, or use New task at the top right.</p>
           ) : (

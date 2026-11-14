@@ -49,7 +49,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         }))}
       />
 
-      <section aria-label="Projects" className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <section aria-label="Projects" tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
           <p className="px-6 py-10 text-sm text-muted">
             {all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}

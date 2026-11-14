@@ -25,15 +25,12 @@ import {
   listAttachments,
   listComments,
   listTaskActivity,
-  listTaskTeams,
 } from "@/modules/tasks";
-import { listAssignableTeams } from "@/modules/teams";
 import { Alert } from "@/components/ui/alert";
-import { TeamAssignSection } from "@/components/teams/team-assign-section";
 import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
-import { archiveTaskAction, assignAction, assignTeamAction, changeStatusFormAction, unassignAction, unassignTeamAction } from "../actions";
+import { archiveTaskAction, assignAction, changeStatusFormAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
 
@@ -54,12 +51,10 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
   }
   // Show the project's name (only if this user may see the project).
   const project = task.projectId ? await getProject(actor, task.projectId).catch(() => null) : null;
-  const [history, comments, attachments, taskTeams, assignableTeams] = await Promise.all([
+  const [history, comments, attachments] = await Promise.all([
     listTaskActivity(actor, id),
     listComments(actor, id),
     listAttachments(actor, id),
-    listTaskTeams(actor, id),
-    task.archived ? Promise.resolve([]) : listAssignableTeams(actor, "tasks.assign"),
   ]);
   const today = todayInTz(actor.timezone);
   const overdue = task.dueDate !== null && task.dueDate < today && task.status !== "Completed" && !task.archived;
@@ -136,66 +131,28 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
             </SectionCard>
           ) : null}
 
-          <SectionCard title="Assignees" count={task.assignees.length}>
+          <SectionCard title="Assigned to">
             {task.assignees.length === 0 ? (
-              <p className="text-sm text-muted">Nobody is assigned yet.</p>
+              <p className="text-sm text-muted">Nobody is assigned yet. Every task has one person.</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-border text-sm">
-                {task.assignees.map((a) => (
-                  <li key={a.employeeId} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <span className="font-medium">
-                      {a.fullName}
-                      {a.viaTeamId ? <span className="font-normal text-muted"> · via team</span> : null}
-                    </span>
-                    {canAssign && !a.viaTeamId ? (
-                      <ConfirmForm
-                        action={unassignAction}
-                        triggerClassName={compact}
-                        label={
-                          <>
-                            Remove<span className="sr-only"> {a.fullName}</span>
-                          </>
-                        }
-                        title={`Remove ${a.fullName}?`}
-                        description="They will no longer see this task in My tasks. The task and its history are not affected."
-                        confirmLabel="Remove"
-                      >
-                        <input type="hidden" name="id" value={id} />
-                        <input type="hidden" name="employeeId" value={a.employeeId} />
-                      </ConfirmForm>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm font-medium">{task.assignees.map((a) => a.fullName).join(", ")}</p>
             )}
             {candidates.length > 0 ? (
               <form action={assignAction} className="flex flex-wrap gap-2 border-t border-border pt-3">
                 <input type="hidden" name="id" value={id} />
-                <select name="employeeId" aria-label="Employee to assign" required className={`${inputClass} sm:max-w-xs`}>
+                <select name="employeeId" aria-label="Person to assign" required className={`${inputClass} sm:max-w-xs`}>
                   {candidates.map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.employeeCode} {e.fullName}
+                      {e.fullName}
                     </option>
                   ))}
                 </select>
                 <button type="submit" className={buttonClass("secondary")}>
-                  Assign
+                  {task.assignees.length === 0 ? "Assign" : "Reassign"}
                 </button>
               </form>
             ) : null}
           </SectionCard>
-
-          {task.archived ? null : (
-            <TeamAssignSection
-              id={id}
-              noun="task"
-              teams={taskTeams}
-              options={assignableTeams}
-              canRemoveAny={can(actor, "tasks.assign")}
-              assignAction={assignTeamAction}
-              unassignAction={unassignTeamAction}
-            />
-          )}
 
           <SectionCard title="Comments" count={comments.length}>
             {comments.length === 0 ? (
