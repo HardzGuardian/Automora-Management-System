@@ -21,6 +21,8 @@ import { getProjectFinanceSummary, type ProjectFinanceSummary } from "@/modules/
 import {
   PROJECT_TRANSITIONS,
   getProject,
+  listClientItems,
+  listProjectComments,
   getProjectProgress,
   listMembers,
   listMilestones,
@@ -34,14 +36,17 @@ import { LinkedRecords } from "../../_components/linked-records";
 import {
   addMemberAction,
   addMilestoneAction,
+  addClientItemAction,
   addProjectTaskAction,
   assignProjectTeamAction,
   changeStatusAction,
   milestoneStatusAction,
+  postProjectCommentAction,
   projectTaskAssigneeAction,
   projectTaskStatusAction,
   removeMemberAction,
   removeProjectDocumentAction,
+  toggleClientItemAction,
   toggleTaskDoneAction,
   unassignProjectTeamAction,
 } from "../actions";
@@ -49,13 +54,15 @@ import { DocUpload } from "./doc-upload";
 
 export const metadata = { title: "Project" };
 
-const TABS = ["tasks", "documents", "team", "milestones", "finance"] as const;
+const TABS = ["tasks", "documents", "team", "milestones", "comments", "client", "finance"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_META: Record<Tab, { label: string; icon: IconName; title: string; sub: string }> = {
   tasks: { label: "Tasks", icon: "tasks", title: "Project tasks", sub: "Assign, track and complete the work for this project." },
   documents: { label: "Documents", icon: "documents", title: "Project documents", sub: "Upload and manage files for this project." },
   team: { label: "Team", icon: "team", title: "Project team", sub: "People who can see and work on this project." },
   milestones: { label: "Milestones", icon: "reports", title: "Milestones", sub: "Key dates for this project." },
+  comments: { label: "Comments", icon: "comment", title: "Comments", sub: "Notes and updates from the team." },
+  client: { label: "Client input", icon: "mail", title: "Client input", sub: "What we are waiting for from the client." },
   finance: { label: "Finance", icon: "finance", title: "Finance", sub: "Confirmed cash movement, invoices, receipts and expenses." },
 };
 
@@ -106,10 +113,10 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
   }
 
   const canSeeFinance = can(actor, "finance.invoices.read") && can(actor, "finance.expenses.read");
-  const tabs = TABS.filter((t) => t !== "finance" || canSeeFinance);
+  const tabs = TABS.filter((t) => (t !== "finance" || canSeeFinance) && (t !== "client" || project.type === "Client"));
   const tab: Tab = tabs.find((t) => t === sp.tab) ?? "tasks";
 
-  const [progress, members, milestones, projectTasks, projectTeams, assignableTeams, docs] = await Promise.all([
+  const [progress, members, milestones, projectTasks, projectTeams, assignableTeams, docs, comments, clientItems] = await Promise.all([
     getProjectProgress(actor, id),
     listMembers(actor, id),
     listMilestones(actor, id),
@@ -117,6 +124,8 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
     listProjectTeams(actor, id),
     listAssignableTeams(actor, "projects.members.manage"),
     listProjectDocuments(actor, id),
+    listProjectComments(actor, id),
+    listClientItems(actor, id),
   ]);
   const client = project.clientId && can(actor, "clients.read") ? await getClient(actor, project.clientId).catch(() => null) : null;
 
@@ -153,12 +162,14 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
     linked = await loadLinkedFinance(actor, { projectId: id }, { expenses: true });
   }
 
-  const counts: Record<Tab, number | null> = { tasks: taskRows.length, documents: docs.length, team: members.length, milestones: milestones.length, finance: null };
+  const counts: Record<Tab, number | null> = { tasks: taskRows.length, documents: docs.length, team: members.length, milestones: milestones.length, comments: comments.length, client: clientItems.length, finance: null };
   const sectionCount: Record<Tab, string> = {
     tasks: `${taskRows.length} tasks`,
     documents: `${docs.length} files`,
     team: `${members.length} members`,
     milestones: `${milestones.filter((m) => m.status === "Completed").length} of ${milestones.length} done`,
+    comments: `${comments.length} comments`,
+    client: `${clientItems.filter((c) => !c.received).length} waiting`,
     finance: "",
   };
   const meta = TAB_META[tab];
@@ -574,6 +585,87 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                   <button type="submit" className={buttonClass("secondary")}>Add milestone</button>
                 </form>
               ) : null}
+            </>
+          ) : null}
+
+          {tab === "comments" ? (
+            <>
+              <form action={postProjectCommentAction} className="flex flex-col items-start gap-2.5 border-b border-border px-5 py-4">
+                <input type="hidden" name="projectId" value={id} />
+                <label htmlFor="cm-draft" className="sr-only">Add a comment</label>
+                <textarea id="cm-draft" name="body" rows={3} required maxLength={2000} placeholder="Write an update for the team" className={cn(inputClass, "resize-y")} />
+                <button type="submit" className="min-h-11 rounded-lg border border-primary bg-surface px-[18px] font-semibold text-primary-ink hover:bg-primary-soft">
+                  Post comment
+                </button>
+              </form>
+              {comments.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-muted">No comments yet. Be the first to post an update.</p>
+              ) : (
+                <ul className="m-0 list-none p-0">
+                  {comments.map((c) => (
+                    <li key={c.id} className="flex gap-3 border-t border-border px-5 py-3.5">
+                      <Avatar name={c.authorName} size={32} />
+                      <span className="min-w-0">
+                        <span className="block">
+                          <span className="font-semibold">{c.authorName}</span>{" "}
+                          <time dateTime={c.createdAt.toISOString()} className="text-xs tabular-nums text-muted">
+                            {c.createdAt.toISOString().slice(0, 10)}
+                          </time>
+                        </span>
+                        <span className="mt-0.5 block whitespace-pre-wrap leading-normal text-body">{c.body}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : null}
+
+          {tab === "client" ? (
+            <>
+              {canDocs ? (
+                <form action={addClientItemAction} className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-4">
+                  <input type="hidden" name="projectId" value={id} />
+                  <label htmlFor="ci-title" className="sr-only">What are you waiting for</label>
+                  <input id="ci-title" name="title" required maxLength={160} placeholder="What are we waiting for from the client?" className="min-h-11 min-w-[220px] flex-1 rounded-lg border border-field bg-surface px-3 text-foreground placeholder:text-muted" />
+                  <label htmlFor="ci-detail" className="sr-only">Note (optional)</label>
+                  <input id="ci-detail" name="detail" maxLength={500} placeholder="Note (optional)" className="min-h-11 min-w-[200px] flex-1 rounded-lg border border-field bg-surface px-3 text-foreground placeholder:text-muted" />
+                  <button type="submit" className="min-h-11 rounded-lg border border-primary bg-surface px-[18px] font-semibold text-primary-ink hover:bg-primary-soft">
+                    Add item
+                  </button>
+                </form>
+              ) : null}
+              {clientItems.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-muted">Nothing is being waited on.</p>
+              ) : (
+                <ul className="m-0 list-none p-0">
+                  {clientItems.map((c) => (
+                    <li key={c.id} className="flex flex-wrap items-center gap-3 border-t border-border px-5 py-3 first:border-t-0">
+                      <span className="min-w-0 flex-[1_1_220px]">
+                        <span className="block font-medium">{c.title}</span>
+                        <span className="block text-xs text-muted">
+                          {c.detail ?? ""}
+                          {c.received && c.receivedAt ? `${c.detail ? " · " : ""}Received ${c.receivedAt.toISOString().slice(0, 10)}` : ""}
+                        </span>
+                      </span>
+                      <span className={cn("whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium", c.received ? TONE_CLASS.success : TONE_CLASS.warning)}>
+                        {c.received ? "Received" : "Waiting on client"}
+                      </span>
+                      {canDocs ? (
+                        <form action={toggleClientItemAction}>
+                          <input type="hidden" name="projectId" value={id} />
+                          <input type="hidden" name="itemId" value={c.id} />
+                          <input type="hidden" name="to" value={c.received ? "waiting" : "received"} />
+                          <button type="submit" className="min-h-11 rounded-lg border border-field bg-surface px-3.5 font-medium text-foreground hover:bg-primary-soft">
+                            {c.received ? "Reopen" : "Mark received"}
+                            <span className="sr-only"> {c.title}</span>
+                          </button>
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           ) : null}
 

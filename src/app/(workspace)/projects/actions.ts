@@ -6,13 +6,16 @@ import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
 import {
+  addClientItem,
   addMember,
+  addProjectComment,
   assignProjectToTeam,
   unassignProjectFromTeam,
   changeProjectStatus,
   createMilestone,
   createProject,
   removeMember,
+  setClientItemReceived,
   updateMilestone,
 } from "@/modules/projects";
 import { addProjectDocument, removeProjectDocument } from "@/modules/documents";
@@ -246,4 +249,28 @@ export async function toggleTaskDoneAction(fd: FormData): Promise<void> {
   });
   refreshTasks(o);
   if (!r.ok) redirect(taskBack(o, r.error.message));
+}
+
+export async function postProjectCommentAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const r = await toActionResult(() => addProjectComment(actor, projectId, str(fd.get("body"))));
+  revalidatePath(`/projects/${projectId}`);
+  redirect(back(projectId, "comments", r.ok ? undefined : r.error.message));
+}
+
+export async function addClientItemAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const r = await toActionResult(() => addClientItem(actor, projectId, { title: str(fd.get("title")), detail: nullable(fd.get("detail")) }));
+  revalidatePath(`/projects/${projectId}`);
+  redirect(back(projectId, "client", r.ok ? undefined : r.error.message));
+}
+
+export async function toggleClientItemAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const projectId = uuid.parse(fd.get("projectId"));
+  const r = await toActionResult(() => setClientItemReceived(actor, projectId, uuid.parse(fd.get("itemId")), fd.get("to") === "received"));
+  revalidatePath(`/projects/${projectId}`);
+  redirect(back(projectId, "client", r.ok ? undefined : r.error.message));
 }

@@ -12,6 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { createdAt, inList, tz, updatedAt } from "./_helpers";
+import { user } from "./auth";
 import { files } from "./files";
 import { clients } from "./clients";
 import { companies } from "./company";
@@ -141,5 +142,44 @@ export const projectDocuments = pgTable(
     foreignKey({ columns: [t.fileId, t.companyId], foreignColumns: [files.id, files.companyId] }),
     unique().on(t.fileId),
     index("project_documents_project_idx").on(t.projectId),
+  ],
+);
+
+/** A note or update from the team on a project (the project page's Comments tab). */
+export const projectComments = pgTable(
+  "project_comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ columns: [t.projectId, t.companyId], foreignColumns: [projects.id, projects.companyId] }),
+    check("project_comments_body_chk", sql`length(btrim(body)) > 0`),
+    index("project_comments_project_idx").on(t.projectId, t.createdAt),
+  ],
+);
+
+/** Something the team is waiting for from the client (the Client input tab). `receivedAt` set = received. */
+export const projectClientItems = pgTable(
+  "project_client_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    title: text("title").notNull(),
+    detail: text("detail"),
+    receivedAt: tz("received_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ columns: [t.projectId, t.companyId], foreignColumns: [projects.id, projects.companyId] }),
+    check("project_client_items_title_chk", sql`length(btrim(title)) > 0`),
+    index("project_client_items_project_idx").on(t.projectId),
   ],
 );
