@@ -58,7 +58,7 @@ export function BulkBar({
     <form
       id={formId}
       action={action}
-      className={count === 0 ? "hidden" : "sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2 text-sm shadow-sm"}
+      className={count === 0 ? "hidden" : "sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2 text-sm"}
     >
       <span role="status" className="px-2 font-medium">
         {count} selected

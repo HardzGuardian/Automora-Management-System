@@ -10,8 +10,13 @@ describe("statusView", () => {
   it("marks overdue as danger with text, not colour alone", () => {
     const v = statusView("Pending", { overdue: true });
     expect(v.tone).toBe("danger");
-    expect(v.label).toContain("Overdue");
-    expect(v.icon.length).toBeGreaterThan(0);
+    expect(v.label).toBe("Overdue");
+    expect(v.icon).toBe("overdue");
+  });
+  it("writes labels in sentence case, like the design", () => {
+    expect(statusView("In Progress").label).toBe("In progress");
+    expect(statusView("On Hold").label).toBe("On hold");
+    expect(statusView("In Review").label).toBe("In review");
   });
   it("formats snake_case finance statuses and handles unknown ones", () => {
     expect(statusView("partially_paid").label).toBe("Partially paid");

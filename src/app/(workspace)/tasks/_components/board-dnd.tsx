@@ -83,7 +83,7 @@ export function BoardDnd({ tasks }: { tasks: BoardTask[] }) {
                     draggable={t.allowed.length > 0}
                     onDragStart={(e) => e.dataTransfer.setData("text/plain", t.id)}
                     className={cn(
-                      "flex flex-col gap-2 rounded-md border border-border bg-surface p-3 text-sm shadow-sm",
+                      "flex flex-col gap-2 rounded-md border border-border bg-surface p-3 text-sm",
                       t.allowed.length > 0 && "cursor-grab",
                     )}
                   >

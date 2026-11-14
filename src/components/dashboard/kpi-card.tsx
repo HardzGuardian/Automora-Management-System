@@ -35,7 +35,7 @@ export function KpiCard({
       {hint ? <p className="text-xs text-muted">{hint}</p> : null}
     </>
   );
-  const cls = "block rounded-md border border-border bg-surface p-4 shadow-sm";
+  const cls = "block rounded-md border border-border bg-surface p-4";
   return href ? (
     <Link href={href} className={cn(cls, "hover:border-primary")}>
       {body}

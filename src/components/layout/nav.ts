@@ -1,42 +1,51 @@
-// Navigation model. Hiding an item is a convenience only; every service still enforces permissions.
-// Notifications (the bell) and My account (the profile menu) live in the top bar, not here.
-export type NavItem = { href: string; label: string; anyOf?: readonly string[] };
-export type NavGroup = { label: string; items: NavItem[] };
+import type { IconName } from "@/components/ui/icons";
 
-export const NAV: readonly NavGroup[] = [
+// Navigation model (the "Automora redesign" canvas): one flat list, Settings pinned at the bottom.
+// Hiding an item is a convenience only; every service still enforces permissions.
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  /** Shown when the user has ANY of these permissions. No list = everyone. */
+  anyOf?: readonly string[];
+  /** Other path prefixes that also count as "being in" this section (e.g. Finance spans several lists). */
+  match?: readonly string[];
+};
+
+export const NAV: readonly NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/projects", label: "Projects", icon: "projects" },
+  { href: "/tasks", label: "Tasks", icon: "tasks", match: ["/my-tasks"] },
+  { href: "/documents", label: "Documents", icon: "documents" },
+  { href: "/clients", label: "Clients", icon: "clients", anyOf: ["clients.read"] },
+  { href: "/teams", label: "Team", icon: "team", match: ["/employees"] },
   {
-    label: "Workspace",
-    items: [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/my-tasks", label: "My tasks" },
-      { href: "/tasks", label: "All tasks" },
-      { href: "/projects", label: "Projects" },
-      { href: "/clients", label: "Clients", anyOf: ["clients.read"] },
-      { href: "/employees", label: "Employees", anyOf: ["employees.read"] },
-      { href: "/teams", label: "Teams" },
-    ],
-  },
-  {
+    href: "/finance",
     label: "Finance",
-    items: [
-      { href: "/invoices", label: "Invoices", anyOf: ["finance.invoices.read"] },
-      { href: "/payments", label: "Payments", anyOf: ["finance.payments.read"] },
-      { href: "/expenses", label: "Expenses", anyOf: ["finance.expenses.read"] },
-      { href: "/finance-reports", label: "Finance reports", anyOf: ["finance.reports.read"] },
-    ],
+    icon: "finance",
+    anyOf: ["finance.invoices.read", "finance.payments.read", "finance.expenses.read", "finance.reports.read"],
+    match: ["/invoices", "/payments", "/expenses", "/finance-reports"],
   },
-  {
-    label: "System",
-    items: [
-      { href: "/reports", label: "Reports", anyOf: ["reports.all.read", "reports.limited.read", "reports.personal.read"] },
-      { href: "/settings", label: "Settings", anyOf: ["settings.read", "roles.read", "users.read", "audit.read"] },
-    ],
-  },
+  { href: "/reports", label: "Reports", icon: "reports", anyOf: ["reports.all.read", "reports.limited.read", "reports.personal.read"] },
 ];
 
-export function visibleNav(permissions: ReadonlySet<string>): NavGroup[] {
-  return NAV.map((g) => ({
-    label: g.label,
-    items: g.items.filter((i) => !i.anyOf || i.anyOf.some((p) => permissions.has(p))),
-  })).filter((g) => g.items.length > 0);
+export const SETTINGS_ITEM: NavItem = {
+  href: "/settings",
+  label: "Settings",
+  icon: "settings",
+  anyOf: ["settings.read", "roles.read", "users.read", "audit.read"],
+};
+
+const allowed = (i: NavItem, permissions: ReadonlySet<string>) => !i.anyOf || i.anyOf.some((p) => permissions.has(p));
+
+export function visibleNav(permissions: ReadonlySet<string>): { main: NavItem[]; settings: NavItem | null } {
+  return {
+    main: NAV.filter((i) => allowed(i, permissions)),
+    settings: allowed(SETTINGS_ITEM, permissions) ? SETTINGS_ITEM : null,
+  };
+}
+
+/** Is `pathname` inside this item's section? */
+export function isActive(item: NavItem, pathname: string): boolean {
+  return [item.href, ...(item.match ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

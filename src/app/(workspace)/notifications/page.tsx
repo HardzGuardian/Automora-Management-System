@@ -56,7 +56,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       {rows.length === 0 ? (
         <EmptyState title={unreadOnly ? "No unread notifications" : "You are all caught up"} description="Assignments, reviews and reminders will appear here." />
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface shadow-sm">
+        <ul className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface">
           {rows.map((n) => (
             <li key={n.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 p-3">
               <div className="min-w-0 flex-1">

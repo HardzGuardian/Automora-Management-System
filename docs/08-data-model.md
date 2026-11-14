@@ -61,6 +61,11 @@ erDiagram
 
 **Shubhangi** — `notifications` (user_id, type, title, body, entity_type, entity_id, read_at) · `notification_events` (unique event_key for dedupe).
 
+
+**Teams (added after the blueprint)** — `departments` (name, description, archived_at) · `teams` (department_id, name, description, archived_at; unique per department) · `team_members` (team_id, employee_id, role `lead` or `member`) · `task_teams` (task_id, team_id, assigned_by) · `project_teams` (project_id, team_id, assigned_by). Two columns were added to existing tables: `task_assignees.via_team_id` and `project_members.via_team_id`, which mark rows that exist only because a team was assigned. All use composite `(id, company_id)` foreign keys like the rest. See `13-teams.md`.
+
+**Also added since the blueprint** — `rate_limit` (database-backed sign-in and password-reset limits), `security_events` (sign-in and security log), `notification_events` (dedupe keys for reminders).
+
 ## Key constraints (from blueprint §6.4)
 - Unique per company: `employee_code`, `client_code`, `project_code`, `task_code`, `invoice_number`, `expense_code`.
 - Composite FK `(parent_id, company_id)` on all child tables; parents have `UNIQUE (id, company_id)`.

@@ -157,7 +157,7 @@ export default async function EmployeeDetailPage({
           {workload ? (
             <section aria-label="Workload" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-md border border-border bg-surface p-3 shadow-sm">
+                <div key={s.label} className="rounded-md border border-border bg-surface p-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted">{s.label}</p>
                   <p className={`mt-1 text-2xl font-semibold tabular-nums ${s.danger ? "text-danger" : ""}`}>{s.value}</p>
                 </div>

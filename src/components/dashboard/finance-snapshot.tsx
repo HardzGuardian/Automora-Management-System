@@ -33,7 +33,7 @@ export function FinanceSnapshotCard({
   outstanding: Money[];
 }) {
   return (
-    <section aria-label="Finance snapshot" className="rounded-md border border-border bg-surface p-4 shadow-sm">
+    <section aria-label="Finance snapshot" className="rounded-md border border-border bg-surface p-4">
       <h2 className="mb-3 text-base font-semibold">Finance snapshot</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <List title="Invoiced" basis="period total · by issue date" rows={invoices} />

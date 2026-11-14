@@ -18,7 +18,7 @@ export default async function ReportsPage() {
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
           {reports.map((r) => (
-            <li key={r.key} className="rounded-md border border-border bg-surface p-4 shadow-sm">
+            <li key={r.key} className="rounded-md border border-border bg-surface p-4">
               <h2 className="m-0 text-base font-semibold">
                 <Link href={`/reports/${r.key}`} className="underline">
                   {r.title}

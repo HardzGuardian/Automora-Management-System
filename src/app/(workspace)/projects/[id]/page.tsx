@@ -255,7 +255,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
           </SectionCard>
 
           {canSeeFinance ? (
-            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4 shadow-sm">
+            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
               <h2 className="m-0 text-base font-semibold">
                 Finance <span className="font-normal text-muted">(cash basis)</span>
               </h2>
