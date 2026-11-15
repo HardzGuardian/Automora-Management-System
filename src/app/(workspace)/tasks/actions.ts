@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
-import { archiveTask, changeTaskStatus, createTask, setTaskAssignee, updateTask } from "@/modules/tasks";
+import { archiveTask, changeTaskStatus, setTaskAssignee, unarchiveTask, updateTask } from "@/modules/tasks";
 
 export type TaskFormState = { error?: string; fieldErrors?: Record<string, string[]>; saved?: boolean };
 export type MoveResult = { ok: boolean; error?: string };
@@ -13,27 +13,6 @@ export type MoveResult = { ok: boolean; error?: string };
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
 const nullable = (v: FormDataEntryValue | null) => (str(v).trim() === "" ? null : str(v).trim());
 const uuid = z.string().uuid();
-
-export async function createTaskAction(_prev: TaskFormState, fd: FormData): Promise<TaskFormState> {
-  const actor = await requireActor();
-  const priority = z.enum(["Low", "Medium", "High"]).catch("Medium").parse(str(fd.get("priority")));
-  const r = await toActionResult(() =>
-    createTask(actor, {
-      title: str(fd.get("title")),
-      description: nullable(fd.get("description")),
-      priority,
-      projectId: nullable(fd.get("projectId")),
-      startDate: nullable(fd.get("startDate")),
-      dueDate: nullable(fd.get("dueDate")),
-      estimatedHours: nullable(fd.get("estimatedHours")),
-      assigneeIds: fd.getAll("assigneeIds").map(String).filter(Boolean).slice(0, 1),
-    }),
-  );
-  if (!r.ok) return { error: r.error.message, fieldErrors: r.error.fieldErrors };
-  revalidatePath("/tasks");
-  revalidatePath("/my-tasks");
-  redirect(`/tasks/${r.data.id}`);
-}
 
 export async function updateTaskAction(_prev: TaskFormState, fd: FormData): Promise<TaskFormState> {
   const actor = await requireActor();
@@ -84,3 +63,11 @@ export async function archiveTaskAction(fd: FormData): Promise<void> {
   redirect("/tasks");
 }
 
+
+export async function restoreTaskAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  await toActionResult(() => unarchiveTask(actor, id));
+  revalidatePath("/tasks");
+  revalidatePath(`/tasks/${id}`);
+}

@@ -30,8 +30,9 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
   await page.getByRole("button", { name: "Record pending receipt" }).click();
   await expect(page.getByText("pending", { exact: false }).first()).toBeVisible();
 
-  await page.goto("/payments");
-  await page.getByRole("link", { name: /INV-/ }).first().click();
+  await page.goto("/payments"); // the old list now opens the Payments tab on Finance
+  await expect(page).toHaveURL(/\/finance\?tab=payments/);
+  await page.getByRole("link", { name: /UTR-E2E-1/ }).first().click();
   await page.getByRole("button", { name: "Confirm receipt" }).click();
   await expect(page.getByText("confirmed", { exact: false }).first()).toBeVisible();
 

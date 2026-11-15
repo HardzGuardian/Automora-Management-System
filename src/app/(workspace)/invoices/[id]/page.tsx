@@ -47,7 +47,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const projects = canEditDraft || invoice.projectId ? await loadProjectOptions(actor, invoice.projectId) : [];
   const projectLabel = invoice.projectId ? projects.find((p) => p.id === invoice.projectId)?.label ?? "Linked project" : null;
   const canIssue = actor.permissions.has("finance.invoices.issue") && invoice.status === "draft";
-  const canCancel = actor.permissions.has("finance.invoices.cancel") && (invoice.status === "draft" || invoice.status === "issued");
+  const canCancel = actor.permissions.has("finance.invoices.cancel") && (invoice.status === "draft" || invoice.status === "issued" || invoice.status === "overdue");
   const hasPdf = Boolean(invoice.invoiceNumber);
   const outstandingTone = invoice.status === "overdue" ? "danger" : invoice.status === "paid" ? "success" : "default";
 
@@ -138,12 +138,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             />
           )}
 
-          {invoice.status === "issued" && actor.permissions.has("finance.payments.record") && <NewReceiptForm invoiceId={invoice.id} />}
+          {(invoice.status === "issued" || invoice.status === "partially_paid" || invoice.status === "overdue") && actor.permissions.has("finance.payments.record") && <NewReceiptForm invoiceId={invoice.id} />}
 
           {receipts && (
             <Section title="Receipts">
               {receipts.rows.length === 0 ? (
-                <p className="text-sm text-muted">No receipts recorded yet.{invoice.status === "issued" ? " Record one above when a payment arrives." : ""}</p>
+                <p className="text-sm text-muted">No receipts recorded yet.{invoice.status === "issued" || invoice.status === "overdue" ? " Record one above when a payment arrives." : ""}</p>
               ) : (
                 <TableShell caption="Receipts for this invoice" minWidth="30rem">
                   <thead className="bg-primary-soft">

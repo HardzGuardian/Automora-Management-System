@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { TASK_PRIORITIES, TASK_STATUSES, employees, taskActivityLogs, taskAssignees, tasks, user } from "@/db/schema";
@@ -24,6 +24,8 @@ export const listTasksSchema = z.object({
   overdue: z.boolean().optional(),
   search: z.string().trim().max(100).optional(),
   includeArchived: z.boolean().default(false),
+  /** Only archived tasks (for the Archived view). */
+  archivedOnly: z.boolean().default(false),
   sort: z.enum(["due", "priority", "title", "created", "status"]).default("due"),
   dir: z.enum(["asc", "desc"]).default("asc"),
   page: z.number().int().min(1).default(1),
@@ -65,7 +67,8 @@ export async function listTasks(actor: Actor, input: ListTasksInput): Promise<{ 
   } else {
     conds.push(taskScope(actor));
   }
-  if (!f.includeArchived) conds.push(isNull(tasks.archivedAt));
+  if (f.archivedOnly) conds.push(isNotNull(tasks.archivedAt));
+  else if (!f.includeArchived) conds.push(isNull(tasks.archivedAt));
   if (f.status?.length) conds.push(inArray(tasks.status, f.status));
   if (f.priority?.length) conds.push(inArray(tasks.priority, f.priority));
   if (f.projectId) conds.push(eq(tasks.projectId, f.projectId));

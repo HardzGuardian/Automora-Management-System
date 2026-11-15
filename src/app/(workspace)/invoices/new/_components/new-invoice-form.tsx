@@ -42,8 +42,8 @@ export function NewInvoiceForm({ clients, projects }: { clients: ClientOption[];
               ))}
             </select>
           </Field>
-          <Field id="dueDate" label="Due date" hint="Overdue is worked out from this date.">
-            <input id="dueDate" name="dueDate" type="date" aria-describedby="dueDate-hint" className={inputClass} />
+          <Field id="dueDate" label="Due date" hint="Today or later. Overdue is worked out from this date.">
+            <input id="dueDate" name="dueDate" type="date" min={new Date().toLocaleDateString("en-CA")} aria-describedby="dueDate-hint" className={inputClass} />
           </Field>
         </div>
 

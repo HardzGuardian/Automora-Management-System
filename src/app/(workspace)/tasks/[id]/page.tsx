@@ -30,7 +30,8 @@ import { Alert } from "@/components/ui/alert";
 import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
-import { archiveTaskAction, assignAction, changeStatusFormAction } from "../actions";
+import { EditTaskForm } from "./edit-task-form";
+import { archiveTaskAction, assignAction, changeStatusFormAction, restoreTaskAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
 
@@ -98,6 +99,14 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
         ]}
       />
 
+      {task.archived && can(actor, "tasks.archive") ? (
+        <form action={restoreTaskAction} className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="id" value={id} />
+          <p className="m-0 text-sm text-muted">This task is archived and hidden from the lists.</p>
+          <button type="submit" className={buttonClass("primary")}>Restore task</button>
+        </form>
+      ) : null}
+
       {moves.length > 0 || canArchive ? (
         <div className="flex flex-wrap items-center gap-2" aria-label="Task actions" role="group">
           {moves.map((to, i) => (
@@ -128,6 +137,21 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
           {task.description ? (
             <SectionCard title="Description">
               <p className="whitespace-pre-wrap text-sm">{task.description}</p>
+            </SectionCard>
+          ) : null}
+
+          {manage && !task.archived ? (
+            <SectionCard title="Edit task">
+              <EditTaskForm
+                id={id}
+                title={task.title}
+                description={task.description}
+                priority={task.priority}
+                startDate={task.startDate}
+                dueDate={task.dueDate}
+                estimatedHours={task.estimatedHours}
+                actualHours={task.actualHours}
+              />
             </SectionCard>
           ) : null}
 

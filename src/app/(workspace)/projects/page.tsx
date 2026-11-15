@@ -15,14 +15,15 @@ const PILLS = [
   { label: "Active", status: "Active" },
   { label: "On hold", status: "On Hold" },
   { label: "Completed", status: "Completed" },
+  { label: "Archived", status: "Archived" },
 ] as const;
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const all = await projectsOverview(actor);
+  const [all, archived] = await Promise.all([projectsOverview(actor), projectsOverview(actor, { archived: true })]);
   const current = PILLS.find((p) => p.label === sp.status) ?? PILLS[0];
-  const rows = current.status ? all.filter((r) => r.status === current.status) : all;
+  const rows = current.status === "Archived" ? archived : current.status ? all.filter((r) => r.status === current.status) : all;
 
   return (
     <div className="flex flex-col gap-5">
@@ -44,7 +45,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         pills={PILLS.map((p) => ({
           label: p.label,
           href: p.status ? `/projects?status=${encodeURIComponent(p.label)}` : "/projects",
-          count: p.status ? all.filter((r) => r.status === p.status).length : all.length,
+          count: p.status === "Archived" ? archived.length : p.status ? all.filter((r) => r.status === p.status).length : all.length,
           active: p.label === current.label,
         }))}
       />

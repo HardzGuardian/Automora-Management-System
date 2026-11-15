@@ -11,7 +11,7 @@ import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
 import { projectsOverview } from "@/modules/projects";
-import { allowedTransitions, listTasks, type TaskDTO } from "@/modules/tasks";
+import { listTasks, rowControls, type TaskDTO } from "@/modules/tasks";
 import { projectTaskAssigneeAction, projectTaskStatusAction, toggleTaskDoneAction } from "../projects/actions";
 
 export const metadata = { title: "Tasks" };
@@ -21,6 +21,7 @@ const SHOWS = [
   { key: "all", label: "All" },
   { key: "mine", label: "My tasks" },
   { key: "overdue", label: "Overdue" },
+  { key: "archived", label: "Archived" },
 ] as const;
 type Show = (typeof SHOWS)[number]["key"];
 
@@ -53,13 +54,14 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const today = todayInTz(actor.timezone);
 
   const base = { projectId, includeArchived: false } as const;
-  const [list, nAll, nMine, nOverdue] = await Promise.all([
-    listTasks(actor, { ...base, view: show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, pageSize: 100 }),
+  const [list, nAll, nMine, nOverdue, nArchived] = await Promise.all([
+    listTasks(actor, { ...base, view: show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, archivedOnly: show === "archived", pageSize: 100 }),
     listTasks(actor, { ...base, view: "all", pageSize: 1 }),
     listTasks(actor, { ...base, view: "mine", pageSize: 1 }),
     listTasks(actor, { ...base, view: "all", overdue: true, pageSize: 1 }),
+    can(actor, "tasks.archive") ? listTasks(actor, { ...base, view: "all", archivedOnly: true, pageSize: 1 }) : Promise.resolve({ rows: [], total: 0 }),
   ]);
-  const counts: Record<Show, number> = { all: nAll.total, mine: nMine.total, overdue: nOverdue.total };
+  const counts: Record<Show, number> = { all: nAll.total, mine: nMine.total, overdue: nOverdue.total, archived: nArchived.total };
   const rows = list.rows;
 
   const canAssign = can(actor, "tasks.assign");
@@ -81,7 +83,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap items-center gap-2">
           <FilterPills
             label="Filter tasks"
-            pills={SHOWS.map((s) => ({ label: s.label, href: href(sp, { show: s.key }), count: counts[s.key], active: show === s.key }))}
+            pills={SHOWS.filter((s) => s.key !== "archived" || can(actor, "tasks.archive")).map((s) => ({ label: s.label, href: href(sp, { show: s.key }), count: counts[s.key], active: show === s.key }))}
           />
           <form className="flex items-center gap-2">
             {show !== "all" ? <input type="hidden" name="show" value={show} /> : null}
@@ -135,10 +137,12 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                   const late = isLate(t);
                   const who = assignee(t);
                   const v = statusView(t.status, { overdue: late });
-                  const statusOptions = Array.from(new Set([t.status, ...allowedTransitions(t.status)])).map((s) => ({ value: s, label: LABEL[s] ?? s }));
+                  const ctl = rowControls(actor, t);
+                  const statusOptions = ctl.statuses.map((s) => ({ value: s, label: LABEL[s] ?? s }));
                   return (
                     <tr key={t.id} className="border-t border-border">
                       <td className="py-1.5 pl-3.5 pr-2">
+                        {ctl.canToggle ? (
                         <form action={toggleTaskDoneAction}>
                           <input type="hidden" name="taskId" value={t.id} />
                           <input type="hidden" name="returnTo" value={returnTo} />
@@ -148,6 +152,13 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                             </span>
                           </button>
                         </form>
+                        ) : (
+                          <span aria-hidden="true" className="inline-flex size-11 items-center justify-center">
+                            <span className={cn("inline-flex size-[22px] items-center justify-center rounded-md border-[1.5px]", done ? "border-primary bg-primary" : "border-[#d5dbd7] bg-background")}>
+                              {done ? <Icon name="check" size={14} strokeWidth={3.2} className="text-white" /> : null}
+                            </span>
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">
                         <Link href={`/tasks/${t.id}`} className={cn("font-medium hover:text-primary-ink", done ? "text-muted line-through" : "text-foreground")}>
@@ -181,7 +192,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                       </td>
                       <td className={cn("px-3 py-2.5 tabular-nums", late ? "text-danger" : "text-body")}>{t.dueDate ?? "—"}</td>
                       <td className="py-2.5 pl-3 pr-5">
-                        {can(actor, "tasks.update") || can(actor, "tasks.status.update.own") ? (
+                        {statusOptions.length > 1 ? (
                           <div className="flex items-center gap-2">
                             <AutoSubmitSelect
                               action={projectTaskStatusAction}

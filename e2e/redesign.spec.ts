@@ -114,8 +114,13 @@ test("quick New task panel: validation and success state", async ({ page }) => {
   await login(page, ADMIN);
   await page.getByRole("button", { name: "New task" }).click();
   const panel = page.getByRole("dialog");
-  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // needs a title
+  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // needs a title, a project and a person
   await panel.getByLabel("Task title").fill("Quick task from the panel");
+  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled();
+  await panel.getByLabel("Project").selectOption({ label: "Northwind Website" });
+  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // still nobody to give it to
+  await panel.getByLabel(/Ravi Employee/).check();
+  await expect(panel.getByLabel("Due date")).toHaveAttribute("min", /\d{4}-\d{2}-\d{2}/);
   await panel.getByRole("button", { name: "Create task" }).click();
   await expect(panel.getByText("Task created")).toBeVisible();
   await panel.getByRole("button", { name: "Add another" }).click();

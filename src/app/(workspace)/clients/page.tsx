@@ -17,13 +17,13 @@ function clientStatus(projects: ProjectOverviewRow[], own: string): string {
   return "Completed";
 }
 
-export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string }> }) {
   const actor = await requireActor();
   if (!can(actor, "clients.read")) {
     return <p className="rounded-lg border border-border bg-surface p-5 text-muted">You do not have access to clients.</p>;
   }
   const sp = await searchParams;
-  const [{ rows: clients }, projects] = await Promise.all([listClients(actor, { page: 1, pageSize: 100, search: sp.q }), projectsOverview(actor)]);
+  const [{ rows: clients }, projects] = await Promise.all([listClients(actor, { page: 1, pageSize: 100, search: sp.q, includeArchived: sp.archived === "1" }), projectsOverview(actor)]);
   const byClient = new Map<string, ProjectOverviewRow[]>();
   for (const p of projects) if (p.clientId) byClient.set(p.clientId, [...(byClient.get(p.clientId) ?? []), p]);
 
@@ -54,6 +54,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
         />
       </form>
+      <Link href={sp.archived === "1" ? "/clients" : "/clients?archived=1"} className="w-fit text-[13px] font-medium text-primary-ink hover:text-primary-hover">
+        {sp.archived === "1" ? "Hide archived clients" : "Show archived clients"}
+      </Link>
 
       <section aria-label="Clients" className="rounded-lg border border-border bg-surface">
         {clients.length === 0 ? (

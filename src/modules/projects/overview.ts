@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, ilike, inArray, isNull, ne, or, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { clients, departments, projectTeams, projects, tasks, teams } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
@@ -24,8 +24,8 @@ const LIMIT = 200;
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Everything the Projects screen shows in one query set: client, team, progress and open tasks. */
-export async function projectsOverview(actor: Actor, input: { search?: string } = {}): Promise<ProjectOverviewRow[]> {
-  const conds: SQL[] = [projectScope(actor), isNull(projects.archivedAt)];
+export async function projectsOverview(actor: Actor, input: { search?: string; archived?: boolean } = {}): Promise<ProjectOverviewRow[]> {
+  const conds: SQL[] = [projectScope(actor), input.archived ? isNotNull(projects.archivedAt) : isNull(projects.archivedAt)];
   if (input.search?.trim()) {
     const p = `%${escapeLike(input.search.trim())}%`;
     conds.push(or(ilike(projects.name, p), ilike(projects.projectCode, p))!);

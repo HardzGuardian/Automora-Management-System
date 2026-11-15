@@ -47,6 +47,8 @@ describe("status machine (table-driven)", () => {
     ["On Hold", "Cancelled"],
     ["Completed", "Archived"],
     ["Cancelled", "Archived"],
+    ["Completed", "Active"],
+    ["Archived", "Active"],
   ];
   it.each(valid)("allows %s -> %s", (from, to) => {
     expect(canTransition(from, to)).toBe(true);
@@ -55,8 +57,6 @@ describe("status machine (table-driven)", () => {
     ["Planning", "Completed"],
     ["Planning", "On Hold"],
     ["Active", "Planning"],
-    ["Completed", "Active"],
-    ["Archived", "Active"],
     ["Archived", "Archived"],
     ["Cancelled", "Active"],
     ["Active", "Active"],
@@ -155,6 +155,24 @@ describe("changeProjectStatus", () => {
     expect(logs.filter((l) => l.action === "project.status_changed")).toHaveLength(5);
     expect((await listProjects(w.actor, {})).rows.some((r) => r.id === p.id)).toBe(false);
     expect((await listProjects(w.actor, { includeArchived: true })).rows.some((r) => r.id === p.id)).toBe(true);
+  });
+
+  it("reopens a completed project and restores an archived one, clearing archived_at, with projects.archive for the restore", async () => {
+    const w = await world();
+    const p = await createProjectSvc(w.actor, base(w));
+    for (const s of ["Active", "Completed", "Active", "Completed", "Archived"] as const) await changeProjectStatus(w.actor, p.id, s);
+    const restored = await changeProjectStatus(w.actor, p.id, "Active");
+    expect(restored).toMatchObject({ status: "Active", archived: false });
+    expect((await listProjects(w.actor, {})).rows.some((r) => r.id === p.id)).toBe(true);
+
+    const noArchive = await world(["projects.read.all", "projects.create", "projects.update"]);
+    const q = await createProjectSvc(noArchive.actor, base(noArchive));
+    await changeProjectStatus(noArchive.actor, q.id, "Cancelled");
+    const adm = await world();
+    const r2 = await createProjectSvc(adm.actor, base(adm));
+    await changeProjectStatus(adm.actor, r2.id, "Cancelled");
+    await changeProjectStatus(adm.actor, r2.id, "Archived");
+    await expect(changeProjectStatus(noArchive.actor, r2.id, "Active")).rejects.toThrow(); // other company: not visible, never restorable
   });
 
   it("rejects an invalid transition as CONFLICT and archiving needs projects.archive", async () => {

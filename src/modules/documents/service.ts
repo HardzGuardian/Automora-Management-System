@@ -7,7 +7,7 @@ import { DomainError } from "@/lib/errors";
 import { requirePermission, projectScope } from "@/lib/permissions";
 import { audit } from "@/modules/audit";
 import { purgeObjects, removeFileRow, saveUpload, type FileAccessChecker } from "@/modules/files";
-import { loadProject } from "@/modules/projects";
+import { loadProject, notifyProjectMembers } from "@/modules/projects";
 
 /** The four groups the Documents screen filters by. */
 export const DOC_KINDS = ["PDF", "Docs", "Sheets", "Images"] as const;
@@ -134,6 +134,12 @@ export async function addProjectDocument(
         after: { documentId: row.id, name: file.name },
       });
       return row.id;
+    });
+    await notifyProjectMembers(actor, projectId, {
+      type: "document.added",
+      title: `New document: ${file.name}`,
+      body: pre.name,
+      eventKey: `project:${projectId}:document:${id}`,
     });
     return toDTO({
       id,

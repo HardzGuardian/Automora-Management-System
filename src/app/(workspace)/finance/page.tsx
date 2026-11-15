@@ -90,7 +90,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     tab === "invoices" && can(actor, "finance.invoices.create")
       ? { href: "/invoices/new", label: "Create invoice" }
       : tab === "payments" && can(actor, "finance.payments.record")
-        ? { href: "/invoices?status=issued", label: "Record payment" }
+        ? { href: "/finance?tab=invoices", label: "Record payment" }
         : tab === "expenses" && can(actor, "finance.expenses.create")
           ? { href: "/expenses/new", label: "Add expense" }
           : null;

@@ -128,7 +128,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
-          <Section title={`Receipts (${receipts.length})`}>
+          <Section title={`Attached receipt files (${receipts.length})`}>
             {receipts.length === 0 ? (
               <p className="text-sm text-muted">No receipts attached yet.</p>
             ) : (

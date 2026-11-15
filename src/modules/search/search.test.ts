@@ -4,10 +4,11 @@ import { createEmployee } from "@/modules/employees";
 import { createProject } from "@/modules/projects";
 import { createTask } from "@/modules/tasks";
 import { workWorld } from "@/test/work";
+import { addProjectDocument } from "@/modules/documents";
 import { globalSearch } from "./service";
 
 async function seeded() {
-  const w = await workWorld(["tasks.read.all", "tasks.create", "tasks.assign", "projects.read.all", "projects.create", "clients.read", "clients.create", "employees.read", "employees.create"]);
+  const w = await workWorld(["tasks.read.all", "tasks.create", "tasks.assign", "projects.read.all", "projects.create", "projects.update", "clients.read", "clients.create", "employees.read", "employees.create"]);
   const staff = await w.employee();
   const client = await createClient(w.manager, { name: "Zephyr Industries" });
   await createEmployee(w.manager, { fullName: "Zephyra Menon", workEmail: "zephyra@test.local" });
@@ -25,7 +26,16 @@ describe("globalSearch", () => {
     expect(r.clients.map((x) => x.title)).toEqual(["Zephyr Industries"]);
     expect(r.projects.map((x) => x.title)).toEqual(["Zephyr Portal"]);
     expect(r.tasks.map((x) => x.title).sort()).toEqual(["Zephyr kickoff", "Zephyr secret budget"]);
-    expect(r.total).toBe(r.employees.length + r.clients.length + r.projects.length + r.tasks.length);
+    expect(r.total).toBe(r.employees.length + r.clients.length + r.projects.length + r.tasks.length + r.documents.length);
+  });
+
+  it("finds documents by file name, linking to the project's documents, and hides them from people outside the project", async () => {
+    const s = await seeded();
+    await addProjectDocument(s.w.manager, s.project.id, { name: "zephyr-brief.pdf", mime: "application/pdf", bytes: Buffer.from("%PDF-1.7 x") });
+    const r = await globalSearch(s.w.manager, "zephyr-brief");
+    expect(r.documents).toHaveLength(1);
+    expect(r.documents[0]).toMatchObject({ type: "document", title: "zephyr-brief.pdf", href: `/projects/${s.project.id}?tab=documents` });
+    expect((await globalSearch(s.staff.actor, "zephyr-brief")).documents).toHaveLength(0);
   });
 
   it("returns links to the records", async () => {

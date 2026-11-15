@@ -22,6 +22,7 @@ export {
   addProjectComment,
   listClientItems,
   listProjectComments,
+  notifyProjectMembers,
   setClientItemReceived,
   type ClientItemDTO,
   type ProjectCommentDTO,

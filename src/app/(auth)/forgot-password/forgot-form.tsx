@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { AuthAlert, AuthField, AuthSubmit, authInputClass } from "@/components/ui/auth-fields";
 import { Icon } from "@/components/ui/icons";
 import { forgotPasswordAction, type ForgotState } from "./actions";
@@ -9,6 +9,7 @@ const initial: ForgotState = {};
 
 export function ForgotForm() {
   const [state, action, pending] = useActionState(forgotPasswordAction, initial);
+  const [email, setEmail] = useState("");
   if (state.done) {
     return (
       <div role="status" className="flex flex-col items-start gap-4">
@@ -28,7 +29,7 @@ export function ForgotForm() {
     <form action={action} className="flex w-full flex-col gap-[18px]">
       {state.error ? <AuthAlert>{state.error}</AuthAlert> : null}
       <AuthField id="email" label="Email" icon="mail">
-        <input id="email" name="email" type="email" required autoComplete="username" placeholder="name@company.com" className={authInputClass} />
+        <input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" placeholder="name@company.com" className={authInputClass} />
       </AuthField>
       <AuthSubmit pending={pending} label="Send reset link" pendingLabel="Sending…" />
     </form>

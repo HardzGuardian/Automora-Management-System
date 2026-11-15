@@ -134,6 +134,17 @@ export async function getTask(actor: Actor, id: string): Promise<TaskDTO> {
   return loadTaskDTO(db, actor, id);
 }
 
+export async function unarchiveTask(actor: Actor, id: string): Promise<TaskDTO> {
+  requirePermission(actor, "tasks.archive");
+  return withTransaction(async (tx) => {
+    const before = await loadTask(tx, actor, id);
+    if (!before.archivedAt) throw new DomainError("CONFLICT", "Task is not archived");
+    await tx.update(tasks).set({ archivedAt: null }).where(and(eq(tasks.id, id), eq(tasks.companyId, actor.companyId)));
+    await logTaskActivity(tx, actor, id, "restored");
+    return loadTaskDTO(tx, actor, id);
+  });
+}
+
 export async function archiveTask(actor: Actor, id: string): Promise<TaskDTO> {
   requirePermission(actor, "tasks.archive");
   return withTransaction(async (tx) => {

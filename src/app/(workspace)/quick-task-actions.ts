@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
+import { todayInTz } from "@/lib/dates";
 import { toActionResult } from "@/lib/errors";
 import { createTask, quickTaskOptions, type QuickTaskOptions } from "@/modules/tasks";
 
@@ -21,6 +22,14 @@ export async function loadQuickTaskOptions(): Promise<{ ok: true; options: Quick
 export async function createQuickTaskAction(input: QuickTaskInput): Promise<QuickTaskResult> {
   const actor = await requireActor();
   const priority = z.enum(["Low", "Medium", "High"]).catch("Medium").parse(input.priority);
+  // Every task belongs to a project and has one owner, and cannot be due in the past.
+  const missing: Record<string, string[]> = {};
+  if (!input.title.trim()) missing.title = ["Enter a task title."];
+  if (!input.projectId) missing.projectId = ["Choose a project."];
+  if (!input.assigneeId) missing.assigneeIds = ["Choose who this task is assigned to."];
+  if (input.dueDate && input.dueDate < todayInTz(actor.timezone)) missing.dueDate = ["The due date cannot be in the past."];
+  const first = Object.values(missing)[0]?.[0];
+  if (first) return { ok: false, error: first, fieldErrors: missing };
   const r = await toActionResult(() =>
     createTask(actor, {
       title: input.title,

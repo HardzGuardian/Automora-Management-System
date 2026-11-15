@@ -102,7 +102,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
               <span className="flex size-14 items-center justify-center rounded-full bg-success-soft text-success">
                 <Icon name="check" size={28} />
               </span>
-              <p className="text-base font-medium text-foreground">The task is on its way to the assignee.</p>
+              <p className="text-base font-medium text-foreground">The assignee has been notified.</p>
               <div className="flex gap-2">
                 <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.close()}>
                   Done
@@ -134,7 +134,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
                 ) : null}
 
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  Task title <span className="sr-only">(required)</span>
+                  Task title <span aria-hidden="true" className="text-danger">*</span><span className="sr-only"> (required)</span>
                   <input
                     value={form.title}
                     onChange={(e) => set("title", e.target.value)}
@@ -147,9 +147,9 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  Project
+                  Project <span aria-hidden="true" className="text-danger">*</span><span className="sr-only"> (required)</span>
                   <select value={form.projectId} onChange={(e) => set("projectId", e.target.value)} className={inputClass}>
-                    <option value="">No project</option>
+                    <option value="">Choose a project</option>
                     {options?.projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -159,7 +159,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
                 </label>
 
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="mb-1.5 text-sm font-medium text-foreground">Assign to</legend>
+                  <legend className="mb-1.5 text-sm font-medium text-foreground">Assign to <span aria-hidden="true" className="text-danger">*</span><span className="sr-only"> (required)</span></legend>
                   {!options ? <p className="text-sm text-muted">Loading people…</p> : null}
                   <div className="flex flex-col gap-2">
                     {options?.people.map((p) => {
@@ -186,7 +186,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
 
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
                   Due date
-                  <input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} className={inputClass} />
+                  <input type="date" value={form.dueDate} min={new Date().toLocaleDateString("en-CA")} onChange={(e) => set("dueDate", e.target.value)} className={inputClass} />
                   {fe("dueDate") ? <span className="text-sm font-normal text-danger">{fe("dueDate")}</span> : null}
                 </label>
 
@@ -210,7 +210,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
               </div>
 
               <div className="flex gap-2 border-t border-border p-4">
-                <button type="submit" disabled={pending || !form.title.trim()} className={cn(buttonClass("primary"), "flex-1")}>
+                <button type="submit" disabled={pending || !form.title.trim() || !form.projectId || !form.assigneeId} className={cn(buttonClass("primary"), "flex-1")}>
                   {pending ? "Creating…" : "Create task"}
                 </button>
                 <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.close()}>

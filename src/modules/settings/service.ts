@@ -146,5 +146,9 @@ export async function getNumbering(actor: Actor): Promise<{ kind: string; label:
   requirePermission(actor, "settings.read");
   const rows = await db.select().from(codeSequences).where(and(eq(codeSequences.companyId, actor.companyId)));
   const next = new Map(rows.map((r) => [r.kind, r.nextValue]));
-  return CODE_KINDS.map((kind) => ({ kind, label: LABELS[kind], next: `${kind}-${String(next.get(kind) ?? 1).padStart(6, "0")}` }));
+  const year = new Date().getUTCFullYear(); // invoices carry the issue year, e.g. INV-2026-000001
+  return CODE_KINDS.map((kind) => {
+    const n = String(next.get(kind) ?? 1).padStart(6, "0");
+    return { kind, label: LABELS[kind], next: kind === "INV" ? `INV-${year}-${n}` : `${kind}-${n}` };
+  });
 }

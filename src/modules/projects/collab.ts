@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { projectClientItems, projectComments, user } from "@/db/schema";
+import { employees, projectClientItems, projectComments, projectMembers, user } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
+import { notify } from "@/lib/notify";
 import { requirePermission } from "@/lib/permissions";
 import { loadProject } from "./service";
 
@@ -13,6 +14,22 @@ export type ClientItemDTO = { id: string; title: string; detail: string | null; 
 const MAX_COMMENT = 2000;
 const MAX_TITLE = 160;
 const MAX_DETAIL = 500;
+
+/** Tells everyone on the project except the person who did it. Runs after the change is saved and never fails it. */
+export async function notifyProjectMembers(
+  actor: Actor,
+  projectId: string,
+  event: { type: string; title: string; body?: string; eventKey: string },
+): Promise<void> {
+  const rows = await db
+    .select({ userId: employees.userId })
+    .from(projectMembers)
+    .innerJoin(employees, and(eq(employees.id, projectMembers.employeeId), eq(employees.companyId, projectMembers.companyId)))
+    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.companyId, actor.companyId)));
+  const userIds = rows.map((r) => r.userId).filter((id): id is string => Boolean(id) && id !== actor.userId);
+  if (userIds.length === 0) return;
+  await notify({ ...event, userIds, entity: { type: "project", id: projectId } });
+}
 
 /** Comments: anyone who can see the project and may comment on work can read and post. */
 export async function listProjectComments(actor: Actor, projectId: string): Promise<ProjectCommentDTO[]> {
@@ -33,7 +50,16 @@ export async function addProjectComment(actor: Actor, projectId: string, body: s
   if (text.length > MAX_COMMENT) throw new DomainError("VALIDATION", `Comments can be up to ${MAX_COMMENT} characters.`);
   const project = await loadProject(db, actor, projectId);
   if (project.archivedAt) throw new DomainError("VALIDATION", "Archived projects cannot be commented on.");
-  await db.insert(projectComments).values({ companyId: actor.companyId, projectId, authorId: actor.userId, body: text });
+  const [row] = await db
+    .insert(projectComments)
+    .values({ companyId: actor.companyId, projectId, authorId: actor.userId, body: text })
+    .returning({ id: projectComments.id });
+  await notifyProjectMembers(actor, projectId, {
+    type: "comment.project",
+    title: `New comment on ${project.name}`,
+    body: text.length > 120 ? `${text.slice(0, 117)}…` : text,
+    eventKey: `project:${projectId}:comment:${row.id}`,
+  });
 }
 
 /** Client input: what the team is waiting for. Everyone on the project sees it; people who can update the project change it. */

@@ -14,6 +14,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   const tabs = [
     settings && { href: "/settings/company", label: "Company" },
     users && { href: "/settings/users", label: "Users" },
+    can(actor, "employees.read") && { href: "/employees", label: "Employees" },
     roles && { href: "/settings/roles", label: "Roles and permissions" },
     settings && { href: "/settings/numbering", label: "Numbering" },
     settings && { href: "/settings/preferences", label: "Preferences" },

@@ -7,6 +7,7 @@ import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { BackLink } from "@/components/ui/back-link";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { Icon, type IconName } from "@/components/ui/icons";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -29,7 +30,7 @@ import {
   listProjectTeams,
   type ProjectStatus,
 } from "@/modules/projects";
-import { allowedTransitions, listTasks } from "@/modules/tasks";
+import { listTasks, rowControls } from "@/modules/tasks";
 import { listAssignableTeams } from "@/modules/teams";
 import { loadLinkedFinance } from "../../_components/linked-data";
 import { LinkedRecords } from "../../_components/linked-records";
@@ -230,7 +231,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                     <input type="hidden" name="id" value={id} />
                     <input type="hidden" name="to" value={s} />
                     <button type="submit" role="menuitem" className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-2.5 text-left text-[13px] font-medium text-foreground hover:bg-primary-soft">
-                      {statusView(s).label}
+                      {project.archived ? "Restore project" : project.status === "Completed" && s === "Active" ? "Reopen project" : statusView(s).label}
                     </button>
                   </form>
                 </li>
@@ -358,11 +359,13 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                         const done = t.status === "Completed";
                         const late = isOverdue(t);
                         const v = statusView(t.status, { overdue: late });
-                        const statusOptions = Array.from(new Set([t.status, ...allowedTransitions(t.status)])).map((s) => ({ value: s, label: TASK_STATUS_LABEL[s] ?? s }));
+                        const ctl = rowControls(actor, t);
+                        const statusOptions = ctl.statuses.map((s) => ({ value: s, label: TASK_STATUS_LABEL[s] ?? s }));
                         const assignee = t.assignees[0]?.employeeId ?? "";
                         return (
                           <tr key={t.id} className="border-t border-border">
                             <td className="py-1.5 pl-3.5 pr-2">
+                              {ctl.canToggle ? (
                               <form action={toggleTaskDoneAction}>
                                 <input type="hidden" name="projectId" value={id} />
                                 <input type="hidden" name="taskId" value={t.id} />
@@ -377,6 +380,13 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                                   </span>
                                 </button>
                               </form>
+                              ) : (
+                                <span aria-hidden="true" className="inline-flex size-11 items-center justify-center">
+                            <span className={cn("inline-flex size-[22px] items-center justify-center rounded-md border-[1.5px]", done ? "border-primary bg-primary" : "border-[#d5dbd7] bg-background")}>
+                              {done ? <Icon name="check" size={14} strokeWidth={3.2} className="text-white" /> : null}
+                            </span>
+                          </span>
+                              )}
                             </td>
                             <td className="px-3 py-2.5">
                               <Link href={`/tasks/${t.id}`} className={cn("font-medium hover:text-primary-ink", done ? "text-muted line-through" : "text-foreground")}>
@@ -402,6 +412,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                             <td className={cn("px-3 py-2.5 tabular-nums", late ? "text-danger" : "text-body")}>{t.dueDate ?? "—"}</td>
                             <td className="py-2.5 pl-3 pr-5">
                               <div className="flex items-center gap-2">
+                                {statusOptions.length > 1 ? (
                                 <AutoSubmitSelect
                                   action={projectTaskStatusAction}
                                   name="status"
@@ -411,7 +422,10 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                                   options={statusOptions}
                                   className={cn("h-[34px]! rounded-full border-transparent px-2 text-xs font-medium", TONE_CLASS[v.tone])}
                                 />
-                                {late ? <span className="text-xs font-semibold text-danger">Overdue</span> : null}
+                                ) : (
+                                  <StatusBadge status={t.status} overdue={late} />
+                                )}
+                                {late && statusOptions.length > 1 ? <span className="text-xs font-semibold text-danger">Overdue</span> : null}
                               </div>
                             </td>
                           </tr>

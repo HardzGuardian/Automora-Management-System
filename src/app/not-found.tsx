@@ -5,7 +5,7 @@ export const metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-4 py-8">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 items-center justify-center rounded-[10px] bg-primary text-xl font-bold text-white">A</span>
         <span className="text-[22px] font-bold tracking-tight">Automora</span>
@@ -27,6 +27,6 @@ export default function NotFound() {
         </div>
       </div>
       <p className="m-0 text-xs text-muted">Automora Tech Solutions LLP · Internal use only</p>
-    </main>
+    </div>
   );
 }

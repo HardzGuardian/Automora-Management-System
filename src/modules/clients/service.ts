@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { db, withTransaction, type Tx } from "@/db";
 import { clientNotes, clients } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
@@ -30,10 +30,28 @@ export async function loadClient(tx: Pick<Tx, "select">, actor: Actor, id: strin
   return row;
 }
 
+/** Two live clients in one company cannot share a name (ignoring case and spaces at the ends). */
+async function assertNameFree(tx: Pick<Tx, "select">, companyId: string, name: string, exceptId?: string): Promise<void> {
+  const [hit] = await tx
+    .select({ id: clients.id })
+    .from(clients)
+    .where(
+      and(
+        eq(clients.companyId, companyId),
+        isNull(clients.archivedAt),
+        sql`lower(btrim(${clients.name})) = lower(btrim(${name}))`,
+        exceptId ? ne(clients.id, exceptId) : undefined,
+      ),
+    )
+    .limit(1);
+  if (hit) throw new DomainError("CONFLICT", "A client with this name already exists.");
+}
+
 export async function createClient(actor: Actor, input: CreateClientInput): Promise<ClientDTO> {
   requirePermission(actor, "clients.create");
   const data = createClientSchema.parse(input);
   return withTransaction(async (tx) => {
+    await assertNameFree(tx, actor.companyId, data.name);
     const [row] = await tx
       .insert(clients)
       .values({
@@ -58,6 +76,7 @@ export async function updateClient(actor: Actor, id: string, input: UpdateClient
   const patch = updateClientSchema.parse(input);
   return withTransaction(async (tx) => {
     const before = await loadClient(tx, actor, id);
+    if (patch.name !== undefined && !before.archivedAt) await assertNameFree(tx, actor.companyId, patch.name, id);
     const [row] = await tx
       .update(clients)
       .set(Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)))

@@ -33,13 +33,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const trimmed = q.trim().length;
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Search" description="Find tasks, projects, clients and employees you have access to." />
+      <PageHeader title="Search" description="Find tasks, projects, documents, clients and employees you have access to." />
       <form role="search" aria-label="Search the workspace" className="flex flex-wrap gap-2">
         <input
           name="q"
           type="search"
           defaultValue={q}
-          placeholder="Search employees, clients, projects, tasks"
+          placeholder="Search projects, tasks, documents"
           aria-label="Search"
           className={`${inputClass} max-w-md flex-1`}
         />
@@ -51,6 +51,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       {trimmed >= 2 && results.total === 0 ? <EmptyState title={`Nothing found for “${q}”`} description="Check the spelling, or try a task code or a shorter word." /> : null}
       <Group title="Tasks" hits={results.tasks} />
       <Group title="Projects" hits={results.projects} />
+      <Group title="Documents" hits={results.documents} />
       <Group title="Clients" hits={results.clients} />
       <Group title="Employees" hits={results.employees} />
     </div>
