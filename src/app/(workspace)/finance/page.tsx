@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { FilterPills } from "@/components/ui/filter-pills";
+import { Pager } from "@/components/ui/pager";
+import { parsePage } from "@/lib/pagination";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass } from "@/components/ui/styles";
@@ -7,7 +9,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { cn } from "@/lib/cn";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
-import { getFinanceSnapshot, listExpenses, listInvoices, listReceipts, type FinanceSnapshot } from "@/modules/finance";
+import { getFinanceSnapshot, listExpenses, listInvoiceClients, listInvoices, listReceipts, type FinanceSnapshot } from "@/modules/finance";
 import { projectsOverview } from "@/modules/projects";
 import { money } from "../invoices/_components/finance-ui";
 
@@ -16,6 +18,14 @@ export const metadata = { title: "Finance" };
 const TABS = ["invoices", "payments", "expenses"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = { invoices: "Invoices", payments: "Payments", expenses: "Expenses" };
+const PAGE_SIZE = 25;
+const STATUS_OPTIONS: Record<Tab, readonly string[]> = {
+  invoices: ["draft", "issued", "partially_paid", "paid", "overdue", "cancelled"],
+  payments: ["pending", "confirmed", "reversed"],
+  expenses: ["unpaid", "partially_paid", "paid"],
+};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const nice = (v: string) => v.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const METHOD: Record<string, string> = { bank_transfer: "Bank transfer", upi: "UPI", cash: "Cash", card: "Card", other: "Other" };
 
 /** "INR 1,200.00" per currency; several currencies are listed, never added together. */
@@ -39,7 +49,7 @@ const Td = ({ children, right, strong }: { children: React.ReactNode; right?: bo
   <td className={cn("p-4", right && "text-right tabular-nums", strong ? "font-semibold text-foreground" : "text-body")}>{children}</td>
 );
 
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string; clientId?: string; page?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
   const allowed: Record<Tab, boolean> = {
@@ -63,11 +73,28 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   for (const r of overdue?.rows ?? []) overdueByCurrency.set(r.currency, (overdueByCurrency.get(r.currency) ?? 0) + Number(r.outstanding));
   const overdueAmounts = [...overdueByCurrency].map(([currency, n]) => ({ currency, amount: n.toFixed(2) }));
 
+  // Filters and paging apply to the open tab only; the other tabs just need their total for the pill.
+  const status = STATUS_OPTIONS[tab].find((x) => x === sp.status);
+  const clientId = tab === "invoices" && sp.clientId && UUID.test(sp.clientId) ? sp.clientId : undefined;
+  const page = parsePage(sp.page);
+  const filtered = Boolean(status || clientId);
   const [invoices, receipts, expenses] = await Promise.all([
-    allowed.invoices ? listInvoices(actor, { pageSize: 50 }) : null,
-    allowed.payments ? listReceipts(actor, { pageSize: 50 }) : null,
-    allowed.expenses ? listExpenses(actor, { pageSize: 50 }) : null,
+    allowed.invoices ? listInvoices(actor, tab === "invoices" ? { page, pageSize: PAGE_SIZE, status: status as never, clientId } : { pageSize: 1 }) : null,
+    allowed.payments ? listReceipts(actor, tab === "payments" ? { page, pageSize: PAGE_SIZE, status: status as never } : { pageSize: 1 }) : null,
+    allowed.expenses ? listExpenses(actor, tab === "expenses" ? { page, pageSize: PAGE_SIZE, status: status as never } : { pageSize: 1 }) : null,
   ]);
+  const totalOf = async (t: Tab, current: number | undefined) => {
+    if (t !== tab || !filtered) return current ?? 0;
+    if (t === "invoices") return (await listInvoices(actor, { pageSize: 1 })).total;
+    if (t === "payments") return (await listReceipts(actor, { pageSize: 1 })).total;
+    return (await listExpenses(actor, { pageSize: 1 })).total;
+  };
+  const clientsForFilter = tab === "invoices" && allowed.invoices ? await listInvoiceClients(actor).catch(() => []) : [];
+  const q = (patch: Record<string, string | undefined>) => {
+    const qs = new URLSearchParams({ tab });
+    for (const [k, v] of Object.entries({ status, clientId, ...patch })) if (v) qs.set(k, v);
+    return `/finance?${qs.toString()}`;
+  };
 
   const stats = [
     { label: "Outstanding", value: snapshot ? amounts(snapshot.pointInTime.outstandingReceivables) : "—", hint: "Issued and overdue invoices", tone: "" },
@@ -94,7 +121,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         : tab === "expenses" && can(actor, "finance.expenses.create")
           ? { href: "/expenses/new", label: "Add expense" }
           : null;
-  const counts: Record<Tab, number> = { invoices: invoices?.total ?? 0, payments: receipts?.total ?? 0, expenses: expenses?.total ?? 0 };
+  const counts: Record<Tab, number> = {
+    invoices: await totalOf("invoices", invoices?.total),
+    payments: await totalOf("payments", receipts?.total),
+    expenses: await totalOf("expenses", expenses?.total),
+  };
+  const activeTotal = tab === "invoices" ? (invoices?.total ?? 0) : tab === "payments" ? (receipts?.total ?? 0) : (expenses?.total ?? 0);
+  const pages = Math.max(1, Math.ceil(activeTotal / PAGE_SIZE));
 
   if (tabs.length === 0) {
     return <p className="rounded-lg border border-border bg-surface p-5 text-muted">You do not have access to finance.</p>;
@@ -132,10 +165,34 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
       <FilterPills label="Finance sections" pills={tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, count: counts[t], active: t === tab }))} />
 
+      <form className="flex flex-wrap items-center gap-2" aria-label={`Filter ${TAB_LABEL[tab].toLowerCase()}`}>
+        <input type="hidden" name="tab" value={tab} />
+        <label htmlFor="fin-status" className="sr-only">Status</label>
+        <select id="fin-status" name="status" defaultValue={status ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+          <option value="">All statuses</option>
+          {STATUS_OPTIONS[tab].map((x) => (
+            <option key={x} value={x}>{nice(x)}</option>
+          ))}
+        </select>
+        {clientsForFilter.length > 0 ? (
+          <>
+            <label htmlFor="fin-client" className="sr-only">Client</label>
+            <select id="fin-client" name="clientId" defaultValue={clientId ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+              <option value="">All clients</option>
+              {clientsForFilter.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </>
+        ) : null}
+        <button type="submit" className="h-10 rounded-lg border border-field bg-surface px-4 font-medium hover:bg-primary-soft">Apply</button>
+        {filtered ? <Link href={`/finance?tab=${tab}`} className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">Clear</Link> : null}
+      </form>
+
       <section aria-label={TAB_LABEL[tab]} tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
         {tab === "invoices" && invoices ? (
           invoices.rows.length === 0 ? (
-            <p className="px-5 py-10 text-center text-muted">No invoices yet.</p>
+            <p className="px-5 py-10 text-center text-muted">{filtered ? "No invoices match these filters." : "No invoices yet."}</p>
           ) : (
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
@@ -163,7 +220,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         {tab === "payments" && receipts ? (
           receipts.rows.length === 0 ? (
-            <p className="px-5 py-10 text-center text-muted">No payments recorded yet. Open an issued invoice to record one.</p>
+            <p className="px-5 py-10 text-center text-muted">{filtered ? "No payments match this filter." : "No payments recorded yet. Open an issued invoice to record one."}</p>
           ) : (
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
@@ -191,7 +248,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
         {tab === "expenses" && expenses ? (
           expenses.rows.length === 0 ? (
-            <p className="px-5 py-10 text-center text-muted">No expenses yet.</p>
+            <p className="px-5 py-10 text-center text-muted">{filtered ? "No expenses match this filter." : "No expenses yet."}</p>
           ) : (
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
@@ -217,6 +274,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           )
         ) : null}
       </section>
+      <Pager page={page} pages={pages} prevHref={page > 1 ? q({ page: String(page - 1) }) : undefined} nextHref={page < pages ? q({ page: String(page + 1) }) : undefined} />
     </div>
   );
 }

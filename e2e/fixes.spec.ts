@@ -125,3 +125,37 @@ test("employee: a team member sees teammates but only their own tasks", async ({
   await expect(page.getByRole("link", { name: /Asha Admin/ })).toHaveCount(0); // teammates are names only, no work pages
   await expect(page.getByRole("region", { name: "Selected person's work" })).toContainText("Design homepage");
 });
+
+test("finance: filter by status and clear; the tab counts stay put", async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto("/finance?tab=invoices");
+  await page.getByLabel("Status").selectOption("paid");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page).toHaveURL(/status=paid/);
+  await expect(page.getByText("No invoices match these filters.")).toBeVisible();
+  await page.getByRole("link", { name: "Clear" }).click();
+  await expect(page).not.toHaveURL(/status=/);
+  await page.getByRole("navigation", { name: "Finance sections" }).getByRole("link", { name: /^Expenses/ }).click();
+  await expect(page.getByLabel("Status")).toContainText("Unpaid");
+});
+
+test("dashboard: the set-up checklist is hidden once people, a team, a client and a project exist", async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Get started" })).toHaveCount(0);
+});
+
+test("employees: search and status pills", async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto("/employees");
+  await expect(page.getByRole("link", { name: "Ravi Employee" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Filter by status" }).getByRole("link", { name: /^Suspended/ }).click();
+  await expect(page.getByText("No employees match.")).toBeVisible();
+  await page.getByRole("navigation", { name: "Filter by status" }).getByRole("link", { name: /^All/ }).click();
+  await expect(page).not.toHaveURL(/status=/);
+  await page.getByLabel("Search employees").fill("ravi");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("link", { name: "Ravi Employee" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("link", { name: "Asha Admin" })).toHaveCount(0);
+});
