@@ -41,6 +41,7 @@ export async function changePassword(
 
     const ok = await ctx.password.verify({ hash: acc.password, password: data.current });
     if (!ok) throw new DomainError("VALIDATION", "Your current password is incorrect");
+    if (data.current === data.next) throw new DomainError("VALIDATION", "Choose a new password that is different from the current one");
 
     await tx.update(account).set({ password: await ctx.password.hash(data.next) }).where(eq(account.id, acc.id));
     await tx

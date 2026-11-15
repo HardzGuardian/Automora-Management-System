@@ -108,7 +108,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           </SectionCard>
 
           {can(actor, "finance.invoices.read") ? (
-            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4 shadow-sm">
+            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
               <h2 className="m-0 text-base font-semibold">Finance</h2>
               {financeUnavailable ? (
                 <p className="text-sm text-muted">Finance data is unavailable right now.</p>

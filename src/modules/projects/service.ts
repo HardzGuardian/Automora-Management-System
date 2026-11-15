@@ -108,15 +108,16 @@ export async function updateProject(actor: Actor, id: string, input: UpdateProje
 }
 
 export async function changeProjectStatus(actor: Actor, id: string, to: ProjectStatus): Promise<ProjectDTO> {
-  requirePermission(actor, to === "Archived" ? "projects.archive" : "projects.update");
   return withTransaction(async (tx) => {
     const before = await loadProject(tx, actor, id);
+    // Archiving and restoring are both archive-rights actions; every other move is an update.
+    requirePermission(actor, to === "Archived" || before.status === "Archived" ? "projects.archive" : "projects.update");
     if (!canTransition(before.status, to)) {
       throw new DomainError("CONFLICT", `A project cannot move from ${before.status} to ${to}`);
     }
     const updated = await tx
       .update(projects)
-      .set({ status: to, archivedAt: to === "Archived" ? new Date() : before.archivedAt })
+      .set({ status: to, archivedAt: to === "Archived" ? new Date() : before.status === "Archived" ? null : before.archivedAt })
       .where(and(eq(projects.id, id), eq(projects.companyId, actor.companyId), eq(projects.status, before.status)))
       .returning();
     if (updated.length === 0) throw new DomainError("CONFLICT", "The project was changed by someone else; reload and retry");

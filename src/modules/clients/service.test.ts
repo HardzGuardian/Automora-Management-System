@@ -123,3 +123,15 @@ describe("notes", () => {
     await expect(listClientNotes(other.actor, c.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
+
+describe("duplicate names", () => {
+  it("refuses a second live client with the same name, ignoring case, but allows it once the first is archived", async () => {
+    const w = await world();
+    const a = await createClient(w.actor, { name: "Acme Ltd" });
+    await expect(createClient(w.actor, { name: "  acme ltd " })).rejects.toMatchObject({ code: "CONFLICT" });
+    const b = await createClient(w.actor, { name: "Other" });
+    await expect(updateClient(w.actor, b.id, { name: "ACME LTD" })).rejects.toMatchObject({ code: "CONFLICT" });
+    await archiveClient(w.actor, a.id);
+    await expect(createClient(w.actor, { name: "Acme Ltd" })).resolves.toBeTruthy();
+  });
+});

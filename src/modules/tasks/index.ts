@@ -1,13 +1,14 @@
-export { archiveTask, createTask, getTask, updateTask } from "./service";
-export { assignTask, reassignTask, unassignTask } from "./assignees";
+export { archiveTask, createTask, getTask, logActualHours, unarchiveTask, updateTask } from "./service";
+export { assignTask, reassignTask, setTaskAssignee, unassignTask } from "./assignees";
 export { changeTaskStatus } from "./status";
+export { rowControls } from "./controls";
+export { quickTaskOptions, type AssignablePerson, type QuickTaskOptions } from "./people";
 export { TASK_TRANSITIONS, allowedTransitions, canTransition, isOwnTransitionAllowed, type TaskStatus } from "./status-machine";
 export type { TaskDTO, TaskAssigneeDTO } from "./dto";
 export type { CreateTaskInput, UpdateTaskInput } from "./schemas";
 export { listTaskActivity, listTasks, type ListTasksInput, type TaskActivityDTO } from "./queries";
 export { addComment, deleteComment, editComment, listComments, type CommentDTO } from "./comments";
 export { attachToTask, canAccessTaskAttachment, listAttachments, removeAttachment, type AttachmentDTO } from "./attachments";
-export { buildMonthGrid, listCalendarTasks, monthBounds, shiftMonth, type CalendarCell } from "./calendar";
 export { bulkArchive, bulkChangeStatus, bulkReassign, type BulkItemResult, type BulkResult } from "./bulk";
 export {
   assignTaskToTeam,

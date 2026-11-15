@@ -33,8 +33,11 @@ test("profile photo: add, see it, remove", async ({ page }) => {
 test("profile photo: a text file renamed .png is refused with a plain message", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/profile");
-  await page.getByLabel("Add photo").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
-  await expect(page.getByRole("alert").filter({ hasText: "not a valid PNG, JPEG or WebP image" })).toBeVisible();
+  // Choosing a file uploads it straight away, which only works once the page has hydrated: retry until it does.
+  await expect(async () => {
+    await page.getByLabel("Add photo").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
+    await expect(page.getByRole("alert").filter({ hasText: "not a valid PNG, JPEG or WebP image" })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
   await expect(page.getByRole("img", { name: /has no photo/ })).toBeVisible();
 });
 
@@ -67,7 +70,7 @@ test("two-person rule: the recorder is told to wait and gets no Confirm button",
   try {
     await page.goto("/invoices/new");
     await page.locator("select[name=clientId]").selectOption({ index: 1 });
-    await page.getByLabel("Due date").fill("2099-12-31");
+    await page.locator("main").getByLabel("Due date").fill("2099-12-31");
     await page.getByLabel("Description").fill("Two-person check");
     await page.getByLabel("Unit price").fill("100");
     await page.getByRole("button", { name: "Create draft invoice" }).click();

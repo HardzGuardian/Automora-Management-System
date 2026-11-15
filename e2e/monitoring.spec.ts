@@ -52,7 +52,7 @@ test("an employee cannot open the Security page", async ({ page }) => {
   await login(page, EMPLOYEE);
   await page.goto("/settings/security");
   // Next streams its not-found page with a 200, so check what is shown: no data, just "not found".
-  await expect(page.getByText(/not found|can.t find/i).first()).toBeVisible();
+  await expect(page.getByText(/not found|can.t find|cannot find/i).first()).toBeVisible();
   await expect(page.getByText("Failed sign-ins")).toHaveCount(0);
   await expect(page.getByText("Permission denied")).toHaveCount(0);
 });

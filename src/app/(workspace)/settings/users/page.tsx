@@ -95,6 +95,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                             <ConfirmForm
                               action={removeRoleAction}
                               label="Remove"
+                              triggerClassName="min-h-9! px-3!"
                               title={`Remove ${r.name} from ${u.name}?`}
                               description="The user loses the permissions of this role the next time they load a page. This is recorded in the audit log."
                               confirmLabel="Remove role"
@@ -108,13 +109,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                       ))}
                     </ul>
                     {canManage && available.length > 0 ? (
-                      <form action={addRoleAction} className="mt-3 flex flex-wrap gap-2">
+                      <form action={addRoleAction} className="mt-3 flex flex-nowrap items-center gap-2">
                         <input type="hidden" name="userId" value={u.id} />
                         <input type="hidden" name="returnTo" value={returnTo} />
                         <label className="sr-only" htmlFor={`role-${u.id}`}>
                           Role to add for {u.name}
                         </label>
-                        <select id={`role-${u.id}`} name="roleId" required defaultValue="" className={`${inputClass} max-w-48`}>
+                        <select id={`role-${u.id}`} name="roleId" required defaultValue="" className={`${inputClass} min-h-9! max-w-48 py-1!`}>
                           <option value="" disabled>
                             Add role…
                           </option>
@@ -124,7 +125,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                             </option>
                           ))}
                         </select>
-                        <button type="submit" className={buttonClass("secondary")}>
+                        <button type="submit" className={buttonClass("secondary", "min-h-9! px-3!")}>
                           Add
                         </button>
                       </form>

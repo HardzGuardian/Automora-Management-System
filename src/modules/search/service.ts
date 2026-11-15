@@ -2,12 +2,13 @@ import "server-only";
 import type { Actor } from "@/lib/auth/actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
+import { listDocuments } from "@/modules/documents";
 import { listEmployees } from "@/modules/employees";
 import { listProjects } from "@/modules/projects";
 import { listTasks } from "@/modules/tasks";
 
 export type SearchHit = {
-  type: "employee" | "client" | "project" | "task";
+  type: "employee" | "client" | "project" | "task" | "document";
   id: string;
   title: string;
   subtitle: string;
@@ -20,6 +21,7 @@ export type SearchResults = {
   clients: SearchHit[];
   projects: SearchHit[];
   tasks: SearchHit[];
+  documents: SearchHit[];
   total: number;
 };
 
@@ -33,14 +35,16 @@ const MIN_LENGTH = 2;
  */
 export async function globalSearch(actor: Actor, rawQuery: string): Promise<SearchResults> {
   const query = rawQuery.trim().slice(0, 100);
-  const empty: SearchResults = { query, employees: [], clients: [], projects: [], tasks: [], total: 0 };
+  const empty: SearchResults = { query, employees: [], clients: [], projects: [], tasks: [], documents: [], total: 0 };
   if (query.length < MIN_LENGTH) return empty;
 
-  const [employees, clients, projects, tasks] = await Promise.all([
+  const [employees, clients, projects, tasks, documents] = await Promise.all([
+
     can(actor, "employees.read") ? listEmployees(actor, { search: query, pageSize: PER_TYPE }) : { rows: [] },
     can(actor, "clients.read") ? listClients(actor, { search: query, pageSize: PER_TYPE }) : { rows: [] },
     listProjects(actor, { search: query, pageSize: PER_TYPE }),
     listTasks(actor, { view: "all", search: query, pageSize: PER_TYPE, sort: "title" }),
+    listDocuments(actor, { q: query }),
   ]);
 
   const result: SearchResults = {
@@ -73,8 +77,15 @@ export async function globalSearch(actor: Actor, rawQuery: string): Promise<Sear
       subtitle: `${t.taskCode} · ${t.status}`,
       href: `/tasks/${t.id}`,
     })),
+    documents: documents.rows.slice(0, PER_TYPE).map((d) => ({
+      type: "document",
+      id: d.id,
+      title: d.name,
+      subtitle: d.projectName,
+      href: `/projects/${d.projectId}?tab=documents`,
+    })),
     total: 0,
   };
-  result.total = result.employees.length + result.clients.length + result.projects.length + result.tasks.length;
+  result.total = result.employees.length + result.clients.length + result.projects.length + result.tasks.length + result.documents.length;
   return result;
 }

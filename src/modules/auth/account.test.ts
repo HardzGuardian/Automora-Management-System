@@ -47,6 +47,11 @@ describe("changePassword", () => {
     await expect(changePassword(actor, { current: "wrong-password-00", next: NEXT })).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
+  it("rejects a new password that equals the current one", async () => {
+    const { u } = await makeUser();
+    await expect(changePassword(await loadActor(u.id), { current: PASSWORD, next: PASSWORD })).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
   it("rejects a weak new password", async () => {
     const { u } = await makeUser();
     await expect(changePassword(await loadActor(u.id), { current: PASSWORD, next: "short" })).rejects.toThrow();

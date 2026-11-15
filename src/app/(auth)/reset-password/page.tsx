@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthShell } from "@/components/layout/auth-shell";
-import { Alert } from "@/components/ui/alert";
-import { linkClass } from "@/components/ui/styles";
+import { AuthAlert } from "@/components/ui/auth-fields";
+import { Icon } from "@/components/ui/icons";
 import { ResetForm } from "./reset-form";
 
 export const metadata = { title: "Choose a new password" };
@@ -17,23 +17,25 @@ export default async function ResetPasswordPage({
     <AuthShell
       title="Choose a new password"
       description={valid ? "You will be signed out of other devices when you save." : undefined}
-      footer={
-        <Link href="/login" className={linkClass}>
-          Back to sign in
-        </Link>
-      }
+      footer="This link works once and expires 1 hour after it was sent."
     >
       {token && !error ? (
         <ResetForm token={token} />
       ) : (
-        <Alert tone="error">
-          This reset link is invalid or has expired.{" "}
-          <Link href="/forgot-password" className="font-medium underline">
-            Request a new one
-          </Link>
-          .
-        </Alert>
+        <AuthAlert>
+          <span>
+            This reset link is invalid or has expired.{" "}
+            <Link href="/forgot-password" className="font-semibold underline">
+              Request a new one
+            </Link>
+            .
+          </span>
+        </AuthAlert>
       )}
+      <Link href="/login" className="inline-flex items-center gap-1 self-start rounded font-medium text-primary-ink hover:underline">
+        <Icon name="chevronLeft" size={18} strokeWidth={2.2} />
+        Back to sign in
+      </Link>
     </AuthShell>
   );
 }

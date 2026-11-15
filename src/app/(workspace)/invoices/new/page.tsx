@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { getActor } from "@/lib/auth/actor";
+import { addDays, todayInTz } from "@/lib/dates";
+import { getCreationDefaults } from "@/modules/settings";
 import { listInvoiceClients } from "@/modules/finance";
 import { BackLink } from "../_components/finance-ui";
 import { loadProjectOptions } from "../_components/project-options";
@@ -12,6 +14,8 @@ export default async function NewInvoicePage() {
   const actor = await getActor();
   const clients = await listInvoiceClients(actor);
   const projects = clients.length === 0 ? [] : await loadProjectOptions(actor);
+  const defaults = await getCreationDefaults(actor.companyId);
+  const defaultDueDate = addDays(todayInTz(actor.timezone), defaults.invoiceDueDays);
   return (
     <div className="flex flex-col gap-4">
       <BackLink href="/invoices">Invoices</BackLink>
@@ -19,7 +23,7 @@ export default async function NewInvoicePage() {
       {clients.length === 0 ? (
         <EmptyState title="No clients are available for invoicing" description="Add a client first, then come back to create the invoice." action={{ href: "/clients/new", label: "Add a client" }} />
       ) : (
-        <NewInvoiceForm clients={clients} projects={projects} />
+        <NewInvoiceForm clients={clients} projects={projects} defaultDueDate={defaultDueDate} />
       )}
     </div>
   );

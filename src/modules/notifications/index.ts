@@ -4,6 +4,7 @@ export {
   listForUser,
   markAllRead,
   markRead,
+  markUnread,
   registerNotifier,
   unreadCount,
   type NotificationDTO,

@@ -123,7 +123,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
       <RangeFilter preset={range.preset} from={range.from} to={range.to} error={rangeError} />
 
       {summary ? (
-        <section aria-label="Summary" className="rounded-md border border-border bg-surface p-4 shadow-sm">
+        <section aria-label="Summary" className="rounded-md border border-border bg-surface p-4">
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Invoiced" basis="Period total, by issue date" rows={summary.period.invoiceTotalsByCurrency} />
             <Stat label="Received" basis="Period total, by payment date" rows={summary.period.confirmedReceiptsByCurrency} />
@@ -155,7 +155,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
         <EmptyState title="No rows in this period" description="Choose a wider period." />
       ) : (
         <TableShell caption={`${TAB_LABEL[tab]} report, ${table.total} rows`} minWidth="44rem">
-          <thead className="bg-primary-soft">
+          <thead className="text-muted">
             <tr>
               {table.head.map((h) => (
                 <th key={h} scope="col" className={NUMERIC_HEADS.has(h) ? thNumClass : thClass}>

@@ -11,9 +11,8 @@ import {
 } from "@/db/schema";
 import { generateToken } from "@/lib/auth/token";
 import { ALL_PERMISSION_KEYS, SYSTEM_ROLES, groupOf } from "@/lib/permissions";
-import { seedDemoData } from "./seed-demo";
 
-export type SeedOptions = { demo: boolean; adminEmail: string; appUrl: string };
+export type SeedOptions = { adminEmail: string; appUrl: string };
 export type SeedResult = {
   companyId: string;
   /** Raw invitation token; null when a valid invitation or a Super Admin already exists. */
@@ -30,7 +29,6 @@ export async function runSeed(opts: SeedOptions): Promise<SeedResult> {
     await ensurePermissions(tx);
     const roleIds = await ensureSystemRoles(tx, companyId);
     const invitationToken = await ensureAdminInvitation(tx, companyId, roleIds["Super Admin"], opts.adminEmail);
-    if (opts.demo) await seedDemoData(tx, companyId);
     return {
       companyId,
       invitationToken,

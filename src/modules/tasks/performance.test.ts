@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { getWorkload } from "@/modules/employees";
 import { workWorld } from "@/test/work";
-import { listCalendarTasks } from "./calendar";
 import { listTasks } from "./queries";
 
 // D1-31: dashboard-critical queries stay fast at ~10k tasks. Bounds are deliberately generous
@@ -26,7 +25,7 @@ beforeAll(async () => {
   await db.execute(sql`
     INSERT INTO tasks (company_id, task_code, title, priority, status, due_date, completed_at)
     SELECT ${w.company.id}, 'PERF-' || lpad(g::text, 6, '0'), 'Perf task ' || g,
-           (ARRAY['Low','Medium','High','Urgent'])[1 + g % 4],
+           (ARRAY['Low','Medium','High'])[1 + g % 3],
            (ARRAY['Pending','In Progress','In Review','Completed'])[1 + (g / 4) % 4],
            date '2026-01-01' + (g % 200),
            CASE WHEN (g / 4) % 4 = 3 THEN now() END
@@ -48,7 +47,7 @@ describe("query performance at ~10k tasks", () => {
   });
 
   it("filters, search and priority sort stay fast", async () => {
-    const a = await timed(() => listTasks(w.manager, { view: "all", status: ["Pending"], priority: ["Urgent", "High"], sort: "priority" }));
+    const a = await timed(() => listTasks(w.manager, { view: "all", status: ["Pending"], priority: ["High"], sort: "priority" }));
     expect(a.ms).toBeLessThan(BOUND_MS);
     const b = await timed(() => listTasks(w.manager, { view: "all", search: "Perf task 77" }));
     expect(b.value.total).toBeGreaterThan(0);
@@ -72,9 +71,4 @@ describe("query performance at ~10k tasks", () => {
     expect(wl.ms).toBeLessThan(BOUND_MS);
   });
 
-  it("a month of the calendar loads fast", async () => {
-    const { value, ms } = await timed(() => listCalendarTasks(w.manager, { month: "2026-03", view: "all" }));
-    expect(value.length).toBeGreaterThan(0);
-    expect(ms).toBeLessThan(BOUND_MS * 2);
-  });
 });

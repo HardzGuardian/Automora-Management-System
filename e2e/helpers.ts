@@ -15,7 +15,7 @@ export async function login(page: Page, email: string, password = PASSWORD): Pro
 /** Pages every signed-in user can open. */
 export const COMMON_ROUTES = ["/dashboard", "/my-tasks", "/tasks", "/projects", "/notifications", "/profile", "/search?q=north"];
 /** Pages that need admin permissions. */
-export const ADMIN_ROUTES = ["/clients", "/employees", "/reports", "/reports/task-register", "/reports/employee-workload", "/settings/company", "/settings/roles", "/invoices", "/payments", "/expenses", "/finance-reports", "/tasks/calendar", "/tasks/new", "/projects/new", "/clients/new", "/employees/new"];
+export const ADMIN_ROUTES = ["/clients", "/employees", "/reports", "/reports/task-register", "/reports/employee-workload", "/settings/company", "/settings/roles", "/finance", "/invoices", "/finance-reports", "/projects/new", "/clients/new", "/employees/new"];
 
 export async function expectNoPageOverflow(page: Page, url = page.url()): Promise<void> {
   const { scrollW, clientW } = await page.evaluate(() => ({ scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth }));

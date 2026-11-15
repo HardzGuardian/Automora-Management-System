@@ -157,4 +157,4 @@ Finance data shown on Sagar's client/project detail pages comes **only** through
 
 ## 7. Environment variables (keep `.env.example` current)
 
-`DATABASE_URL` · `BETTER_AUTH_SECRET` · `BETTER_AUTH_URL` · `S3_ENDPOINT` `S3_REGION` `S3_BUCKET` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` · `EMAIL_FROM` `SMTP_URL` (or provider key) · `CRON_SECRET` · `APP_URL` · `SEED_DEMO` · `UPLOAD_MAX_BYTES`.
+`DATABASE_URL` · `BETTER_AUTH_SECRET` · `BETTER_AUTH_URL` · `S3_ENDPOINT` `S3_REGION` `S3_BUCKET` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` · `EMAIL_FROM` `SMTP_URL` (or provider key) · `CRON_SECRET` · `APP_URL` · `UPLOAD_MAX_BYTES`.

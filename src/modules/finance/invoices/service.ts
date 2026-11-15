@@ -418,6 +418,9 @@ export async function issueInvoice(actor: Actor, invoiceId: string): Promise<Iss
     if (!invoice) throw new DomainError("INVOICE_NOT_FOUND", "Invoice was not found.");
     if (invoice.status !== "draft") throw new DomainError("CONFLICT", "Only draft invoices can be issued.");
     if (!invoice.dueDate) throw new DomainError("VALIDATION", "A due date is required before issuing an invoice.");
+    if (invoice.dueDate < todayInTz(actor.timezone)) {
+      throw new DomainError("VALIDATION", "The due date is before today. Change the due date to today or later, then issue the invoice.");
+    }
 
     await validateReferences(tx, actor.companyId, invoice.clientId, invoice.projectId);
     const items = await tx.select().from(invoiceItems).where(and(

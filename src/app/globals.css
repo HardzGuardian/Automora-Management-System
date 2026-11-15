@@ -1,21 +1,25 @@
 @import "tailwindcss";
 
-/* Design tokens (blueprint §9). Everyone uses these via Tailwind utilities (bg-primary, text-muted...). Light theme only in V1. */
+/* Design tokens (from the "Automora redesign" canvas; blueprint §9). Everyone uses these via Tailwind utilities (bg-primary, text-muted...). Light theme only in V1. */
 :root {
-  --background: #f7f8f7;
+  --background: #f6f7f5;
   --surface: #ffffff;
-  --foreground: #1f2933;
-  --muted: #5b6770;
-  --border: #dfe4e1;
+  --foreground: #17201b;
+  --body: #3a453f;
+  --muted: #5b6760;
+  --border: #e3e7e3;
+  --field: #cbd2cd;
   --primary: #167c50;
-  --primary-hover: #0f6340;
-  --primary-soft: #e6f3ec;
-  --success: #167c50;
-  --success-soft: #e6f3ec;
-  --info: #1d5fb8;
-  --info-soft: #e7f0fb;
-  --warning: #a15c00;
-  --warning-soft: #fdf1dc;
+  --primary-hover: #0f6b43;
+  --primary-ink: #0f6b43;
+  --brand-deep: #0c3a27;
+  --primary-soft: #e7f4ed;
+  --success: #0f6b43;
+  --success-soft: #e7f4ed;
+  --info: #1d5fa8;
+  --info-soft: #e8f0fa;
+  --warning: #8a5a00;
+  --warning-soft: #fbf1dc;
   --danger: #b42318;
   --danger-soft: #fdeceb;
   --radius: 0.5rem;
@@ -25,10 +29,14 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-body: var(--body);
   --color-muted: var(--muted);
+  --color-field: var(--field);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-ink: var(--primary-ink);
+  --color-brand-deep: var(--brand-deep);
   --color-primary-soft: var(--primary-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
@@ -71,10 +79,12 @@ body {
   #main h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; }
   #main h2 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; }
   #main h3 { font-size: 1rem; font-weight: 600; }
-  #main a:not([class]) { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  #main a:not([class]) { color: var(--primary-ink); text-decoration: underline; text-underline-offset: 2px; }
+  #main td a:not([class]), #main th a:not([class]) { color: var(--foreground); font-weight: 500; text-decoration: none; }
+  #main td a:not([class]):hover, #main th a:not([class]):hover { color: var(--primary-ink); text-decoration: underline; }
   #main table:not([class]) { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: block; overflow-x: auto; }
-  #main thead { background: var(--primary-soft); }
-  #main th { text-align: left; font-weight: 600; padding: 0.5rem 0.75rem; white-space: nowrap; }
+  #main thead { background: transparent; }
+  #main th { text-align: left; font-weight: 500; font-size: 0.75rem; color: var(--muted); padding: 0.625rem 0.75rem; white-space: nowrap; }
   #main td { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); }
   #main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main select, #main textarea {
     min-height: 2.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 0.4rem 0.75rem; max-width: 100%;

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { BackLink as UiBackLink } from "@/components/ui/back-link";
 import { cardClass } from "@/components/ui/styles";
 import { cn } from "@/lib/cn";
 
@@ -13,13 +13,10 @@ export function money(currency: string, amount: string): string {
   return `${currency} ${sign}${grouped}${frac !== undefined ? `.${frac}` : ""}`;
 }
 
+/** Back link in the app's style; the old finance lists now live on the Finance page. */
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link href={href} className="inline-flex min-h-10 w-fit items-center text-sm text-muted hover:text-foreground">
-      <span aria-hidden="true">←&nbsp;</span>
-      {children}
-    </Link>
-  );
+  const to = href === "/invoices" ? "/finance?tab=invoices" : href === "/payments" ? "/finance?tab=payments" : href === "/expenses" ? "/finance?tab=expenses" : href;
+  return <UiBackLink href={to}>{children}</UiBackLink>;
 }
 
 /** Title row of a detail page: code/number, status badge and a line of key facts. */

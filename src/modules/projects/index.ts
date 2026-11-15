@@ -17,5 +17,16 @@ export {
   updateMilestone,
   type MilestoneDTO,
 } from "./milestones";
+export {
+  addClientItem,
+  addProjectComment,
+  listClientItems,
+  listProjectComments,
+  notifyProjectMembers,
+  setClientItemReceived,
+  type ClientItemDTO,
+  type ProjectCommentDTO,
+} from "./collab";
+export { projectsOverview, type ProjectOverviewRow } from "./overview";
 export { calcProgress, getProgressForProjects, getProjectProgress, type Progress } from "./progress";
 export { assignProjectToTeam, listProjectTeams, syncProjectTeams, syncTeamProjects, unassignProjectFromTeam, type ProjectTeamDTO } from "./team-assignment";

@@ -12,7 +12,7 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
 
   await page.goto("/invoices/new");
   await pickClient(page);
-  await page.getByLabel("Due date").fill("2099-12-31");
+  await page.locator("main").getByLabel("Due date").fill("2099-12-31");
   await page.getByLabel("Description").fill("E2E consulting");
   await page.getByLabel("Unit price").fill("1000");
   await page.getByLabel("Tax rate (%)").fill("18");
@@ -30,17 +30,18 @@ test("invoice → issue → pending receipt → confirm: the balance falls and t
   await page.getByRole("button", { name: "Record pending receipt" }).click();
   await expect(page.getByText("pending", { exact: false }).first()).toBeVisible();
 
-  await page.goto("/payments");
-  await page.getByRole("link", { name: /INV-/ }).first().click();
+  await page.goto("/payments"); // the old list now opens the Payments tab on Finance
+  await expect(page).toHaveURL(/\/finance\?tab=payments/);
+  await page.getByRole("link", { name: /UTR-E2E-1/ }).first().click();
   await page.getByRole("button", { name: "Confirm receipt" }).click();
   await expect(page.getByText("confirmed", { exact: false }).first()).toBeVisible();
 
   await page.goto(invoiceUrl);
   await expect(page.getByText("680.00").first()).toBeVisible(); // 1180 - 500 outstanding
 
-  // The dashboard's finance snapshot reflects it (point-in-time outstanding receivables).
-  await page.goto("/dashboard");
-  await expect(page.getByRole("region", { name: "Finance snapshot" })).toContainText("680.00");
+  // The Finance page's summary reflects it (point-in-time outstanding receivables).
+  await page.goto("/finance");
+  await expect(page.getByRole("region", { name: "Finance summary" })).toContainText("680.00");
 });
 
 test("expense → pending payment → confirm", async ({ page }) => {

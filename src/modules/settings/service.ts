@@ -79,7 +79,7 @@ export async function updateCompanyProfile(actor: Actor, input: CompanyProfileIn
 
 // ---- Preferences: a small, typed set. Unknown keys are rejected, never stored. ----
 const PREFS = {
-  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High", "Urgent"]), fallback: "Medium" as string | number | boolean },
+  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High"]), fallback: "Medium" as string | number | boolean },
   "invoices.defaultDueDays": { schema: z.number().int().min(0).max(365), fallback: 30 as string | number | boolean },
   "finance.requireSecondConfirmer": { schema: z.boolean(), fallback: false as string | number | boolean },
 } as const;
@@ -118,6 +118,21 @@ export async function requiresSecondConfirmer(companyId: string): Promise<boolea
   return row?.value === true;
 }
 
+/**
+ * The starting values the product uses for new tasks and invoices. Read by the screens that create them,
+ * so it needs no settings permission: it is a default, not data shown to the reader.
+ */
+export async function getCreationDefaults(companyId: string): Promise<{ taskPriority: string; invoiceDueDays: number }> {
+  const rows = await db.select().from(companySettings).where(eq(companySettings.companyId, companyId));
+  const stored = new Map(rows.map((r) => [r.settingKey, r.settingValueJson]));
+  const priority = PREFS["tasks.defaultPriority"].schema.safeParse(stored.get(PREFIX + "tasks.defaultPriority"));
+  const days = PREFS["invoices.defaultDueDays"].schema.safeParse(stored.get(PREFIX + "invoices.defaultDueDays"));
+  return {
+    taskPriority: priority.success ? priority.data : String(PREFS["tasks.defaultPriority"].fallback),
+    invoiceDueDays: days.success ? days.data : Number(PREFS["invoices.defaultDueDays"].fallback),
+  };
+}
+
 export async function updatePreferences(actor: Actor, input: Record<string, unknown>): Promise<Preferences> {
   requirePermission(actor, "settings.manage");
   const entries = Object.entries(input);
@@ -146,5 +161,9 @@ export async function getNumbering(actor: Actor): Promise<{ kind: string; label:
   requirePermission(actor, "settings.read");
   const rows = await db.select().from(codeSequences).where(and(eq(codeSequences.companyId, actor.companyId)));
   const next = new Map(rows.map((r) => [r.kind, r.nextValue]));
-  return CODE_KINDS.map((kind) => ({ kind, label: LABELS[kind], next: `${kind}-${String(next.get(kind) ?? 1).padStart(6, "0")}` }));
+  const year = new Date().getUTCFullYear(); // invoices carry the issue year, e.g. INV-2026-000001
+  return CODE_KINDS.map((kind) => {
+    const n = String(next.get(kind) ?? 1).padStart(6, "0");
+    return { kind, label: LABELS[kind], next: kind === "INV" ? `INV-${year}-${n}` : `${kind}-${n}` };
+  });
 }

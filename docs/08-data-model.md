@@ -27,6 +27,10 @@ erDiagram
   projects ||--o{ project_members : team
   employees ||--o{ project_members : joins
   projects ||--o{ project_milestones : has
+  projects ||--o{ project_documents : holds
+  projects ||--o{ project_comments : has
+  projects ||--o{ project_client_items : waits_on
+  files ||--o{ project_documents : stored
   projects ||--o{ tasks : contains
   clients ||--o{ tasks : "optional link"
 
@@ -55,11 +59,16 @@ erDiagram
 
 ## Tables by owner
 
-**Sagar** — `companies` (legal_name, display_name, email, phone, address, currency, timezone) · `company_settings` (setting_key, setting_value_json) · `code_sequences` (kind, next_value) · Better Auth `user` (email, status, last_login_at), `session`, `account`, `verification` · `invitations` (email, employee_id, role_id, token_hash, expires_at, used_at) · `roles`, `permissions`, `role_permissions`, `user_roles` · `employees` (employee_code, full_name, work_email, phone, designation, department, joining_date, profile_image_file_id, employment_status, user_id) · `clients` (client_code, name, contact_person, email, phone, address, service_type, status, notes) · `client_notes` · `projects` (project_code, name, description, type, client_id, owner_employee_id, start_date, due_date, status, budget_amount, currency) · `project_members` (membership_role) · `project_milestones` · `tasks` (task_code, project_id, client_id, title, description, priority, status, start_date, due_date, estimated_hours, actual_hours, completed_at, completed_by) · `task_assignees` · `task_comments` · `files` · `task_attachments` · `task_activity_logs` · `activity_logs`.
+**Sagar** — `companies` (legal_name, display_name, email, phone, address, currency, timezone) · `company_settings` (setting_key, setting_value_json) · `code_sequences` (kind, next_value) · Better Auth `user` (email, status, last_login_at), `session`, `account`, `verification` · `invitations` (email, employee_id, role_id, token_hash, expires_at, used_at) · `roles`, `permissions`, `role_permissions`, `user_roles` · `employees` (employee_code, full_name, work_email, phone, designation, department, joining_date, profile_image_file_id, employment_status, user_id) · `clients` (client_code, name, contact_person, email, phone, address, service_type, status, notes) · `client_notes` · `projects` (project_code, name, description, type, client_id, owner_employee_id, start_date, due_date, status, budget_amount, currency) · `project_members` (membership_role) · `project_milestones` · `project_documents` (file_id; reference files, one file per row) · `project_comments` (author_id, body) · `project_client_items` (title, detail, received_at) · `tasks` (task_code, project_id, client_id, title, description, priority (Low, Medium, High), status, start_date, due_date, estimated_hours, actual_hours, completed_at, completed_by) · `task_assignees` (the product assigns one person per task) · `task_comments` · `files` · `task_attachments` · `task_activity_logs` · `activity_logs`.
 
 **Chintan** — `invoices` (invoice_number, client_id, project_id?, issue_date, due_date, status, subtotal, discount_total, tax_total, total) · `invoice_items` (description, quantity, unit_price, discount, tax_rate, line_total) · `payments` (invoice_id, amount, payment_date, method, reference, status, reversed_at, reverse_reason, idempotency_key) · `payment_allocations` · `expense_categories` · `expenses` (expense_code, category_id, payee, project_id?, expense_date, due_date, total, status) · `expense_payments` (same shape as payments) · `expense_attachments` · `idempotency_keys`.
 
 **Shubhangi** — `notifications` (user_id, type, title, body, entity_type, entity_id, read_at) · `notification_events` (unique event_key for dedupe).
+
+
+**Teams (added after the blueprint)** — `departments` (name, description, archived_at) · `teams` (department_id, name, description, archived_at; unique per department) · `team_members` (team_id, employee_id, role `lead` or `member`) · `task_teams` (task_id, team_id, assigned_by) · `project_teams` (project_id, team_id, assigned_by). Two columns were added to existing tables: `task_assignees.via_team_id` and `project_members.via_team_id`, which mark rows that exist only because a team was assigned. All use composite `(id, company_id)` foreign keys like the rest. See `13-teams.md`.
+
+**Also added since the blueprint** — `rate_limit` (database-backed sign-in and password-reset limits), `security_events` (sign-in and security log), `notification_events` (dedupe keys for reminders).
 
 ## Key constraints (from blueprint §6.4)
 - Unique per company: `employee_code`, `client_code`, `project_code`, `task_code`, `invoice_number`, `expense_code`.

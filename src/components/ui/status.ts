@@ -1,40 +1,49 @@
-export type Tone = "success" | "info" | "warning" | "danger" | "neutral";
-export type StatusView = { tone: Tone; icon: string; label: string };
+import type { IconName } from "./icons";
 
-// Colour is never the only cue: every status carries an icon glyph and its text.
-const MAP: Record<string, { tone: Tone; icon: string }> = {
+export type Tone = "success" | "info" | "warning" | "danger" | "neutral";
+/** `icon` names an icon in ui/icons: every status shows an icon and its text, never colour alone. */
+export type StatusView = { tone: Tone; icon: IconName; label: string };
+
+const MAP: Record<string, { tone: Tone; icon: IconName }> = {
   // tasks
-  Pending: { tone: "warning", icon: "◔" },
-  "In Progress": { tone: "info", icon: "▶" },
-  "In Review": { tone: "info", icon: "◉" },
-  Completed: { tone: "success", icon: "✓" },
+  Pending: { tone: "warning", icon: "pending" },
+  "In Progress": { tone: "info", icon: "inProgress" },
+  "In Review": { tone: "info", icon: "review" },
+  Completed: { tone: "success", icon: "completed" },
   // projects
-  Planning: { tone: "warning", icon: "◔" },
-  Active: { tone: "info", icon: "▶" },
-  "On Hold": { tone: "warning", icon: "❚❚" },
-  Cancelled: { tone: "neutral", icon: "✕" },
-  Archived: { tone: "neutral", icon: "▣" },
+  Planning: { tone: "warning", icon: "pending" },
+  Active: { tone: "info", icon: "inProgress" },
+  "On Hold": { tone: "warning", icon: "onHold" },
+  Cancelled: { tone: "neutral", icon: "cancelled" },
+  Archived: { tone: "neutral", icon: "archived" },
   // employees / clients
-  Inactive: { tone: "neutral", icon: "○" },
-  Suspended: { tone: "danger", icon: "⊘" },
+  Inactive: { tone: "neutral", icon: "inactive" },
+  Suspended: { tone: "danger", icon: "suspended" },
   // invoices / payments / expenses (finance uses snake_case)
-  draft: { tone: "neutral", icon: "✎" },
-  issued: { tone: "info", icon: "➤" },
-  partially_paid: { tone: "warning", icon: "◑" },
-  paid: { tone: "success", icon: "✓" },
-  overdue: { tone: "danger", icon: "!" },
-  cancelled: { tone: "neutral", icon: "✕" },
-  pending: { tone: "warning", icon: "◔" },
-  confirmed: { tone: "success", icon: "✓" },
-  reversed: { tone: "danger", icon: "↺" },
-  unpaid: { tone: "warning", icon: "◔" },
+  draft: { tone: "neutral", icon: "draft" },
+  issued: { tone: "info", icon: "issued" },
+  partially_paid: { tone: "warning", icon: "partial" },
+  paid: { tone: "success", icon: "completed" },
+  overdue: { tone: "danger", icon: "overdue" },
+  cancelled: { tone: "neutral", icon: "cancelled" },
+  pending: { tone: "warning", icon: "pending" },
+  confirmed: { tone: "success", icon: "completed" },
+  reversed: { tone: "danger", icon: "reversed" },
+  unpaid: { tone: "warning", icon: "pending" },
 };
 
+/** "In Progress" and "partially_paid" both read as sentence case: "In progress", "Partially paid". */
+const sentenceCase = (s: string) => {
+  const t = s.replace(/_/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+};
+
+/** An overdue item shows only as Overdue, like the design; the date column still says when it was due. */
 export function statusView(status: string, opts: { overdue?: boolean } = {}): StatusView {
-  if (opts.overdue) return { tone: "danger", icon: "!", label: `${status} · Overdue` };
+  if (opts.overdue) return { tone: "danger", icon: "overdue", label: "Overdue" };
   const hit = MAP[status];
-  const label = status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-  return hit ? { ...hit, label } : { tone: "neutral", icon: "•", label };
+  const label = sentenceCase(status);
+  return hit ? { ...hit, label } : { tone: "neutral", icon: "dot", label };
 }
 
 export const TONE_CLASS: Record<Tone, string> = {

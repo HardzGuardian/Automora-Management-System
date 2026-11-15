@@ -3,85 +3,88 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Icon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
-import type { NavGroup } from "./nav";
-import { BellIcon, NavIcon } from "./nav-icons";
+import { isActive, type NavItem } from "./nav";
+import { QuickTaskButton, type QuickTaskActions } from "./quick-task-panel";
 
 export type ShellUser = { name: string; email: string; roles: string[] };
 
-function NavList({ groups, pathname, onNavigate }: { groups: NavGroup[]; pathname: string; onNavigate?: () => void }) {
+const COLLAPSE_KEY = "automora.sidebar.collapsed";
+
+function NavLink({ item, pathname, collapsed, onNavigate }: { item: NavItem; pathname: string; collapsed: boolean; onNavigate?: () => void }) {
+  const active = isActive(item, pathname);
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {groups.map((g) => (
-        <div key={g.label}>
-          <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted">{g.label}</p>
-          <ul className="flex flex-col gap-0.5">
-            {g.items.map((i) => {
-              const active = pathname === i.href || pathname.startsWith(`${i.href}/`);
-              return (
-                <li key={i.href}>
-                  <Link
-                    href={i.href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-10 items-center gap-2.5 rounded-md px-3 text-sm",
-                      active ? "bg-primary-soft font-semibold text-primary" : "text-foreground hover:bg-primary-soft",
-                    )}
-                  >
-                    <NavIcon href={i.href} className={active ? "text-primary" : "text-muted"} />
-                    {i.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      title={collapsed ? item.label : undefined}
+      className={cn(
+        "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm",
+        collapsed && "justify-center px-0",
+        active ? "bg-primary-soft font-semibold text-primary-ink" : "text-body hover:bg-primary-soft",
+      )}
+    >
+      <Icon name={item.icon} className={active ? "text-primary" : "text-muted"} />
+      <span className={collapsed ? "sr-only" : undefined}>{item.label}</span>
+    </Link>
+  );
+}
+
+function Sidebar({
+  main,
+  settings,
+  pathname,
+  collapsed,
+  onNavigate,
+}: {
+  main: NavItem[];
+  settings: NavItem | null;
+  pathname: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col justify-between gap-6">
+      <ul className="flex flex-col gap-1">
+        {main.map((i) => (
+          <li key={i.href}>
+            <NavLink item={i} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+          </li>
+        ))}
+      </ul>
+      {settings ? <NavLink item={settings} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} /> : null}
     </nav>
   );
 }
 
-function ProfileMenu({ user, signOut }: { user: ShellUser; signOut: () => Promise<void> }) {
+function Avatar({ user }: { user: ShellUser }) {
   return (
-    <details className="relative">
-      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-2 hover:bg-primary-soft">
-        <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-          {user.name.slice(0, 1).toUpperCase()}
-        </span>
-        <span className="hidden text-left leading-tight sm:block">
-          <span className="block text-sm font-medium">{user.name}</span>
-          <span className="block text-xs text-muted">{user.roles.join(", ") || "No role"}</span>
-        </span>
-        <span className="sr-only">Account menu</span>
-      </summary>
-      <div className="absolute right-0 z-30 mt-1 w-60 rounded-md border border-border bg-surface p-2 shadow-lg">
-        <p className="px-2 py-1 text-sm font-medium">{user.name}</p>
-        <p className="truncate px-2 pb-2 text-xs text-muted">{user.email}</p>
-        <Link href="/profile" className="flex min-h-10 items-center rounded-md px-2 text-sm hover:bg-primary-soft">
-          My account
-        </Link>
-        <form action={signOut}>
-          <button type="submit" className="flex min-h-10 w-full items-center rounded-md px-2 text-left text-sm hover:bg-primary-soft">
-            Sign out
-          </button>
-        </form>
-      </div>
-    </details>
+    <Link
+      href="/profile"
+      aria-label={`My account (${user.name})`}
+      className="inline-flex size-11 items-center justify-center rounded-full bg-primary font-semibold text-white hover:bg-primary-hover"
+    >
+      {user.name.slice(0, 1).toUpperCase()}
+    </Link>
   );
 }
 
 export function AppShell({
-  groups,
+  main,
+  settings,
   user,
   unread,
-  signOut,
+  quickTask,
   children,
 }: {
-  groups: NavGroup[];
+  main: NavItem[];
+  settings: NavItem | null;
   user: ShellUser;
   unread: number;
-  signOut: () => Promise<void>;
+  /** Admin-only: when given, the top bar shows the quick "New task" panel. */
+  quickTask: QuickTaskActions | null;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -90,7 +93,26 @@ export function AppShell({
   const open = openFor === pathname;
   const setOpen = useCallback((v: boolean) => setOpenFor(v ? pathname : null), [pathname]);
 
-  // Close on Escape.
+  // The collapsed choice is a per-person convenience; the page renders fine without it.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading localStorage is only possible after mount
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {
+      /* storage blocked: stay expanded */
+    }
+  }, []);
+  const toggle = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -104,26 +126,44 @@ export function AppShell({
         Skip to content
       </a>
 
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-surface p-3 lg:flex">
-        <Link href="/dashboard" className="px-3 pt-2 text-lg font-bold text-primary">
-          Automora
-        </Link>
-        <NavList groups={groups} pathname={pathname} />
+      {/* Desktop sidebar: 248px, or 76px when collapsed to icons */}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-surface p-3 lg:flex",
+          collapsed ? "w-[76px]" : "w-[248px]",
+        )}
+      >
+        <div className={cn("flex min-h-11 items-center", collapsed ? "justify-center" : "justify-between px-2")}>
+          {collapsed ? null : (
+            <Link href="/dashboard" className="text-lg font-bold text-primary-ink">
+              Automora
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-pressed={collapsed}
+            className="flex size-11 items-center justify-center rounded-md text-muted hover:bg-primary-soft"
+          >
+            <Icon name="panel" />
+          </button>
+        </div>
+        <Sidebar main={main} settings={settings} pathname={pathname} collapsed={collapsed} />
       </aside>
 
       {/* Mobile / tablet drawer */}
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-surface p-3 shadow-lg">
-            <div className="flex items-center justify-between px-3 pt-2">
-              <span className="text-lg font-bold text-primary">Automora</span>
-              <button type="button" onClick={() => setOpen(false)} className="min-h-10 rounded-md px-3 text-sm hover:bg-primary-soft">
-                Close
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-surface p-3">
+            <div className="flex min-h-11 items-center justify-between px-2">
+              <span className="text-lg font-bold text-primary-ink">Automora</span>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="flex size-11 items-center justify-center rounded-md hover:bg-primary-soft">
+                <Icon name="close" />
               </button>
             </div>
-            <NavList groups={groups} pathname={pathname} onNavigate={() => setOpen(false)} />
+            <Sidebar main={main} settings={settings} pathname={pathname} collapsed={false} onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       ) : null}
@@ -135,34 +175,39 @@ export function AppShell({
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
-            className="min-h-10 rounded-md border border-border bg-surface px-3 text-sm font-medium hover:bg-primary-soft lg:hidden"
+            className="flex size-11 items-center justify-center rounded-md border border-field hover:bg-primary-soft lg:hidden"
           >
-            Menu
+            <Icon name="panel" />
           </button>
-          <form action="/search" role="search" className="mx-auto hidden w-full max-w-md sm:block">
+
+          <form action="/search" role="search" className="relative mx-auto hidden w-full max-w-lg sm:block">
+            <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               name="q"
               type="search"
               aria-label="Search"
-              placeholder="Search employees, clients, projects, tasks"
-              className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted"
+              placeholder="Search projects, tasks, documents"
+              className="min-h-11 w-full rounded-md border border-field bg-background pl-10 pr-3 text-sm placeholder:text-muted"
             />
           </form>
-          <div className="ml-auto flex items-center gap-1">
-            <Link href="/notifications" className="relative flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-primary-soft">
-              <BellIcon className="text-muted" />
-              <span className="sr-only sm:not-sr-only">Notifications</span>
+
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {quickTask ? <QuickTaskButton actions={quickTask} /> : null}
+            <Link href="/notifications" className="relative flex size-11 items-center justify-center rounded-md hover:bg-primary-soft">
+              <Icon name="bell" className="text-body" />
+              <span className="sr-only">Notifications{unread > 0 ? `, ${unread} unread` : ""}</span>
               {unread > 0 ? (
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-semibold text-white">
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold leading-[18px] text-white"
+                >
                   {unread > 99 ? "99+" : unread}
-                  <span className="sr-only"> unread</span>
                 </span>
               ) : null}
             </Link>
-            <ProfileMenu user={user} signOut={signOut} />
+            <Avatar user={user} />
           </div>
         </header>
-
 
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-6">
           {children}

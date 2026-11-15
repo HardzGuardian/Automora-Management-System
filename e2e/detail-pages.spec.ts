@@ -26,7 +26,8 @@ test("employee page has all six views: Overview, Assigned, Completed, Overdue, P
 test("client page lists its tasks, invoices and receipts", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/clients");
-  await page.getByRole("link", { name: "Northwind Traders" }).first().click();
+  await page.getByText("Northwind Traders").first().click(); // opens the client's row
+  await page.getByRole("listitem").filter({ hasText: "Northwind Traders" }).getByRole("link", { name: "Client details and notes" }).click();
   await page.waitForURL(/\/clients\/[0-9a-f-]{36}$/);
   for (const title of ["Projects", "Tasks", "Invoices", "Receipts", "Notes"]) {
     await expect(page.getByRole("heading", { name: new RegExp(`^${title}`) }).first()).toBeVisible();
@@ -38,7 +39,12 @@ test("project page lists its invoices, receipts and expenses", async ({ page }) 
   await page.goto("/projects");
   await page.getByRole("link", { name: "Northwind Website" }).first().click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
-  for (const title of ["Tasks", "Milestones", "Invoices", "Receipts", "Expenses"]) {
+  const tabs = page.getByRole("group", { name: "Project sections and actions" });
+  for (const label of ["Tasks", "Documents", "Team", "Milestones", "Finance"]) {
+    await expect(tabs.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
+  }
+  await tabs.getByRole("link", { name: /^Finance/ }).click();
+  for (const title of ["Invoices", "Receipts", "Expenses"]) {
     await expect(page.getByRole("heading", { name: new RegExp(`^${title}`) }).first()).toBeVisible();
   }
 });
@@ -50,6 +56,7 @@ test("an employee without finance access sees no finance lists on a project", as
   if (await link.count()) {
     await link.click();
     await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole("group", { name: "Project sections and actions" }).getByRole("link", { name: /^Finance/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Invoices/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Receipts/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Expenses/ })).toHaveCount(0);

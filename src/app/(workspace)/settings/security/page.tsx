@@ -91,7 +91,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
         <div className="overflow-x-auto rounded-md border border-border bg-surface">
           <table className="w-full min-w-[34rem] rounded-none border-0 text-left text-sm">
             <caption className="sr-only">Security events, newest first</caption>
-            <thead className="bg-primary-soft">
+            <thead className="text-muted">
               <tr>
                 <th scope="col" className="px-3 py-2 font-semibold">When</th>
                 <th scope="col" className="px-3 py-2 font-semibold">Event</th>

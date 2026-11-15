@@ -154,7 +154,7 @@ src/
 - Drizzle schema files under `src/db/schema/`, split by area, re-exported from `index.ts`. **Each file has one owner** (see `02-contracts.md`).
 - Migrations are generated (`drizzle-kit generate`) and committed. No `push` against shared databases. No hand-edited production schema.
 - Migration conflicts: if two PRs add a migration, the second to merge rebases, **deletes its generated migration, and regenerates** on top of `main`. Never hand-merge migration files.
-- Seed (`db/seed.ts`): company, system roles, permission keys, default expense categories, and labelled demo data **only when `SEED_DEMO=true`**. The Super Admin is created by invitation; no hard-coded production password.
+- Seed (`db/seed.ts`): company, system roles, permission keys, default expense categories. The Super Admin is created by invitation; no hard-coded production password.
 
 ## 5. Security baseline (applies to all three)
 - HttpOnly, SameSite=Lax, Secure-in-production cookies; rate-limit login/reset/invite endpoints.

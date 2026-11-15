@@ -5,6 +5,7 @@ import type { ZodType } from "zod";
 import { withTransaction } from "@/db";
 import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
+import { todayInTz } from "@/lib/dates";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
@@ -50,6 +51,7 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
     requirePermission(actor, "finance.payments.confirm");
     await assertNotSelfConfirmed(actor, actor.userId); // recording as already-confirmed is self-confirming
   }
+  if (parsed.paymentDate > todayInTz(actor.timezone)) throw new DomainError("VALIDATION", "The payment date cannot be in the future.");
   const amountMinor = toMinor(parsed.amount);
   if (amountMinor <= 0) throw new DomainError("VALIDATION", "Receipt amount must be positive.");
   const amount = fromMinor(amountMinor);

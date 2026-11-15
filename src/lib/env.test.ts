@@ -12,10 +12,6 @@ describe("parseEnv", () => {
   it("throws listing missing DATABASE_URL", () => {
     expect(() => parseEnv({})).toThrow(/DATABASE_URL/);
   });
-  it("SEED_DEMO defaults to false and parses 'true'", () => {
-    expect(parseEnv(valid).SEED_DEMO).toBe(false);
-    expect(parseEnv({ ...valid, SEED_DEMO: "true" }).SEED_DEMO).toBe(true);
-  });
   it("UPLOAD_MAX_BYTES defaults to 10485760", () => {
     expect(parseEnv(valid).UPLOAD_MAX_BYTES).toBe(10485760);
   });
@@ -57,11 +53,8 @@ describe("assertProductionEnv", () => {
     expect(() => run({ S3_ACCESS_KEY_ID: undefined })).toThrow(/S3_ACCESS_KEY_ID/);
     expect(() => run({ S3_SECRET_ACCESS_KEY: undefined })).toThrow(/S3_SECRET_ACCESS_KEY/);
   });
-  it("forbids demo seeding", () => {
-    expect(() => run({ SEED_DEMO: "true" })).toThrow(/SEED_DEMO/);
-  });
   it("reports every problem at once", () => {
-    expect(() => run({ CRON_SECRET: "", SEED_DEMO: "true" })).toThrow(/CRON_SECRET.*SEED_DEMO/s);
+    expect(() => run({ CRON_SECRET: "" })).toThrow(/CRON_SECRET/);
   });
 });
 

@@ -45,8 +45,8 @@ describe("exportReport", () => {
   it("applies the same filters and scope as the report", async () => {
     const w = await workWorld(KEYS);
     const e = await w.employee(["reports.personal.read", "reports.export", "tasks.status.update.own"] as never[]);
-    await createTask(w.manager, { title: "Mine", assigneeIds: [e.employeeId], priority: "Urgent" });
-    await createTask(w.manager, { title: "Not mine", priority: "Urgent" });
+    await createTask(w.manager, { title: "Mine", assigneeIds: [e.employeeId], priority: "High" });
+    await createTask(w.manager, { title: "Not mine", priority: "High" });
     const mine = await text(await exportReport(e.actor, "task-register", "csv", {}));
     expect(mine).toContain("Mine");
     expect(mine).not.toContain("Not mine");

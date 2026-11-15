@@ -1,7 +1,6 @@
 import { cn } from "@/lib/cn";
 
 const TONE: Record<string, string> = {
-  Urgent: "font-semibold text-danger",
   High: "font-medium text-warning",
   Medium: "text-foreground",
   Low: "text-muted",

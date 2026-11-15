@@ -14,7 +14,7 @@ import type { FinanceActionResult } from "@/modules/finance";
 
 type ClientOption = { id: string; name: string };
 
-export function NewInvoiceForm({ clients, projects }: { clients: ClientOption[]; projects: ProjectChoice[] }) {
+export function NewInvoiceForm({ clients, projects, defaultDueDate }: { clients: ClientOption[]; projects: ProjectChoice[]; defaultDueDate: string }) {
   const router = useRouter();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [state, action, pending] = useActionState<FinanceActionResult<{ id: string }> | null, FormData>(createInvoiceAction, null);
@@ -42,8 +42,8 @@ export function NewInvoiceForm({ clients, projects }: { clients: ClientOption[];
               ))}
             </select>
           </Field>
-          <Field id="dueDate" label="Due date" hint="Overdue is worked out from this date.">
-            <input id="dueDate" name="dueDate" type="date" aria-describedby="dueDate-hint" className={inputClass} />
+          <Field id="dueDate" label="Due date" hint="Filled from your payment terms setting. Today or later.">
+            <input id="dueDate" name="dueDate" type="date" defaultValue={defaultDueDate} min={new Date().toLocaleDateString("en-CA")} aria-describedby="dueDate-hint" className={inputClass} />
           </Field>
         </div>
 

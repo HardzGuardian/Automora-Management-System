@@ -7,9 +7,9 @@ export const PROJECT_TRANSITIONS: Readonly<Record<ProjectStatus, readonly Projec
   Planning: ["Active", "Cancelled"],
   Active: ["On Hold", "Completed", "Cancelled"],
   "On Hold": ["Active", "Cancelled"],
-  Completed: ["Archived"],
+  Completed: ["Active", "Archived"],
   Cancelled: ["Archived"],
-  Archived: [],
+  Archived: ["Active"],
 };
 
 export function canTransition(from: string, to: string): boolean {

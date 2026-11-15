@@ -6,6 +6,7 @@ import { withTransaction } from "@/db";
 import { expensePayments, expenses } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { requirePermission } from "@/lib/permissions";
+import { todayInTz } from "@/lib/dates";
 import { DomainError } from "@/lib/errors";
 import { fromMinor, toMinor } from "@/lib/money";
 import { beginIdempotentOperation, completeIdempotentOperation } from "@/lib/idempotency/with-idempotency";
@@ -76,6 +77,7 @@ export async function recordExpensePayment(actor: Actor, input: RecordExpensePay
   requirePermission(actor, "finance.expenses.pay");
   const parsed = parseInput(recordExpensePaymentSchema, input);
   if (parsed.status === "confirmed") await assertNotSelfConfirmed(actor, actor.userId); // recording as already-confirmed is self-confirming
+  if (parsed.paymentDate > todayInTz(actor.timezone)) throw new DomainError("VALIDATION", "The payment date cannot be in the future.");
   const amount = fromMinor(toMinor(parsed.amount));
   const requestHash = createHash("sha256").update(JSON.stringify(parsed)).digest("hex");
   return withTransaction(async (tx) => {

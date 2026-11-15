@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
+import { invoices, notifications } from "@/db/schema";
 import { addDays, todayInTz } from "@/lib/dates";
 import { resetNotifier } from "@/lib/notify";
 import { confirmReceipt, createInvoiceDraft, issueInvoice, recordReceipt } from "@/modules/finance";
@@ -71,8 +71,11 @@ describe("invoice reminders", () => {
     const client = await createClient(fin, { name: "Billed" });
     const today = todayInTz(fin.timezone);
     const mk = async (due: string) => {
-      const d = await createInvoiceDraft(fin, { clientId: client.id, dueDate: due, idempotencyKey: randomUUID(), items: [{ description: "x", quantity: "1", unitPrice: "100.00", discount: "0", taxRate: "0" }] });
-      return issueInvoice(fin, d.id);
+      // An invoice cannot be issued with a past due date; it becomes overdue as time passes. Move the date back to simulate that.
+      const d = await createInvoiceDraft(fin, { clientId: client.id, dueDate: due < today ? today : due, idempotencyKey: randomUUID(), items: [{ description: "x", quantity: "1", unitPrice: "100.00", discount: "0", taxRate: "0" }] });
+      const issued = await issueInvoice(fin, d.id);
+      if (due < today) await db.update(invoices).set({ dueDate: due }).where(eq(invoices.id, issued.id));
+      return issued;
     };
     await mk(addDays(today, -5)); // overdue
     await mk(addDays(today, 2)); // due soon

@@ -365,3 +365,27 @@ export async function listAssignableTeams(actor: Actor, permission: "tasks.assig
     .orderBy(asc(departments.name), asc(teams.name));
   return rows.map((r) => ({ id: r.id, label: `${r.department} · ${r.team}` }));
 }
+
+export type TeamCard = { id: string; name: string; department: string; people: string[] };
+
+/** Assignable teams with their active people, for the "Assign to a team" picker. */
+export async function listTeamCards(actor: Actor, permission: "tasks.assign" | "projects.members.manage"): Promise<TeamCard[]> {
+  const assignable = await listAssignableTeams(actor, permission);
+  if (assignable.length === 0) return [];
+  const ids = assignable.map((t) => t.id);
+  const rows = await db
+    .select({ id: teams.id, team: teams.name, department: departments.name })
+    .from(teams)
+    .innerJoin(departments, eq(departments.id, teams.departmentId))
+    .where(inArray(teams.id, ids))
+    .orderBy(asc(departments.name), asc(teams.name));
+  const members = await db
+    .select({ teamId: teamMembers.teamId, name: employees.fullName })
+    .from(teamMembers)
+    .innerJoin(employees, and(eq(employees.id, teamMembers.employeeId), eq(employees.companyId, teamMembers.companyId)))
+    .where(and(inArray(teamMembers.teamId, ids), eq(employees.employmentStatus, "Active"), isNull(employees.archivedAt)))
+    .orderBy(asc(employees.fullName));
+  const byTeam = new Map<string, string[]>();
+  for (const m of members) byTeam.set(m.teamId, [...(byTeam.get(m.teamId) ?? []), m.name]);
+  return rows.map((r) => ({ id: r.id, name: r.team, department: r.department, people: byTeam.get(r.id) ?? [] }));
+}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { Alert } from "@/components/ui/alert";
 import { AuthShell } from "@/components/layout/auth-shell";
+import { AuthAlert } from "@/components/ui/auth-fields";
 import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
 
@@ -14,8 +14,12 @@ export default async function LoginPage({
   const { activated } = await searchParams;
   if (await getSession()) redirect("/");
   return (
-    <AuthShell title="Sign in to Automora" description="Use the work email your administrator invited.">
-      {activated ? <Alert tone="success">Account activated. You can sign in now.</Alert> : null}
+    <AuthShell
+      title="Welcome back"
+      description="Sign in with the email your admin invited."
+      footer="New here? There is no sign-up. Ask an admin to invite you, then use the link in your email."
+    >
+      {activated ? <AuthAlert tone="success">Account activated. You can sign in now.</AuthAlert> : null}
       <LoginForm />
     </AuthShell>
   );

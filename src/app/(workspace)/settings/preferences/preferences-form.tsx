@@ -10,7 +10,7 @@ import { savePreferencesAction, type SettingsState } from "../actions";
 export function PreferencesForm({ prefs, canEdit }: { prefs: Preferences; canEdit: boolean }) {
   const [state, action, pending] = useActionState(savePreferencesAction, {} as SettingsState);
   return (
-    <form action={action} className={`${cardClass} flex max-w-xl flex-col gap-4`}>
+    <form action={action} className={`${cardClass} flex flex-col gap-4`}>
       <div>
         <h2 className="m-0 text-base font-semibold">Defaults</h2>
         <p className="mt-1 text-sm text-muted">Starting values for new tasks and invoices. People can still change them on each record.</p>
@@ -22,7 +22,7 @@ export function PreferencesForm({ prefs, canEdit }: { prefs: Preferences; canEdi
       ) : null}
       <Field id="priority" label="Default task priority" hint="Used when a new task does not specify one.">
         <select id="priority" name="tasks.defaultPriority" defaultValue={prefs["tasks.defaultPriority"]} disabled={!canEdit} aria-describedby="priority-hint" className={inputClass}>
-          {["Low", "Medium", "High", "Urgent"].map((p) => (
+          {["Low", "Medium", "High"].map((p) => (
             <option key={p}>{p}</option>
           ))}
         </select>

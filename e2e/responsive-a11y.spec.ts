@@ -72,7 +72,8 @@ test.describe("keyboard", () => {
     await page.keyboard.press("Enter");
     const focusedOutline = await page.evaluate(() => getComputedStyle(document.activeElement as Element).outlineStyle);
     expect(focusedOutline).not.toBe("");
-    // Reach the primary action by keyboard alone.
+    // Reach the top bar's New task button by keyboard alone (it sits before the main content).
+    await page.goto("/tasks");
     let reached = false;
     for (let i = 0; i < 40 && !reached; i++) {
       await page.keyboard.press("Tab");
