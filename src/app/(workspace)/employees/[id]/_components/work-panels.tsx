@@ -15,7 +15,7 @@ export function ProjectsPanel({ rows }: { rows: EmployeeProjectRow[] }) {
     <div className="overflow-x-auto rounded-md border border-border">
       <table className="w-full min-w-[30rem] rounded-none border-0 text-left text-sm">
         <caption className="sr-only">Projects</caption>
-        <thead className="bg-primary-soft">
+        <thead className="text-muted">
           <tr>
             <th scope="col" className="px-3 py-2 font-semibold">Project</th>
             <th scope="col" className="px-3 py-2 font-semibold">Role</th>

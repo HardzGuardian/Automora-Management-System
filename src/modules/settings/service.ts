@@ -118,6 +118,21 @@ export async function requiresSecondConfirmer(companyId: string): Promise<boolea
   return row?.value === true;
 }
 
+/**
+ * The starting values the product uses for new tasks and invoices. Read by the screens that create them,
+ * so it needs no settings permission: it is a default, not data shown to the reader.
+ */
+export async function getCreationDefaults(companyId: string): Promise<{ taskPriority: string; invoiceDueDays: number }> {
+  const rows = await db.select().from(companySettings).where(eq(companySettings.companyId, companyId));
+  const stored = new Map(rows.map((r) => [r.settingKey, r.settingValueJson]));
+  const priority = PREFS["tasks.defaultPriority"].schema.safeParse(stored.get(PREFIX + "tasks.defaultPriority"));
+  const days = PREFS["invoices.defaultDueDays"].schema.safeParse(stored.get(PREFIX + "invoices.defaultDueDays"));
+  return {
+    taskPriority: priority.success ? priority.data : String(PREFS["tasks.defaultPriority"].fallback),
+    invoiceDueDays: days.success ? days.data : Number(PREFS["invoices.defaultDueDays"].fallback),
+  };
+}
+
 export async function updatePreferences(actor: Actor, input: Record<string, unknown>): Promise<Preferences> {
   requirePermission(actor, "settings.manage");
   const entries = Object.entries(input);

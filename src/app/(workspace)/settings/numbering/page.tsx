@@ -15,7 +15,7 @@ export default async function NumberingPage() {
       <div tabIndex={0} className="overflow-x-auto rounded-md border border-border">
         <table className="table w-full min-w-[20rem] border-0 text-left text-sm">
           <caption className="sr-only">Next document numbers</caption>
-          <thead className="bg-primary-soft">
+          <thead className="text-muted">
             <tr>
               <th scope="col" className="px-3 py-2 font-semibold">
                 Type

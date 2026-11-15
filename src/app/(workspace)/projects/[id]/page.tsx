@@ -140,7 +140,8 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
   const stage = statusView(project.archived ? "Archived" : project.status);
   const owner = members.find((m) => m.membershipRole === "owner");
 
-  const taskRows = projectTasks.rows;
+  // People who cannot read every task see only their own tasks in the list; progress still counts the whole project.
+  const taskRows = can(actor, "tasks.read.all") ? projectTasks.rows : projectTasks.rows.filter((t) => t.assignees.some((a) => a.employeeId === actor.employeeId));
   const isOverdue = (t: (typeof taskRows)[number]) => t.status !== "Completed" && t.dueDate !== null && t.dueDate < today;
   const overdueCount = taskRows.filter(isOverdue).length;
   const openByPerson = new Map<string, number>();

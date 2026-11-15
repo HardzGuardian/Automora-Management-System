@@ -78,7 +78,8 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
   const work = await getTeamWork(actor, sp.team);
   const manage = can(actor, "teams.manage");
 
-  const person = work.people.find((p) => p.employeeId === sp.person) ?? work.people[0];
+  const me = work.people.find((p) => p.employeeId === actor.employeeId);
+  const person = (work.full ? work.people.find((p) => p.employeeId === sp.person) : me) ?? work.people[0];
   const filter = FILTERS.find((f) => f.key === sp.filter)?.key ?? "all";
   const all = work.people.flatMap((p) => p.tasks);
   const teamStats = [
@@ -129,6 +130,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             pills={work.teams.map((t) => ({ label: t.label, href: href({}, { team: t.id }), active: t.id === work.selected!.id }))}
           />
 
+          {work.full ? (
           <section aria-label="Team summary" className="grid grid-cols-2 rounded-lg border border-border bg-surface lg:grid-cols-4">
             {teamStats.map((k, i) => (
               <div key={k.label} className={cn("px-5 py-4", i > 0 && "lg:border-l lg:border-border", i % 2 === 1 && "border-l border-border lg:border-l")}>
@@ -137,14 +139,25 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
               </div>
             ))}
           </section>
+          ) : null}
 
           <div className="flex flex-wrap items-start gap-5">
             <section aria-label="People" className="flex min-w-0 flex-[1_1_360px] flex-col gap-2.5">
               <h2 className="m-0 text-base font-semibold text-foreground">People</h2>
               {work.people.length === 0 ? <p className="m-0 text-sm text-muted">This team has no active members yet.</p> : null}
-              {work.people.map((p) => (
-                <PersonCard key={p.employeeId} p={p} selected={p.employeeId === person?.employeeId} link={href(base, { person: p.employeeId, filter: "all" })} />
-              ))}
+              {work.people.map((p) =>
+                work.full || p.employeeId === actor.employeeId ? (
+                  <PersonCard key={p.employeeId} p={p} selected={p.employeeId === person?.employeeId} link={href(base, { person: p.employeeId, filter: "all" })} />
+                ) : (
+                  <div key={p.employeeId} className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+                    <span aria-hidden="true" className="inline-flex size-[38px] flex-none items-center justify-center rounded-full bg-primary-soft font-semibold text-primary-ink">{p.name.slice(0, 1).toUpperCase()}</span>
+                    <span>
+                      <span className="block font-semibold text-foreground">{p.name}</span>
+                      <span className="block text-xs text-muted">{p.role === "lead" ? "Team lead" : "Member"}</span>
+                    </span>
+                  </div>
+                ),
+              )}
             </section>
 
             <section aria-label="Selected person's work" className="min-w-0 flex-[1.4_1_440px] rounded-lg border border-border bg-surface">

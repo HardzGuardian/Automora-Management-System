@@ -6,10 +6,10 @@ test.describe.configure({ mode: "serial" });
 test("employee: no controls that would only fail, and clean no-access pages for finance", async ({ page }) => {
   await login(page, EMPLOYEE);
   await page.goto("/tasks");
-  // Someone else's finished task: no status menu, no done tick.
-  await expect(page.getByRole("row", { name: /Set up hosting/ })).toBeVisible();
-  await expect(page.getByLabel("Status for Set up hosting")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Reopen Set up hosting|Complete Set up hosting/ })).toHaveCount(0);
+  // Only their own tasks are listed, with a personal heading and no "All" view.
+  await expect(page.getByRole("row", { name: /Set up hosting/ })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Filter tasks" }).getByRole("link", { name: /^All/ })).toHaveCount(0);
+  await expect(page.getByText("The tasks assigned to you")).toBeVisible();
   // Their own task: a status menu that stops at In Review, and no done tick.
   const own = page.getByLabel("Status for Design homepage");
   await expect(own).toBeVisible();
@@ -105,4 +105,23 @@ test("account: the new password must differ from the current one", async ({ page
   await page.locator("#confirm").fill(PASSWORD);
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "different from the current one" })).toBeVisible();
+});
+
+test("employee: log time on their own task from the task page", async ({ page }) => {
+  await login(page, EMPLOYEE);
+  await page.goto("/tasks");
+  await page.getByRole("link", { name: "Design homepage" }).click();
+  await page.locator("#log-hours").fill("3.5");
+  await page.getByRole("button", { name: "Save hours" }).click();
+  await expect(page.locator("#log-hours")).toHaveValue("3.50");
+  await expect(page.getByText("3.50").first()).toBeVisible();
+});
+
+test("employee: a team member sees teammates but only their own tasks", async ({ page }) => {
+  await login(page, EMPLOYEE);
+  await page.goto("/teams");
+  await expect(page.getByRole("region", { name: "Team summary" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "People" })).toContainText("Asha Admin");
+  await expect(page.getByRole("link", { name: /Asha Admin/ })).toHaveCount(0); // teammates are names only, no work pages
+  await expect(page.getByRole("region", { name: "Selected person's work" })).toContainText("Design homepage");
 });

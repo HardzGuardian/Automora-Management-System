@@ -133,7 +133,7 @@ export function DataTable({
         <div className="overflow-x-auto rounded-md border border-border bg-surface">
           <table className="w-full min-w-[32rem] rounded-none border-0 text-left text-sm">
             <caption className="sr-only">{caption}</caption>
-            <thead className="sticky top-0 bg-primary-soft">
+            <thead className="sticky top-0 bg-surface text-muted">
               {table.getHeaderGroups().map((group) => (
                 <tr key={group.id}>
                   {selectFormId ? (

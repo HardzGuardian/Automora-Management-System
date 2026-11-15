@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
-import { archiveTask, changeTaskStatus, setTaskAssignee, unarchiveTask, updateTask } from "@/modules/tasks";
+import { archiveTask, changeTaskStatus, logActualHours, setTaskAssignee, unarchiveTask, updateTask } from "@/modules/tasks";
 
 export type TaskFormState = { error?: string; fieldErrors?: Record<string, string[]>; saved?: boolean };
 export type MoveResult = { ok: boolean; error?: string };
@@ -70,4 +70,12 @@ export async function restoreTaskAction(fd: FormData): Promise<void> {
   await toActionResult(() => unarchiveTask(actor, id));
   revalidatePath("/tasks");
   revalidatePath(`/tasks/${id}`);
+}
+
+export async function logHoursAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() => logActualHours(actor, id, str(fd.get("hours"))));
+  revalidatePath(`/tasks/${id}`);
+  if (!r.ok) redirect(`/tasks/${id}?error=${encodeURIComponent(r.error.message)}`);
 }

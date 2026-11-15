@@ -86,7 +86,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
               <p className="text-sm text-muted">No payments recorded yet.</p>
             ) : (
               <TableShell caption="Outgoing payments for this expense" minWidth="34rem">
-                <thead className="bg-primary-soft">
+                <thead className="text-muted">
                   <tr>
                     <th scope="col" className={thClass}>Date</th>
                     <th scope="col" className={thClass}>Method</th>

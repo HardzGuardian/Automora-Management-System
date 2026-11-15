@@ -51,8 +51,9 @@ test.describe("permission-aware navigation and access", () => {
     await page.goto("/tasks");
     await expect(page.getByRole("link", { name: "Design homepage" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Fix login bug" })).toBeVisible();
-    // "Write launch plan" is in the same project but assigned to nobody: members can see project tasks.
-    await expect(page.getByRole("link", { name: "Set up hosting" })).toBeVisible();
+    // Tasks that belong to other people in the same project are not on an employee's page.
+    await expect(page.getByRole("link", { name: "Set up hosting" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Write launch plan" })).toHaveCount(0);
   });
 });
 

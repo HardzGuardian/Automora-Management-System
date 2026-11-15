@@ -21,7 +21,6 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Automora <no-reply@automora.local>"),
   SMTP_URL: z.string().default("smtp://localhost:1025"),
   CRON_SECRET: z.string().default(""),
-  SEED_DEMO: bool,
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default(".data/uploads"),
@@ -60,7 +59,6 @@ export function assertProductionEnv(e: Env): void {
   if (!e.S3_BUCKET) problems.push("S3_BUCKET must be set");
   if (!e.S3_ACCESS_KEY_ID) problems.push("S3_ACCESS_KEY_ID must be set");
   if (!e.S3_SECRET_ACCESS_KEY) problems.push("S3_SECRET_ACCESS_KEY must be set");
-  if (e.SEED_DEMO) problems.push("SEED_DEMO must be false");
   if (problems.length > 0) throw new Error(`Invalid production configuration: ${problems.join("; ")}`);
 }
 

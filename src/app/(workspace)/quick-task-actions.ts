@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
 import { toActionResult } from "@/lib/errors";
+import { getCreationDefaults } from "@/modules/settings";
 import { createTask, quickTaskOptions, type QuickTaskOptions } from "@/modules/tasks";
 
 // Shapes the panel (a component, which never imports modules) is written against.
@@ -13,9 +14,9 @@ export type QuickTaskInput = { title: string; projectId: string; assigneeId: str
 export type QuickTaskResult = { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
 /** Loaded when the panel opens, so the page shell stays cheap for everyone who never opens it. */
-export async function loadQuickTaskOptions(): Promise<{ ok: true; options: QuickTaskOptions } | { ok: false; error: string }> {
+export async function loadQuickTaskOptions(): Promise<{ ok: true; options: QuickTaskOptions & { defaultPriority: string } } | { ok: false; error: string }> {
   const actor = await requireActor();
-  const r = await toActionResult(() => quickTaskOptions(actor));
+  const r = await toActionResult(async () => ({ ...(await quickTaskOptions(actor)), defaultPriority: (await getCreationDefaults(actor.companyId)).taskPriority }));
   return r.ok ? { ok: true, options: r.data } : { ok: false, error: r.error.message };
 }
 

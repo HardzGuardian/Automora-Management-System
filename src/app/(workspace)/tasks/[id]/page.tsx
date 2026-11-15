@@ -11,6 +11,7 @@ import { formatDateTime } from "@/components/ui/format";
 import { Priority } from "@/components/ui/priority";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Field } from "@/components/ui/field";
 import { buttonClass, inputClass, linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { todayInTz } from "@/lib/dates";
@@ -31,7 +32,7 @@ import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
 import { EditTaskForm } from "./edit-task-form";
-import { archiveTaskAction, assignAction, changeStatusFormAction, restoreTaskAction } from "../actions";
+import { archiveTaskAction, assignAction, changeStatusFormAction, logHoursAction, restoreTaskAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
 
@@ -152,6 +153,18 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
                 estimatedHours={task.estimatedHours}
                 actualHours={task.actualHours}
               />
+            </SectionCard>
+          ) : null}
+
+          {isAssignee && !manage && !task.archived ? (
+            <SectionCard title="Your time">
+              <form action={logHoursAction} className="flex flex-wrap items-end gap-3">
+                <input type="hidden" name="id" value={id} />
+                <Field id="log-hours" label="Hours you have spent so far" hint="A running total. Change it any time.">
+                  <input id="log-hours" name="hours" inputMode="decimal" required defaultValue={task.actualHours ?? ""} aria-describedby="log-hours-hint" className={`${inputClass} w-40`} />
+                </Field>
+                <button type="submit" className={buttonClass("secondary")}>Save hours</button>
+              </form>
             </SectionCard>
           ) : null}
 

@@ -28,7 +28,8 @@ describe("expense input schemas", () => {
   });
 
   it("requires the expense ID on updates and drops the idempotency key", () => {
-    const { idempotencyKey: _key, ...fields } = validExpense;
+    const fields: Record<string, unknown> = { ...validExpense };
+    delete fields.idempotencyKey;
     expect(updateExpenseSchema.safeParse({ ...fields, expenseId: validExpense.categoryId }).success).toBe(true);
   });
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { withTransaction } from "@/db";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
-import { collect, toCsvStream, toPdf, toXlsxStream, type ExportColumn, type ExportRow } from "@/lib/export";
+import { toCsvStream, toPdf, toXlsxStream, type ExportColumn, type ExportRow } from "@/lib/export";
 import { requirePermission } from "@/lib/permissions";
 import { audit } from "@/modules/audit";
 import { exportFinanceReport, type FinanceExportAdapter, type FinanceExportRequest } from "@/modules/finance";

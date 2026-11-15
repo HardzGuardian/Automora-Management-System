@@ -31,7 +31,7 @@ with dashboards, reports, notifications and an audit trail. Access is invitation
 | auth | Sign-in, invitations, roles and permissions, sessions, password reset, rate limiting, security events |
 | employees | Employee records, lifecycle (active, inactive, suspended), workload |
 | clients, projects | Client records; projects with members, milestones, progress, budget (budget visible only to people who may see it) |
-| tasks | Tasks with assignees, a status machine, comments, attachments, activity history, board and calendar views, bulk actions |
+| tasks | Tasks with assignees, a status machine, comments, attachments, activity history, list and board views |
 | **teams** | Departments, teams, members, leads; assigning tasks and projects to a whole team |
 | finance | Invoices (with PDF), payments, expenses with receipts, finance reports and exports |
 | reports, search | Operational reports with CSV, XLSX and PDF export; global search limited to records the user may see |

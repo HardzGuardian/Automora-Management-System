@@ -6,6 +6,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { cn } from "@/lib/cn";
 
 export type QuickTaskOptions = {
+  defaultPriority?: string;
   projects: { id: string; name: string }[];
   people: { id: string; name: string; designation: string | null; openTasks: number }[];
 };
@@ -52,6 +53,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
       const r = await actions.load();
       if (r.ok) {
         setOptions(r.options);
+        if (r.options.defaultPriority) setForm((f) => (f === EMPTY || !f.title ? { ...f, priority: r.options.defaultPriority! } : f));
         setLoadError(null);
       } else setLoadError(r.error);
     });
@@ -111,7 +113,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
                   type="button"
                   className={buttonClass("primary")}
                   onClick={() => {
-                    setForm(EMPTY);
+                    setForm({ ...EMPTY, priority: options?.defaultPriority ?? EMPTY.priority });
                     setCreated(false);
                   }}
                 >

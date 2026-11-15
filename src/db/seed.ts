@@ -11,7 +11,7 @@ async function main() {
   const adminEmail = env.SEED_ADMIN_EMAIL;
   if (!adminEmail) throw new Error("SEED_ADMIN_EMAIL is required to create the Super Admin invitation");
 
-  const result = await runSeed({ demo: env.SEED_DEMO, adminEmail, appUrl: env.APP_URL });
+  const result = await runSeed({ adminEmail, appUrl: env.APP_URL });
   process.stdout.write(`Seeded company ${result.companyId}\n`);
   if (!result.acceptUrl) {
     process.stdout.write("No new invitation created (a Super Admin or a valid invitation already exists).\n");

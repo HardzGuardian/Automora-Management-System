@@ -79,7 +79,9 @@ body {
   #main h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; }
   #main h2 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; }
   #main h3 { font-size: 1rem; font-weight: 600; }
-  #main a:not([class]) { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  #main a:not([class]) { color: var(--primary-ink); text-decoration: underline; text-underline-offset: 2px; }
+  #main td a:not([class]), #main th a:not([class]) { color: var(--foreground); font-weight: 500; text-decoration: none; }
+  #main td a:not([class]):hover, #main th a:not([class]):hover { color: var(--primary-ink); text-decoration: underline; }
   #main table:not([class]) { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: block; overflow-x: auto; }
   #main thead { background: transparent; }
   #main th { text-align: left; font-weight: 500; font-size: 0.75rem; color: var(--muted); padding: 0.625rem 0.75rem; white-space: nowrap; }

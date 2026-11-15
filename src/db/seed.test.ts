@@ -3,14 +3,11 @@ import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import {
-  clients,
   companies,
-  employees,
   invitations,
   permissions,
   rolePermissions,
   roles,
-  tasks,
   user,
   userRoles,
 } from "@/db/schema";
@@ -33,7 +30,7 @@ async function keysOf(roleName: string, companyId: string): Promise<string[]> {
 describe("runSeed (no demo)", () => {
   beforeAll(async () => {
     // Test DB is shared; this file seeds the single company it owns.
-    first = await runSeed({ demo: false, adminEmail: ADMIN, appUrl: "http://localhost:3000" });
+    first = await runSeed({ adminEmail: ADMIN, appUrl: "http://localhost:3000" });
   });
 
   it("creates the company, all permissions and the three system roles", async () => {
@@ -65,28 +62,13 @@ describe("runSeed (no demo)", () => {
   });
 
   it("is idempotent: a second run adds no duplicates", async () => {
-    const second = await runSeed({ demo: false, adminEmail: ADMIN, appUrl: "http://localhost:3000" });
+    const second = await runSeed({ adminEmail: ADMIN, appUrl: "http://localhost:3000" });
     expect(second.companyId).toBe(first.companyId);
     expect(second.invitationToken).toBeNull();
     expect(await db.select().from(invitations).where(eq(invitations.companyId, first.companyId))).toHaveLength(1);
     expect(await db.select().from(roles).where(eq(roles.companyId, first.companyId))).toHaveLength(3);
   });
 
-  it("creates no demo data unless demo is true", async () => {
-    expect(await db.select().from(employees).where(eq(employees.companyId, first.companyId))).toHaveLength(0);
-  });
-});
-
-describe("runSeed (demo)", () => {
-  it("adds labelled demo data once", async () => {
-    await runSeed({ demo: true, adminEmail: ADMIN, appUrl: "http://localhost:3000" });
-    await runSeed({ demo: true, adminEmail: ADMIN, appUrl: "http://localhost:3000" });
-    const cl = await db.select().from(clients).where(eq(clients.companyId, first.companyId));
-    expect(cl.length).toBe(2);
-    expect(cl.every((c) => c.name.startsWith("[DEMO]"))).toBe(true);
-    expect((await db.select().from(employees).where(eq(employees.companyId, first.companyId))).length).toBe(3);
-    expect((await db.select().from(tasks).where(eq(tasks.companyId, first.companyId))).length).toBe(5);
-  });
 });
 
 // Last in the file on purpose: these add invitation rows and a temporary admin to the seeded company.

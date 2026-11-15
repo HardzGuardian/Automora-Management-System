@@ -46,7 +46,10 @@ const assignee = (t: TaskDTO) => t.assignees[0];
 export default async function TasksPage({ searchParams }: { searchParams: Promise<SP> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const show: Show = SHOWS.find((s) => s.key === sp.show)?.key ?? "all";
+  // People who cannot read every task get a personal page: their own tasks only.
+  const personal = !can(actor, "tasks.read.all");
+  const requested: Show = SHOWS.find((s) => s.key === sp.show)?.key ?? (personal ? "mine" : "all");
+  const show: Show = personal && (requested === "all" || requested === "archived") ? "mine" : requested;
   const board = sp.layout === "board";
   const projects = await projectsOverview(actor);
   const projectId = projects.find((p) => p.id === sp.project)?.id;
@@ -55,10 +58,10 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
 
   const base = { projectId, includeArchived: false } as const;
   const [list, nAll, nMine, nOverdue, nArchived] = await Promise.all([
-    listTasks(actor, { ...base, view: show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, archivedOnly: show === "archived", pageSize: 100 }),
+    listTasks(actor, { ...base, view: personal || show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, archivedOnly: show === "archived", pageSize: 100 }),
     listTasks(actor, { ...base, view: "all", pageSize: 1 }),
     listTasks(actor, { ...base, view: "mine", pageSize: 1 }),
-    listTasks(actor, { ...base, view: "all", overdue: true, pageSize: 1 }),
+    listTasks(actor, { ...base, view: personal ? "mine" : "all", overdue: true, pageSize: 1 }),
     can(actor, "tasks.archive") ? listTasks(actor, { ...base, view: "all", archivedOnly: true, pageSize: 1 }) : Promise.resolve({ rows: [], total: 0 }),
   ]);
   const counts: Record<Show, number> = { all: nAll.total, mine: nMine.total, overdue: nOverdue.total, archived: nArchived.total };
@@ -74,7 +77,9 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Tasks</h1>
-        <p className="mt-1 text-muted">Every task belongs to a project and is assigned to one person by an admin.</p>
+        <p className="mt-1 text-muted">
+          {personal ? "The tasks assigned to you. Update the status as you work; a manager completes them." : "Every task belongs to a project and is assigned to one person by an admin."}
+        </p>
       </div>
 
       {sp.error ? <Alert tone="error">{sp.error.slice(0, 300)}</Alert> : null}
@@ -83,7 +88,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap items-center gap-2">
           <FilterPills
             label="Filter tasks"
-            pills={SHOWS.filter((s) => s.key !== "archived" || can(actor, "tasks.archive")).map((s) => ({ label: s.label, href: href(sp, { show: s.key }), count: counts[s.key], active: show === s.key }))}
+            pills={SHOWS.filter((s) => (personal ? s.key === "mine" || s.key === "overdue" : s.key !== "archived" || can(actor, "tasks.archive"))).map((s) => ({ label: s.label, href: href(sp, { show: s.key }), count: counts[s.key], active: show === s.key }))}
           />
           <form className="flex items-center gap-2">
             {show !== "all" ? <input type="hidden" name="show" value={show} /> : null}
@@ -126,7 +131,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                   <th scope="col" className="w-11 py-3 pl-5 pr-2"><span className="sr-only">Done</span></th>
                   <th scope="col" className="p-3 font-medium">Task</th>
                   <th scope="col" className="p-3 font-medium">Project</th>
-                  <th scope="col" className="p-3 font-medium">Assigned to</th>
+                  {personal ? null : <th scope="col" className="p-3 font-medium">Assigned to</th>}
                   <th scope="col" className="p-3 font-medium">Due</th>
                   <th scope="col" className="py-3 pl-3 pr-5 font-medium">Status</th>
                 </tr>
@@ -175,6 +180,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                           <span className="text-muted">—</span>
                         )}
                       </td>
+                      {personal ? null : (
                       <td className="px-3 py-2.5">
                         {canAssign && personOptions.length > 0 ? (
                           <AutoSubmitSelect
@@ -190,6 +196,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                           <span>{who?.fullName ?? "—"}</span>
                         )}
                       </td>
+                      )}
                       <td className={cn("px-3 py-2.5 tabular-nums", late ? "text-danger" : "text-body")}>{t.dueDate ?? "—"}</td>
                       <td className="py-2.5 pl-3 pr-5">
                         {statusOptions.length > 1 ? (

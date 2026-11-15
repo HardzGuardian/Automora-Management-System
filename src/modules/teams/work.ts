@@ -12,6 +12,8 @@ export type TeamWork = {
   teams: { id: string; label: string }[];
   selected: { id: string; label: string } | null;
   people: WorkPerson[];
+  /** False for an ordinary member: they see who is on the team, but only their own tasks. */
+  full: boolean;
 };
 
 /**
@@ -34,7 +36,7 @@ export async function getTeamWork(actor: Actor, teamId?: string): Promise<TeamWo
     .orderBy(asc(departments.name), asc(teams.name));
   const list = visible.map((t) => ({ id: t.id, label: `${t.department}, ${t.team}` }));
   const selected = list.find((t) => t.id === teamId) ?? list[0] ?? null;
-  if (!selected) return { teams: list, selected: null, people: [] };
+  if (!selected) return { teams: list, selected: null, people: [], full: false };
 
   const members = await db
     .select({ employeeId: employees.id, name: employees.fullName, role: teamMembers.role })
@@ -42,10 +44,13 @@ export async function getTeamWork(actor: Actor, teamId?: string): Promise<TeamWo
     .innerJoin(employees, and(eq(employees.id, teamMembers.employeeId), eq(employees.companyId, teamMembers.companyId)))
     .where(and(eq(teamMembers.teamId, selected.id), eq(employees.employmentStatus, "Active"), isNull(employees.archivedAt)))
     .orderBy(desc(sql`${teamMembers.role} = 'lead'`), asc(employees.fullName));
-  if (members.length === 0) return { teams: list, selected, people: [] };
+  if (members.length === 0) return { teams: list, selected, people: [], full: false };
+  const isLead = members.some((m) => m.employeeId === actor.employeeId && m.role === "lead");
+  const full = can(actor, "tasks.read.all") || isLead;
+  const taskPeople = full ? members.map((m) => m.employeeId) : members.filter((m) => m.employeeId === actor.employeeId).map((m) => m.employeeId);
 
   const today = todayInTz(actor.timezone);
-  const rows = await db
+  const rows = taskPeople.length === 0 ? [] : await db
     .select({
       employeeId: taskAssignees.employeeId,
       id: tasks.id,
@@ -59,10 +64,7 @@ export async function getTeamWork(actor: Actor, teamId?: string): Promise<TeamWo
     .leftJoin(projects, and(eq(projects.id, tasks.projectId), eq(projects.companyId, tasks.companyId)))
     .where(
       and(
-        inArray(
-          taskAssignees.employeeId,
-          members.map((m) => m.employeeId),
-        ),
+        inArray(taskAssignees.employeeId, taskPeople),
         eq(taskAssignees.companyId, actor.companyId),
         isNull(tasks.archivedAt),
         taskScope(actor),
@@ -85,6 +87,7 @@ export async function getTeamWork(actor: Actor, teamId?: string): Promise<TeamWo
   return {
     teams: list,
     selected,
+    full,
     people: members.map((m) => ({ employeeId: m.employeeId, name: m.name, role: m.role === "lead" ? "lead" : "member", tasks: byPerson.get(m.employeeId) ?? [] })),
   };
 }

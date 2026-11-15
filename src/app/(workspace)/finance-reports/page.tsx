@@ -155,7 +155,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
         <EmptyState title="No rows in this period" description="Choose a wider period." />
       ) : (
         <TableShell caption={`${TAB_LABEL[tab]} report, ${table.total} rows`} minWidth="44rem">
-          <thead className="bg-primary-soft">
+          <thead className="text-muted">
             <tr>
               {table.head.map((h) => (
                 <th key={h} scope="col" className={NUMERIC_HEADS.has(h) ? thNumClass : thClass}>

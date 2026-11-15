@@ -87,7 +87,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <Section title="Line items">
             <TableShell caption="Invoice line items" minWidth="38rem">
-              <thead className="bg-primary-soft">
+              <thead className="text-muted">
                 <tr>
                   <th scope="col" className={thClass}>Description</th>
                   <th scope="col" className={thNumClass}>Quantity</th>
@@ -146,7 +146,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 <p className="text-sm text-muted">No receipts recorded yet.{invoice.status === "issued" || invoice.status === "overdue" ? " Record one above when a payment arrives." : ""}</p>
               ) : (
                 <TableShell caption="Receipts for this invoice" minWidth="30rem">
-                  <thead className="bg-primary-soft">
+                  <thead className="text-muted">
                     <tr>
                       <th scope="col" className={thClass}>Date</th>
                       <th scope="col" className={thClass}>Method</th>

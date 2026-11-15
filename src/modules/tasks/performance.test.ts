@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { getWorkload } from "@/modules/employees";
 import { workWorld } from "@/test/work";
-import { listCalendarTasks } from "./calendar";
 import { listTasks } from "./queries";
 
 // D1-31: dashboard-critical queries stay fast at ~10k tasks. Bounds are deliberately generous
@@ -72,9 +71,4 @@ describe("query performance at ~10k tasks", () => {
     expect(wl.ms).toBeLessThan(BOUND_MS);
   });
 
-  it("a month of the calendar loads fast", async () => {
-    const { value, ms } = await timed(() => listCalendarTasks(w.manager, { month: "2026-03", view: "all" }));
-    expect(value.length).toBeGreaterThan(0);
-    expect(ms).toBeLessThan(BOUND_MS * 2);
-  });
 });

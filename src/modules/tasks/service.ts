@@ -1,11 +1,11 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, withTransaction, type Tx } from "@/db";
-import { clients, projects, tasks } from "@/db/schema";
+import { clients, projects, taskAssignees, tasks } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { nextCode } from "@/lib/codes";
 import { DomainError } from "@/lib/errors";
-import { requirePermission } from "@/lib/permissions";
+import { can, requirePermission } from "@/lib/permissions";
 import { addAssignees, notifyAssigned } from "./assignees";
 import { loadTask, loadTaskDTO, logTaskActivity } from "./core";
 import type { TaskDTO } from "./dto";
@@ -132,6 +132,31 @@ export async function updateTask(actor: Actor, id: string, input: UpdateTaskInpu
 /** Visibility is decided by scope (assignee / project member / tasks.read.all). */
 export async function getTask(actor: Actor, id: string): Promise<TaskDTO> {
   return loadTaskDTO(db, actor, id);
+}
+
+/**
+ * The person doing the task records the time they spent (a total, not an addition). Managers can do it
+ * on any task; everyone else only on a task assigned to them.
+ */
+export async function logActualHours(actor: Actor, taskId: string, hoursInput: string): Promise<void> {
+  const hours = hoursInput.trim();
+  if (!/^\d{1,4}(\.\d{1,2})?$/.test(hours)) throw new DomainError("VALIDATION", "Enter the hours as a number, for example 2.5.");
+  await withTransaction(async (tx) => {
+    const before = await loadTask(tx, actor, taskId);
+    if (before.archivedAt) throw new DomainError("VALIDATION", "Archived tasks cannot be changed.");
+    if (!can(actor, "tasks.update")) {
+      requirePermission(actor, "tasks.status.update.own");
+      const mine = actor.employeeId
+        ? await tx
+            .select({ id: taskAssignees.employeeId })
+            .from(taskAssignees)
+            .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.employeeId, actor.employeeId)))
+        : [];
+      if (mine.length === 0) throw new DomainError("FORBIDDEN", "You can only log time on your own tasks.");
+    }
+    await tx.update(tasks).set({ actualHours: hours }).where(and(eq(tasks.id, taskId), eq(tasks.companyId, actor.companyId)));
+    await logTaskActivity(tx, actor, taskId, "updated", { actualHours: before.actualHours }, { actualHours: hours });
+  });
 }
 
 export async function unarchiveTask(actor: Actor, id: string): Promise<TaskDTO> {

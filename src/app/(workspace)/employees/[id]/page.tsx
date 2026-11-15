@@ -187,7 +187,7 @@ export default async function EmployeeDetailPage({
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full min-w-[34rem] rounded-none border-0 text-left text-sm">
                     <caption className="sr-only">{TABS.find((t) => t.key === tab)?.label} tasks</caption>
-                    <thead className="bg-primary-soft">
+                    <thead className="text-muted">
                       <tr>
                         <th scope="col" className="px-3 py-2 font-semibold">Task</th>
                         <th scope="col" className="px-3 py-2 font-semibold">Status</th>
