@@ -1,0 +1,13 @@
+.git
+node_modules
+.next
+.data
+.env
+.env.*
+!.env.example
+.superpowers
+.serena
+docs
+*.md
+!README.md
+tsconfig.tsbuildinfo

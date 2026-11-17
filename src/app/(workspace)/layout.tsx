@@ -1,0 +1,30 @@
+import type { ReactNode } from "react";
+import { AppShell } from "@/components/layout/app-shell";
+import { visibleNav } from "@/components/layout/nav";
+import { ToastProvider } from "@/components/ui/toast";
+import { createQuickTaskAction, loadQuickTaskOptions } from "./quick-task-actions";
+import { requireActor } from "@/lib/auth/require-actor";
+import { getSession } from "@/lib/auth/session";
+import { unreadCount } from "@/modules/notifications";
+
+export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
+  const actor = await requireActor();
+  const session = await getSession();
+  const { main, settings } = visibleNav(actor.permissions);
+  const unread = await unreadCount(actor).catch(() => 0); // a failing badge must never break the page
+  const canCreateTask = actor.permissions.has("tasks.create") && actor.permissions.has("tasks.assign");
+
+  return (
+    <ToastProvider>
+      <AppShell
+        main={main}
+        settings={settings}
+        quickTask={canCreateTask ? { load: loadQuickTaskOptions, create: createQuickTaskAction } : null}
+        user={{ name: session?.user.name ?? "User", email: session?.user.email ?? "", roles: actor.roles }}
+        unread={unread}
+      >
+        {children}
+      </AppShell>
+    </ToastProvider>
+  );
+}
