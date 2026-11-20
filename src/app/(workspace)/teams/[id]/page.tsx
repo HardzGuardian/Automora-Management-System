@@ -15,10 +15,8 @@ import { listEmployees } from "@/modules/employees";
 import { getTeam } from "@/modules/teams";
 import {
   addMemberAction,
-  archiveTeamAction,
   removeMemberAction,
   setRoleAction,
-  updateTeamAction,
 } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
@@ -46,18 +44,27 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
 
   return (
     <div className="flex flex-col gap-5">
-      <BackLink href="/teams/manage">Manage teams</BackLink>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BackLink href="/teams">Teams</BackLink>
+        {manage ? (
+          <Link href={`/teams/${id}/edit`} className={buttonClass("secondary")}>
+            Edit team
+          </Link>
+        ) : null}
+      </div>
       {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={team.name}
         code={team.departmentName}
         badges={team.archived ? <StatusBadge status="Archived" /> : null}
-        facts={[<span key="m">{team.members.length} {team.members.length === 1 ? "member" : "members"}</span>]}
+        facts={[
+          <span key="m">{team.members.length} {team.members.length === 1 ? "member" : "members"}</span>,
+          <Link key="w" href={`/teams?team=${id}`} className={linkClass}>See work on the Team tab</Link>,
+        ]}
       />
-      {team.description ? <p className="max-w-2xl text-sm text-muted">{team.description}</p> : null}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
+      <div className="grid gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           <SectionCard title="Members" count={team.members.length}>
             {team.members.length === 0 ? (
               <p className="text-sm text-muted">Nobody is on this team yet.</p>
@@ -135,6 +142,10 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
                   Add to team
                 </button>
               </form>
+            ) : manage ? (
+              <p className="border-t border-border pt-3 text-sm text-muted">
+                {can(actor, "employees.read") ? "Every active employee is already on this team." : "You need access to the employee directory to add people."}
+              </p>
             ) : null}
           </SectionCard>
 
@@ -173,41 +184,6 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
           </SectionCard>
         </div>
 
-        {manage ? (
-          <aside className="flex min-w-0 flex-col gap-5">
-            <SectionCard title="Team details">
-              <form action={updateTeamAction} className="flex flex-col gap-3">
-                <input type="hidden" name="id" value={id} />
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="team-name" className="text-sm font-medium">
-                    Name
-                  </label>
-                  <input id="team-name" name="name" required maxLength={80} defaultValue={team.name} className={inputClass} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="team-desc" className="text-sm font-medium">
-                    Description
-                  </label>
-                  <textarea id="team-desc" name="description" rows={3} maxLength={500} defaultValue={team.description ?? ""} className={inputClass} />
-                </div>
-                <button type="submit" className={buttonClass("secondary")}>
-                  Save
-                </button>
-              </form>
-              <div className="border-t border-border pt-3">
-                <ConfirmForm
-                  action={archiveTeamAction}
-                  label="Archive team"
-                  title={`Archive ${team.name}?`}
-                  description="The team is hidden and can no longer be given work. People who only had tasks or projects through this team lose them."
-                  confirmLabel="Archive team"
-                >
-                  <input type="hidden" name="id" value={id} />
-                </ConfirmForm>
-              </div>
-            </SectionCard>
-          </aside>
-        ) : null}
       </div>
     </div>
   );

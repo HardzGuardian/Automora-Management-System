@@ -31,7 +31,6 @@ import { Alert } from "@/components/ui/alert";
 import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
-import { EditTaskForm } from "./edit-task-form";
 import { archiveTaskAction, assignAction, changeStatusFormAction, logHoursAction, restoreTaskAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
@@ -78,7 +77,14 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
 
   return (
     <div className="flex flex-col gap-5">
-      <BackLink href="/tasks">Tasks</BackLink>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BackLink href={task.projectId ? "/projects" : "/tasks"}>{task.projectId ? "Projects" : "Tasks"}</BackLink>
+        {manage && !task.archived ? (
+          <Link href={`/tasks/${id}/edit`} className={buttonClass("secondary")}>
+            Edit task
+          </Link>
+        ) : null}
+      </div>
       {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={task.title}
@@ -138,21 +144,6 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
           {task.description ? (
             <SectionCard title="Description">
               <p className="whitespace-pre-wrap text-sm">{task.description}</p>
-            </SectionCard>
-          ) : null}
-
-          {manage && !task.archived ? (
-            <SectionCard title="Edit task">
-              <EditTaskForm
-                id={id}
-                title={task.title}
-                description={task.description}
-                priority={task.priority}
-                startDate={task.startDate}
-                dueDate={task.dueDate}
-                estimatedHours={task.estimatedHours}
-                actualHours={task.actualHours}
-              />
             </SectionCard>
           ) : null}
 

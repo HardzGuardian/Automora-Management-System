@@ -48,7 +48,11 @@ test.describe("permission-aware navigation and access", () => {
 
   test("an employee sees only their own tasks", async ({ page }) => {
     await login(page, EMPLOYEE);
+    // The Tasks tab holds individual tasks; project tasks are under Projects.
     await page.goto("/tasks");
+    await expect(page.getByRole("link", { name: "Renew office licence" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Design homepage" })).toHaveCount(0);
+    await page.goto("/projects");
     await expect(page.getByRole("link", { name: "Design homepage" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Fix login bug" })).toBeVisible();
     // Tasks that belong to other people in the same project are not on an employee's page.
@@ -86,10 +90,12 @@ test.describe("workflow: client → project → task", () => {
     await expect(panel.getByText("Task created")).toBeVisible();
     await panel.getByRole("button", { name: "Done" }).click();
 
-    await page.goto("/tasks");
+    // A project task lives under its project, not in the individual Tasks tab.
+    await page.goto("/projects");
+    await page.locator("details", { hasText: `E2E Project ${unique}` }).evaluate((d) => d.setAttribute("open", ""));
     const row = page.getByRole("row", { name: new RegExp(`E2E Task ${unique}`) });
     await expect(row).toBeVisible();
-    await expect(row.getByLabel(/Assigned to for/)).toHaveValue(/.+/);
+    await expect(row).toContainText("Ravi Employee");
     await row.getByLabel(/Status for/).selectOption("In Progress");
     await expect(page.getByRole("row", { name: new RegExp(`E2E Task ${unique}`) }).getByLabel(/Status for/)).toHaveValue("In Progress");
   });

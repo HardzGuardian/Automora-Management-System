@@ -6,9 +6,10 @@ import { listDocuments } from "@/modules/documents";
 import { listEmployees } from "@/modules/employees";
 import { listProjects } from "@/modules/projects";
 import { listTasks } from "@/modules/tasks";
+import { listTeamOverview } from "@/modules/teams";
 
 export type SearchHit = {
-  type: "employee" | "client" | "project" | "task" | "document";
+  type: "employee" | "client" | "project" | "task" | "document" | "team";
   id: string;
   title: string;
   subtitle: string;
@@ -22,6 +23,7 @@ export type SearchResults = {
   projects: SearchHit[];
   tasks: SearchHit[];
   documents: SearchHit[];
+  teams: SearchHit[];
   total: number;
 };
 
@@ -35,16 +37,18 @@ const MIN_LENGTH = 2;
  */
 export async function globalSearch(actor: Actor, rawQuery: string): Promise<SearchResults> {
   const query = rawQuery.trim().slice(0, 100);
-  const empty: SearchResults = { query, employees: [], clients: [], projects: [], tasks: [], documents: [], total: 0 };
+  const empty: SearchResults = { query, employees: [], clients: [], projects: [], tasks: [], documents: [], teams: [], total: 0 };
   if (query.length < MIN_LENGTH) return empty;
 
-  const [employees, clients, projects, tasks, documents] = await Promise.all([
+  const [employees, clients, projects, tasks, documents, teamHits] = await Promise.all([
+
 
     can(actor, "employees.read") ? listEmployees(actor, { search: query, pageSize: PER_TYPE }) : { rows: [] },
     can(actor, "clients.read") ? listClients(actor, { search: query, pageSize: PER_TYPE }) : { rows: [] },
     listProjects(actor, { search: query, pageSize: PER_TYPE }),
     listTasks(actor, { view: "all", search: query, pageSize: PER_TYPE, sort: "title" }),
     listDocuments(actor, { q: query }),
+    listTeamOverview(actor, { search: query }),
   ]);
 
   const result: SearchResults = {
@@ -84,8 +88,15 @@ export async function globalSearch(actor: Actor, rawQuery: string): Promise<Sear
       subtitle: d.projectName,
       href: `/projects/${d.projectId}?tab=documents`,
     })),
+    teams: teamHits.slice(0, PER_TYPE).map((t) => ({
+      type: "team" as const,
+      id: t.id,
+      title: t.name,
+      subtitle: `${t.department} · ${t.members.length} ${t.members.length === 1 ? "member" : "members"}`,
+      href: `/teams?q=${encodeURIComponent(t.name)}`,
+    })),
     total: 0,
   };
-  result.total = result.employees.length + result.clients.length + result.projects.length + result.tasks.length + result.documents.length;
+  result.total = result.employees.length + result.clients.length + result.projects.length + result.tasks.length + result.documents.length + result.teams.length;
   return result;
 }

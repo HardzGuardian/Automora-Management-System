@@ -37,7 +37,8 @@ test("client page lists its tasks, invoices and receipts", async ({ page }) => {
 test("project page lists its invoices, receipts and expenses", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/projects");
-  await page.getByRole("link", { name: "Northwind Website" }).first().click();
+  await page.locator("details").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
+  await page.locator("details", { hasText: "Northwind Website" }).getByRole("link", { name: "Open project details" }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
   const tabs = page.getByRole("group", { name: "Project sections and actions" });
   for (const label of ["Tasks", "Documents", "Team", "Milestones", "Finance"]) {
@@ -52,7 +53,8 @@ test("project page lists its invoices, receipts and expenses", async ({ page }) 
 test("an employee without finance access sees no finance lists on a project", async ({ page }) => {
   await login(page, EMPLOYEE);
   await page.goto("/projects");
-  const link = page.getByRole("link", { name: "Northwind Website" }).first();
+  await page.locator("details").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
+  const link = page.locator("details", { hasText: "Northwind Website" }).getByRole("link", { name: "Open project details" });
   if (await link.count()) {
     await link.click();
     await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);

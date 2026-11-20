@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
+import { AutoForm } from "@/components/ui/auto-form";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
+import { Priority } from "@/components/ui/priority";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -10,13 +12,19 @@ import { cn } from "@/lib/cn";
 import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
-import { projectsOverview } from "@/modules/projects";
 import { listTasks, rowControls, type TaskDTO } from "@/modules/tasks";
 import { projectTaskAssigneeAction, projectTaskStatusAction, toggleTaskDoneAction } from "../projects/actions";
 
 export const metadata = { title: "Tasks" };
 
-type SP = { show?: string; project?: string; layout?: string; error?: string };
+type SP = { show?: string; sort?: string; layout?: string; error?: string };
+const SORTS = [
+  { key: "due", label: "Due date" },
+  { key: "priority", label: "Priority" },
+  { key: "title", label: "Title" },
+  { key: "status", label: "Status" },
+  { key: "created", label: "Newest first", dir: "desc" },
+] as const;
 const SHOWS = [
   { key: "all", label: "All" },
   { key: "mine", label: "My tasks" },
@@ -51,14 +59,13 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const requested: Show = SHOWS.find((s) => s.key === sp.show)?.key ?? (personal ? "mine" : "all");
   const show: Show = personal && (requested === "all" || requested === "archived") ? "mine" : requested;
   const board = sp.layout === "board";
-  const projects = await projectsOverview(actor);
-  const projectId = projects.find((p) => p.id === sp.project)?.id;
-  const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  const sort = SORTS.find((s) => s.key === sp.sort) ?? SORTS[0];
   const today = todayInTz(actor.timezone);
 
-  const base = { projectId, includeArchived: false } as const;
+  // This tab is for tasks that belong to one person. Project and team tasks live under Projects.
+  const base = { individualOnly: true, includeArchived: false } as const;
   const [list, nAll, nMine, nOverdue, nArchived] = await Promise.all([
-    listTasks(actor, { ...base, view: personal || show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, archivedOnly: show === "archived", pageSize: 100 }),
+    listTasks(actor, { ...base, view: personal || show === "mine" ? "mine" : "all", overdue: show === "overdue" || undefined, archivedOnly: show === "archived", sort: sort.key, dir: "dir" in sort ? sort.dir : "asc", pageSize: 100 }),
     listTasks(actor, { ...base, view: "all", pageSize: 1 }),
     listTasks(actor, { ...base, view: "mine", pageSize: 1 }),
     listTasks(actor, { ...base, view: personal ? "mine" : "all", overdue: true, pageSize: 1 }),
@@ -78,7 +85,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       <div>
         <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Tasks</h1>
         <p className="mt-1 text-muted">
-          {personal ? "The tasks assigned to you. Update the status as you work; a manager completes them." : "Every task belongs to a project and is assigned to one person by an admin."}
+          {personal ? "Tasks that are just yours. Your project work is under Projects." : "Tasks for one person. Tasks that belong to a project and its team are under Projects."}
         </p>
       </div>
 
@@ -90,18 +97,16 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             label="Filter tasks"
             pills={SHOWS.filter((s) => (personal ? s.key === "mine" || s.key === "overdue" : s.key !== "archived" || can(actor, "tasks.archive"))).map((s) => ({ label: s.label, href: href(sp, { show: s.key }), count: counts[s.key], active: show === s.key }))}
           />
-          <form className="flex items-center gap-2">
+          <AutoForm className="flex items-center gap-2" label="Sort tasks">
             {show !== "all" ? <input type="hidden" name="show" value={show} /> : null}
             {board ? <input type="hidden" name="layout" value="board" /> : null}
-            <label htmlFor="proj-filter" className="sr-only">Filter by project</label>
-            <select id="proj-filter" name="project" defaultValue={projectId ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
-              <option value="">All projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+            <label htmlFor="task-sort" className="text-sm text-muted">Sort by</label>
+            <select id="task-sort" name="sort" defaultValue={sort.key} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+              {SORTS.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
-            <button type="submit" className="h-10 rounded-lg border border-field bg-surface px-4 font-medium hover:bg-primary-soft">Apply</button>
-          </form>
+          </AutoForm>
         </div>
         <nav aria-label="Layout" className="inline-flex overflow-hidden rounded-lg border border-field bg-surface">
           {(["list", "board"] as const).map((l) => {
@@ -123,14 +128,14 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       {!board ? (
         <section aria-label="Tasks" tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
           {rows.length === 0 ? (
-            <p className="px-5 py-10 text-center text-muted">No tasks match these filters. Choose All, or use New task at the top right.</p>
+            <p className="px-5 py-10 text-center text-muted">No individual tasks here. Use New task at the top right and leave the project empty.</p>
           ) : (
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[760px] border-collapse text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted">
                   <th scope="col" className="w-11 py-3 pl-5 pr-2"><span className="sr-only">Done</span></th>
                   <th scope="col" className="p-3 font-medium">Task</th>
-                  <th scope="col" className="p-3 font-medium">Project</th>
+                  <th scope="col" className="p-3 font-medium">Priority</th>
                   {personal ? null : <th scope="col" className="p-3 font-medium">Assigned to</th>}
                   <th scope="col" className="p-3 font-medium">Due</th>
                   <th scope="col" className="py-3 pl-3 pr-5 font-medium">Status</th>
@@ -171,15 +176,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                         </Link>
                         <div className="text-xs text-muted">{t.taskCode}</div>
                       </td>
-                      <td className="px-3 py-2.5">
-                        {t.projectId ? (
-                          <Link href={`/projects/${t.projectId}`} className="font-medium text-primary-ink hover:text-primary-hover">
-                            {projectName.get(t.projectId) ?? "Project"}
-                          </Link>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
+                      <td className="px-3 py-2.5"><Priority value={t.priority} /></td>
                       {personal ? null : (
                       <td className="px-3 py-2.5">
                         {canAssign && personOptions.length > 0 ? (
@@ -222,7 +219,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               </tbody>
             </table>
           )}
-          {list.total > rows.length ? <p className="border-t border-border px-5 py-3 text-xs text-muted">Showing the first {rows.length} of {list.total}. Filter by project to see the rest.</p> : null}
+          {list.total > rows.length ? <p className="border-t border-border px-5 py-3 text-xs text-muted">Showing the first {rows.length} of {list.total}.</p> : null}
         </section>
       ) : (
         <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] items-start gap-4 overflow-x-auto">
@@ -240,10 +237,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                   return (
                     <article key={t.id} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
                       <Link href={`/tasks/${t.id}`} className="font-medium text-foreground hover:text-primary-ink">{t.title}</Link>
-                      <div className="text-xs text-muted">
-                        {t.taskCode}
-                        {t.projectId ? ` · ${projectName.get(t.projectId) ?? "Project"}` : ""}
-                      </div>
+                      <div className="text-xs text-muted">{t.taskCode} · {t.priority} priority</div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-1.5 text-[13px]">
                           <span aria-hidden="true" className="inline-flex size-6 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-ink">

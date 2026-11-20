@@ -16,12 +16,13 @@ describe("visibleNav", () => {
     expect(visibleNav(new Set()).settings).toBeNull();
   });
 
-  it("shows Clients, Finance and Reports by permission", () => {
+  it("shows Clients and Finance (which includes Reports) by permission", () => {
     expect(labels(["clients.read"])).toContain("Clients");
     expect(labels(["clients.read"])).not.toContain("Finance");
     expect(labels(["finance.expenses.read"])).toContain("Finance");
     expect(labels(["finance.reports.read"])).toContain("Finance");
-    expect(labels(["reports.personal.read"])).toContain("Reports");
+    expect(labels(["reports.personal.read"])).toContain("Reports"); // report access alone shows as Reports
+    expect(labels(["reports.personal.read"])).not.toContain("Finance");
   });
 
   it("shows Settings for settings, roles, users or the security log", () => {
@@ -43,7 +44,7 @@ describe("isActive", () => {
     expect(isActive(tasks, "/projects")).toBe(false);
   });
   it("treats the finance lists and old My tasks as part of their sections", () => {
-    for (const p of ["/finance", "/invoices", "/invoices/abc", "/payments", "/expenses/new", "/finance-reports"]) expect(isActive(finance, p)).toBe(true);
+    for (const p of ["/finance", "/invoices", "/invoices/abc", "/payments", "/expenses/new", "/finance-reports", "/reports"]) expect(isActive(finance, p)).toBe(true);
     expect(isActive(tasks, "/my-tasks")).toBe(true);
   });
   it("does not match a path that only starts with the same letters", () => {

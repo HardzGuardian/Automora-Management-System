@@ -23,10 +23,9 @@ export const NAV: readonly NavItem[] = [
     href: "/finance",
     label: "Finance",
     icon: "finance",
-    anyOf: ["finance.invoices.read", "finance.payments.read", "finance.expenses.read", "finance.reports.read"],
-    match: ["/invoices", "/payments", "/expenses", "/finance-reports"],
+    anyOf: ["finance.invoices.read", "finance.payments.read", "finance.expenses.read", "finance.reports.read", "reports.all.read", "reports.limited.read", "reports.personal.read"],
+    match: ["/invoices", "/payments", "/expenses", "/finance-reports", "/reports"],
   },
-  { href: "/reports", label: "Reports", icon: "reports", anyOf: ["reports.all.read", "reports.limited.read", "reports.personal.read"] },
 ];
 
 export const SETTINGS_ITEM: NavItem = {
@@ -38,9 +37,13 @@ export const SETTINGS_ITEM: NavItem = {
 
 const allowed = (i: NavItem, permissions: ReadonlySet<string>) => !i.anyOf || i.anyOf.some((p) => permissions.has(p));
 
+/** Finance holds the reports too. Someone with report access only sees it as "Reports". */
+const asSeen = (i: NavItem, permissions: ReadonlySet<string>): NavItem =>
+  i.href === "/finance" && !i.anyOf?.some((p) => p.startsWith("finance.") && permissions.has(p)) ? { ...i, label: "Reports", icon: "reports" } : i;
+
 export function visibleNav(permissions: ReadonlySet<string>): { main: NavItem[]; settings: NavItem | null } {
   return {
-    main: NAV.filter((i) => allowed(i, permissions)),
+    main: NAV.filter((i) => allowed(i, permissions)).map((i) => asSeen(i, permissions)),
     settings: allowed(SETTINGS_ITEM, permissions) ? SETTINGS_ITEM : null,
   };
 }

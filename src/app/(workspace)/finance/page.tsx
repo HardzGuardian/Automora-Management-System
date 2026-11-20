@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AutoForm } from "@/components/ui/auto-form";
 import { FilterPills } from "@/components/ui/filter-pills";
 import { Pager } from "@/components/ui/pager";
 import { parsePage } from "@/lib/pagination";
@@ -11,9 +12,11 @@ import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { getFinanceSnapshot, listExpenses, listInvoiceClients, listInvoices, listReceipts, type FinanceSnapshot } from "@/modules/finance";
 import { projectsOverview } from "@/modules/projects";
+import { availableReports } from "@/modules/reports";
+import { ReportsPanel } from "./reports-panel";
 import { money } from "../invoices/_components/finance-ui";
 
-export const metadata = { title: "Finance" };
+export const metadata = { title: "Finance and reports" };
 
 const TABS = ["invoices", "payments", "expenses"] as const;
 type Tab = (typeof TABS)[number];
@@ -49,7 +52,7 @@ const Td = ({ children, right, strong }: { children: React.ReactNode; right?: bo
   <td className={cn("p-4", right && "text-right tabular-nums", strong ? "font-semibold text-foreground" : "text-body")}>{children}</td>
 );
 
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string; clientId?: string; page?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string; clientId?: string; page?: string; report?: string; period?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
   const allowed: Record<Tab, boolean> = {
@@ -59,6 +62,26 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   };
   const tabs = TABS.filter((t) => allowed[t]);
   const tab: Tab = tabs.find((t) => t === sp.tab) ?? tabs[0] ?? "invoices";
+  const reportsOn = availableReports(actor).length > 0;
+
+  // One tab for money and reports. People without finance access (an employee) see only Reports here.
+  if (reportsOn && (sp.tab === "reports" || tabs.length === 0)) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">{tabs.length > 0 ? "Finance and reports" : "Reports"}</h1>
+          <p className="mt-1 text-muted">Pick a report, choose a period, then export it.</p>
+        </div>
+        {tabs.length > 0 ? (
+          <FilterPills
+            label="Finance sections"
+            pills={[...tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, active: false })), { label: "Reports", href: "/finance?tab=reports", active: true }]}
+          />
+        ) : null}
+        <ReportsPanel actor={actor} sp={{ report: sp.report, period: sp.period }} />
+      </div>
+    );
+  }
 
   const today = todayInTz(actor.timezone);
   const month = monthRange(today);
@@ -137,8 +160,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Finance</h1>
-          <p className="mt-1 text-muted">Invoices, payments and expenses.</p>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Finance and reports</h1>
+          <p className="mt-1 text-muted">Invoices, payments, expenses and the reports built from them.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {can(actor, "finance.reports.read") ? (
@@ -163,9 +186,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         ))}
       </section>
 
-      <FilterPills label="Finance sections" pills={tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, count: counts[t], active: t === tab }))} />
+      <FilterPills
+        label="Finance sections"
+        pills={[...tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, count: counts[t], active: t === tab })), ...(reportsOn ? [{ label: "Reports", href: "/finance?tab=reports", active: false }] : [])]}
+      />
 
-      <form className="flex flex-wrap items-center gap-2" aria-label={`Filter ${TAB_LABEL[tab].toLowerCase()}`}>
+      <AutoForm className="flex flex-wrap items-center gap-2" label={`Filter ${TAB_LABEL[tab].toLowerCase()}`}>
         <input type="hidden" name="tab" value={tab} />
         <label htmlFor="fin-status" className="sr-only">Status</label>
         <select id="fin-status" name="status" defaultValue={status ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
@@ -185,9 +211,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             </select>
           </>
         ) : null}
-        <button type="submit" className="h-10 rounded-lg border border-field bg-surface px-4 font-medium hover:bg-primary-soft">Apply</button>
         {filtered ? <Link href={`/finance?tab=${tab}`} className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">Clear</Link> : null}
-      </form>
+      </AutoForm>
 
       <section aria-label={TAB_LABEL[tab]} tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
         {tab === "invoices" && invoices ? (

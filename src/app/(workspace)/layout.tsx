@@ -7,7 +7,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { getSession } from "@/lib/auth/session";
 import { unreadCount } from "@/modules/notifications";
 
-export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
+export default async function WorkspaceLayout({ children, modal }: { children: ReactNode; modal: ReactNode }) {
   const actor = await requireActor();
   const session = await getSession();
   const { main, settings } = visibleNav(actor.permissions);
@@ -24,6 +24,7 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
         unread={unread}
       >
         {children}
+        {modal}
       </AppShell>
     </ToastProvider>
   );

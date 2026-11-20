@@ -1,15 +1,22 @@
 import Link from "next/link";
+import { AutoForm } from "@/components/ui/auto-form";
+import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { statusView, TONE_CLASS } from "@/components/ui/status";
 import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
+import { cn } from "@/lib/cn";
+import { todayInTz } from "@/lib/dates";
 import { can } from "@/lib/permissions";
-import { projectsOverview } from "@/modules/projects";
+import { projectsOverview, type ProjectOverviewRow } from "@/modules/projects";
+import { listTasks, rowControls, type TaskDTO } from "@/modules/tasks";
+import { projectTaskStatusAction, toggleTaskDoneAction } from "./actions";
 
 export const metadata = { title: "Projects" };
 
-// Design pills. Planning and Cancelled projects still show under All.
+// Planning and Cancelled projects still show under All.
 const PILLS = [
   { label: "All", status: null },
   { label: "Active", status: "Active" },
@@ -18,19 +25,58 @@ const PILLS = [
   { label: "Archived", status: "Archived" },
 ] as const;
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+const SORTS = [
+  { key: "name", label: "Name" },
+  { key: "due", label: "Due date" },
+  { key: "progress", label: "Progress" },
+  { key: "status", label: "Status" },
+] as const;
+type SortKey = (typeof SORTS)[number]["key"];
+
+const STATUS_ORDER = ["Active", "Planning", "On Hold", "Completed", "Cancelled", "Archived"];
+const byDue = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a < b ? -1 : 1); // no date last
+
+function sortRows(rows: ProjectOverviewRow[], key: SortKey): ProjectOverviewRow[] {
+  const out = [...rows];
+  if (key === "name") out.sort((a, b) => a.name.localeCompare(b.name));
+  if (key === "due") out.sort((a, b) => byDue(a.dueDate, b.dueDate) || a.name.localeCompare(b.name));
+  if (key === "progress") out.sort((a, b) => b.percent - a.percent || a.name.localeCompare(b.name));
+  if (key === "status") out.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || a.name.localeCompare(b.name));
+  return out;
+}
+
+const LABEL: Record<string, string> = { Pending: "Pending", "In Progress": "In progress", "In Review": "In review", Completed: "Completed" };
+
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string; project?: string; error?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
   const [all, archived] = await Promise.all([projectsOverview(actor), projectsOverview(actor, { archived: true })]);
   const current = PILLS.find((p) => p.label === sp.status) ?? PILLS[0];
-  const rows = current.status === "Archived" ? archived : current.status ? all.filter((r) => r.status === current.status) : all;
+  const sort = SORTS.find((s) => s.key === sp.sort)?.key ?? "name";
+  const pool = current.status === "Archived" ? archived : current.status ? all.filter((r) => r.status === current.status) : all;
+
+  // Every project shows the tasks that belong to it (and its team). People who cannot read every task see only theirs.
+  const personal = !can(actor, "tasks.read.all");
+  const taskList = await listTasks(actor, { view: personal ? "mine" : "all", pageSize: 100, sort: "due" });
+  const tasksByProject = new Map<string, TaskDTO[]>();
+  for (const t of taskList.rows) if (t.projectId) tasksByProject.set(t.projectId, [...(tasksByProject.get(t.projectId) ?? []), t]);
+  const today = todayInTz(actor.timezone);
+
+  // The project picker lists active projects that still have a task with a due date. The chosen one narrows the tab.
+  const hasDueTask = (id: string) => (tasksByProject.get(id) ?? []).some((t) => t.status !== "Completed" && t.dueDate !== null);
+  const pickable = all.filter((r) => r.status === "Active" && hasDueTask(r.id));
+  const chosen = pool.find((r) => r.id === sp.project) ?? all.find((r) => r.id === sp.project);
+  const picker = chosen && !pickable.some((r) => r.id === chosen.id) ? [...pickable, chosen] : pickable;
+  const rows = sortRows(chosen ? [chosen] : pool, sort);
+  const keep = { ...(sp.status ? { status: sp.status } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(chosen ? { project: chosen.id } : {}) };
+  const returnTo = `/projects${Object.keys(keep).length ? `?${new URLSearchParams(keep).toString()}` : ""}`;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Projects</h1>
-          <p className="mt-1 text-muted">Create a project, add its documents and give it to a team.</p>
+          <p className="mt-1 text-muted">Each project is given to a team and holds its tasks. Open one to see them.</p>
         </div>
         {can(actor, "projects.create") ? (
           <Link href="/projects/new" className={buttonClass("primary", "gap-2")}>
@@ -40,74 +86,156 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         ) : null}
       </div>
 
-      <FilterPills
-        label="Filter by status"
-        pills={PILLS.map((p) => ({
-          label: p.label,
-          href: p.status ? `/projects?status=${encodeURIComponent(p.label)}` : "/projects",
-          count: p.status === "Archived" ? archived.length : p.status ? all.filter((r) => r.status === p.status).length : all.length,
-          active: p.label === current.label,
-        }))}
-      />
+      {sp.error ? <p role="alert" className="m-0 rounded-lg bg-danger-soft px-4 py-3 font-medium text-danger">{sp.error.slice(0, 300)}</p> : null}
 
-      <section aria-label="Projects" tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterPills
+          label="Filter by status"
+          pills={PILLS.map((p) => ({
+            label: p.label,
+            href: p.status ? `/projects?status=${encodeURIComponent(p.label)}${sp.sort ? `&sort=${sort}` : ""}` : sp.sort ? `/projects?sort=${sort}` : "/projects",
+            count: p.status === "Archived" ? archived.length : p.status ? all.filter((r) => r.status === p.status).length : all.length,
+            active: p.label === current.label,
+          }))}
+        />
+        <AutoForm className="flex flex-wrap items-center gap-2" label="Choose project and sort">
+          {sp.status ? <input type="hidden" name="status" value={sp.status} /> : null}
+          <label htmlFor="project-pick" className="sr-only">Show project</label>
+          <select id="project-pick" name="project" defaultValue={chosen?.id ?? ""} className="h-10 max-w-[14rem] rounded-lg border border-field bg-surface px-2.5 text-foreground">
+            <option value="">All projects</option>
+            {picker.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+          <label htmlFor="project-sort" className="text-sm text-muted">Sort by</label>
+          <select id="project-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+        </AutoForm>
+      </div>
+
+      <section aria-label="Projects" className="overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-muted">
-            {all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}
-          </p>
+          <p className="px-6 py-10 text-sm text-muted">{all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}</p>
         ) : (
-          <table className="w-full min-w-[700px] border-collapse text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted">
-                <th scope="col" className="w-[32%] py-3.5 pl-6 pr-3 font-medium">Project</th>
-                <th scope="col" className="w-[20%] px-3 py-3.5 font-medium">Team</th>
-                <th scope="col" className="w-[22%] px-3 py-3.5 font-medium">Progress</th>
-                <th scope="col" className="w-[12%] px-3 py-3.5 font-medium">Due</th>
-                <th scope="col" className="w-[14%] py-3.5 pl-3 pr-6 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-t border-border align-top">
-                  <td className="py-[18px] pl-6 pr-3">
-                    <Link href={`/projects/${r.id}`} className="font-semibold text-foreground hover:text-primary-ink">
-                      {r.name}
-                    </Link>
-                    {r.clientName ? <div className="mt-0.5 text-xs text-muted">{r.clientName}</div> : null}
-                  </td>
-                  <td className="px-3 py-[18px]">
-                    {r.teamName ? (
-                      <>
-                        <div className="font-medium">{r.teamName}</div>
-                        <div className="mt-0.5 text-xs text-muted">{r.departmentName}</div>
-                      </>
-                    ) : (
-                      <span className="text-muted">No team yet</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-[18px]">
-                    <div
-                      className="h-1.5 overflow-hidden rounded-sm bg-primary-soft"
-                      role="progressbar"
-                      aria-label={`${r.name} progress`}
-                      aria-valuenow={r.percent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <div className="h-1.5 bg-primary" style={{ width: `${r.percent}%` }} />
+          <ul className="m-0 list-none p-0">
+            {rows.map((r, i) => {
+              const tasks = tasksByProject.get(r.id) ?? [];
+              return (
+                <li key={r.id} className="border-t border-border first:border-t-0">
+                  <details open={i === 0 || chosen ? true : undefined} className="group">
+                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.4fr)_auto_auto_auto] items-start gap-x-4 gap-y-1 px-6 py-[18px] max-md:grid-cols-[minmax(0,1fr)_auto]">
+                      <span className="min-w-0">
+                        <span className="font-semibold text-foreground">{r.name}</span>
+                        {r.clientName ? <span className="mt-0.5 block text-xs text-muted">{r.clientName}</span> : null}
+                      </span>
+                      <span className="min-w-0 max-md:hidden">
+                        {r.teamName ? (
+                          <>
+                            <span className="block font-medium">{r.teamName}</span>
+                            <span className="mt-0.5 block text-xs text-muted">{r.departmentName}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted">No team yet</span>
+                        )}
+                      </span>
+                      <span className="min-w-0 max-md:hidden">
+                        <span className="block h-1.5 overflow-hidden rounded-sm bg-primary-soft" role="progressbar" aria-label={`${r.name} progress`} aria-valuenow={r.percent} aria-valuemin={0} aria-valuemax={100}>
+                          <span className="block h-1.5 bg-primary" style={{ width: `${r.percent}%` }} />
+                        </span>
+                        <span className="mt-1.5 block text-xs tabular-nums text-muted">{r.percent}% · {r.openTasks} open</span>
+                      </span>
+                      <span className="whitespace-nowrap tabular-nums text-body max-md:hidden">{r.dueDate ?? "—"}</span>
+                      <StatusBadge status={r.status} />
+                      <Icon name="chevronDown" size={18} strokeWidth={2.2} className="mt-0.5 text-body transition-transform group-open:rotate-180" />
+                    </summary>
+
+                    <div className="border-t border-border bg-background px-6 py-4">
+                      <p className="m-0 mb-3 text-sm">
+                        <Link href={`/projects/${r.id}`} className="font-medium text-primary-ink hover:text-primary-hover">Open project details</Link>
+                      </p>
+                      {tasks.length === 0 ? (
+                        <p className="m-0 text-sm text-muted">{personal ? "You have no tasks in this project." : "No tasks yet."}</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                        <table className="w-full min-w-[560px] border-collapse text-sm">
+                          <caption className="sr-only">Tasks in {r.name}</caption>
+                          <thead>
+                            <tr className="text-left text-xs text-muted">
+                              <th scope="col" className="w-11 py-2 pr-2"><span className="sr-only">Done</span></th>
+                              <th scope="col" className="px-3 py-2 font-medium">Task</th>
+                              <th scope="col" className="px-3 py-2 font-medium">Assigned to</th>
+                              <th scope="col" className="px-3 py-2 font-medium">Due</th>
+                              <th scope="col" className="py-2 pl-3 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tasks.map((t) => {
+                              const done = t.status === "Completed";
+                              const late = !done && t.dueDate !== null && t.dueDate < today;
+                              const ctl = rowControls(actor, t);
+                              const options = ctl.statuses.map((s) => ({ value: s, label: LABEL[s] ?? s }));
+                              const v = statusView(t.status, { overdue: late });
+                              return (
+                                <tr key={t.id} className="border-t border-border">
+                                  <td className="py-1 pr-2">
+                                    {ctl.canToggle ? (
+                                      <form action={toggleTaskDoneAction}>
+                                        <input type="hidden" name="taskId" value={t.id} />
+                                        <input type="hidden" name="returnTo" value={returnTo} />
+                                        <button type="submit" aria-pressed={done} aria-label={`${done ? "Reopen" : "Complete"} ${t.title}`} className="inline-flex size-11 items-center justify-center">
+                                          <span className={cn("inline-flex size-[22px] items-center justify-center rounded-md border-[1.5px]", done ? "border-primary bg-primary" : "border-[#8fa89a] bg-surface")}>
+                                            {done ? <Icon name="check" size={14} strokeWidth={3.2} className="text-white" /> : null}
+                                          </span>
+                                        </button>
+                                      </form>
+                                    ) : (
+                                      <span aria-hidden="true" className="inline-flex size-11 items-center justify-center">
+                                        <span className={cn("inline-flex size-[22px] items-center justify-center rounded-md border-[1.5px]", done ? "border-primary bg-primary" : "border-[#d5dbd7] bg-surface")}>
+                                          {done ? <Icon name="check" size={14} strokeWidth={3.2} className="text-white" /> : null}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <Link href={`/tasks/${t.id}`} className={cn("font-medium hover:text-primary-ink", done ? "text-muted line-through" : "text-foreground")}>{t.title}</Link>
+                                    <div className="text-xs text-muted">{t.taskCode}</div>
+                                  </td>
+                                  <td className="px-3 py-2 text-body">{t.assignees.map((a) => a.fullName).join(", ") || "Unassigned"}</td>
+                                  <td className={cn("px-3 py-2 tabular-nums", late ? "text-danger" : "text-body")}>{t.dueDate ?? "—"}</td>
+                                  <td className="py-2 pl-3">
+                                    {options.length > 1 ? (
+                                      <div className="flex items-center gap-2">
+                                        <AutoSubmitSelect
+                                          action={projectTaskStatusAction}
+                                          name="status"
+                                          value={t.status}
+                                          label={`Status for ${t.title}`}
+                                          hidden={{ taskId: t.id, returnTo }}
+                                          options={options}
+                                          className={cn("h-[34px]! rounded-full border-transparent px-2 text-xs font-medium", TONE_CLASS[v.tone])}
+                                        />
+                                        {late ? <span className="text-xs font-semibold text-danger">Overdue</span> : null}
+                                      </div>
+                                    ) : (
+                                      <StatusBadge status={t.status} overdue={late} />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-1.5 text-xs tabular-nums text-muted">
-                      {r.percent}% · {r.openTasks} open
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-[18px] tabular-nums text-body">{r.dueDate ?? "—"}</td>
-                  <td className="py-[18px] pl-3 pr-6">
-                    <StatusBadge status={r.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
     </div>

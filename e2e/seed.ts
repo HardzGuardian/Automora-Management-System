@@ -54,6 +54,8 @@ async function main() {
   await createTask(a, { title: "Write launch plan", projectId: project.id, priority: "Medium", dueDate: addDays(today, 9) });
   const done = await createTask(a, { title: "Set up hosting", projectId: project.id, priority: "Low", dueDate: addDays(today, -1), assigneeIds: [admin.employee.id] });
   for (const s of ["In Progress", "In Review", "Completed"] as const) await changeTaskStatus(a, done.id, s);
+  // Individual tasks belong to no project; they are what the Tasks tab lists.
+  await createTask(a, { title: "Renew office licence", priority: "Medium", dueDate: addDays(today, 5), assigneeIds: [emp.employee.id] });
   const { createExpenseCategory } = await import("../src/modules/finance/expenses/categories");
   await createExpenseCategory(a, { name: "Software & Subscriptions" });
   // One department and team, so project/task screens that pick a team have something to show.

@@ -35,7 +35,18 @@ export async function getTeamWork(actor: Actor, teamId?: string): Promise<TeamWo
     .where(scope)
     .orderBy(asc(departments.name), asc(teams.name));
   const list = visible.map((t) => ({ id: t.id, label: `${t.department}, ${t.team}` }));
-  const selected = list.find((t) => t.id === teamId) ?? list[0] ?? null;
+  // With no team chosen, open the first team that has someone on it. An empty team first in the list
+  // would otherwise make the screen look like it has no data.
+  let selected = list.find((t) => t.id === teamId) ?? null;
+  if (!selected && list.length > 0) {
+    const staffed = await db
+      .selectDistinct({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .innerJoin(employees, and(eq(employees.id, teamMembers.employeeId), eq(employees.companyId, teamMembers.companyId)))
+      .where(and(inArray(teamMembers.teamId, list.map((t) => t.id)), eq(employees.employmentStatus, "Active"), isNull(employees.archivedAt)));
+    const ids = new Set(staffed.map((s) => s.teamId));
+    selected = list.find((t) => ids.has(t.id)) ?? list[0];
+  }
   if (!selected) return { teams: list, selected: null, people: [], full: false };
 
   const members = await db

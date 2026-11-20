@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Field, fieldAria } from "@/components/ui/field";
 import { buttonClass, inputClass } from "@/components/ui/styles";
@@ -22,9 +22,14 @@ type Props = {
 /** Change a task's details after it was created (people with tasks.update). */
 export function EditTaskForm(t: Props) {
   const [state, action, pending] = useActionState(updateTaskAction, initial);
+  const ref = useRef<HTMLFormElement>(null);
+  // Inside the edit modal, a saved task closes the modal and returns to the task.
+  useEffect(() => {
+    if (state.saved) ref.current?.closest("dialog")?.close();
+  }, [state.saved]);
   const err = (k: string) => state.fieldErrors?.[k]?.[0];
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form ref={ref} action={action} className="flex flex-col gap-4">
       <input type="hidden" name="id" value={t.id} />
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.saved ? <Alert tone="success">Saved.</Alert> : null}

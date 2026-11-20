@@ -19,6 +19,8 @@ export const listTasksSchema = z.object({
   assigneeId: uuid.optional(),
   clientId: uuid.optional(),
   projectId: uuid.optional(),
+  /** Only individual tasks: the ones that belong to no project. */
+  individualOnly: z.boolean().default(false),
   dueFrom: isoDate.optional(),
   dueTo: isoDate.optional(),
   overdue: z.boolean().optional(),
@@ -72,6 +74,7 @@ export async function listTasks(actor: Actor, input: ListTasksInput): Promise<{ 
   if (f.status?.length) conds.push(inArray(tasks.status, f.status));
   if (f.priority?.length) conds.push(inArray(tasks.priority, f.priority));
   if (f.projectId) conds.push(eq(tasks.projectId, f.projectId));
+  if (f.individualOnly) conds.push(isNull(tasks.projectId));
   if (f.clientId) conds.push(eq(tasks.clientId, f.clientId));
   if (f.assigneeId) {
     conds.push(sql`EXISTS (SELECT 1 FROM task_assignees ta2 WHERE ta2.task_id = ${tasks.id} AND ta2.employee_id = ${f.assigneeId})`);

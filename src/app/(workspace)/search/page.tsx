@@ -53,6 +53,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <Group title="Projects" hits={results.projects} />
       <Group title="Documents" hits={results.documents} />
       <Group title="Clients" hits={results.clients} />
+      <Group title="Teams" hits={results.teams} />
       <Group title="Employees" hits={results.employees} />
     </div>
   );

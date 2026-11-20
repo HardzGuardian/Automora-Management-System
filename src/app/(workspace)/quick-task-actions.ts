@@ -23,10 +23,9 @@ export async function loadQuickTaskOptions(): Promise<{ ok: true; options: Quick
 export async function createQuickTaskAction(input: QuickTaskInput): Promise<QuickTaskResult> {
   const actor = await requireActor();
   const priority = z.enum(["Low", "Medium", "High"]).catch("Medium").parse(input.priority);
-  // Every task belongs to a project and has one owner, and cannot be due in the past.
+  // A task has one owner and cannot be due in the past. The project is optional: no project means an individual task.
   const missing: Record<string, string[]> = {};
   if (!input.title.trim()) missing.title = ["Enter a task title."];
-  if (!input.projectId) missing.projectId = ["Choose a project."];
   if (!input.assigneeId) missing.assigneeIds = ["Choose who this task is assigned to."];
   if (input.dueDate && input.dueDate < todayInTz(actor.timezone)) missing.dueDate = ["The due date cannot be in the past."];
   const first = Object.values(missing)[0]?.[0];

@@ -87,9 +87,9 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
         ref={ref}
         aria-labelledby="quick-task-title"
         onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
-        className="m-0 ml-auto h-dvh max-h-none w-full max-w-md border-l border-border bg-surface p-0 text-body backdrop:bg-black/40"
+        className="m-auto max-h-[90dvh] w-[min(34rem,94vw)] overflow-hidden rounded-xl border border-border bg-surface p-0 text-body shadow-xl backdrop:bg-black/40"
       >
-        <div className="flex h-full flex-col">
+        <div className="flex max-h-[90dvh] flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 id="quick-task-title" className="text-lg font-semibold text-foreground">
               {created ? "Task created" : "New task"}
@@ -149,9 +149,9 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-                  Project <span aria-hidden="true" className="text-danger">*</span><span className="sr-only"> (required)</span>
+                  Project <span className="font-normal text-muted">(optional)</span>
                   <select value={form.projectId} onChange={(e) => set("projectId", e.target.value)} className={inputClass}>
-                    <option value="">Choose a project</option>
+                    <option value="">No project: an individual task</option>
                     {options?.projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -212,7 +212,7 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
               </div>
 
               <div className="flex gap-2 border-t border-border p-4">
-                <button type="submit" disabled={pending || !form.title.trim() || !form.projectId || !form.assigneeId} className={cn(buttonClass("primary"), "flex-1")}>
+                <button type="submit" disabled={pending || !form.title.trim() || !form.assigneeId} className={cn(buttonClass("primary"), "flex-1")}>
                   {pending ? "Creating…" : "Create task"}
                 </button>
                 <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.close()}>

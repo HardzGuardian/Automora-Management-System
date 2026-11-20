@@ -35,16 +35,16 @@ test("tasks: filter pills carry counts, Overdue narrows the list, All brings it 
   await expect(page.getByRole("region", { name: "In progress" })).toBeVisible();
 });
 
-test("dashboard: four stat cards, due soon, active projects and recent documents", async ({ page }) => {
+test("dashboard: three stat cards, due soon and active projects", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-  for (const label of ["Open tasks", "In progress", "Overdue", "Active projects"]) {
+  for (const label of ["Open tasks", "Overdue", "Active projects"]) {
     await expect(page.getByRole("region", { name: "Key numbers" }).getByText(label, { exact: true })).toBeVisible();
   }
   await expect(page.getByRole("region", { name: "Due soon" })).toContainText("Fix login bug");
   await expect(page.getByRole("region", { name: "Active projects" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Recent documents" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Recent documents" })).toHaveCount(0);
   await page.screenshot({ path: "test-results/ui2-dashboard.png", fullPage: true });
 });
 

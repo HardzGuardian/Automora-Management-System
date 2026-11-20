@@ -36,7 +36,8 @@ test("new project: details, a reference document and a team; the document shows 
 test("a team member sees the project and its document, but cannot upload", async ({ page }) => {
   await login(page, EMPLOYEE);
   await page.goto("/projects");
-  await page.getByRole("link", { name: /^Redesign/ }).first().click();
+  await page.locator("details").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
+  await page.locator("details", { hasText: /Redesign/ }).first().getByRole("link", { name: "Open project details" }).click();
   await page.getByRole("group", { name: "Project sections and actions" }).getByRole("link", { name: /^Documents/ }).click();
   await expect(page.getByText("brief.pdf")).toBeVisible();
   await expect(page.getByText("Only admins can upload or remove documents")).toBeVisible();
@@ -46,7 +47,8 @@ test("a team member sees the project and its document, but cannot upload", async
 test("project tabs: comments are posted, client input is tracked", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/projects");
-  await page.getByRole("link", { name: "Northwind Website" }).click();
+  await page.locator("details").evaluateAll((all) => all.forEach((d) => d.setAttribute("open", "")));
+  await page.locator("details", { hasText: "Northwind Website" }).getByRole("link", { name: "Open project details" }).click();
   const tabs = page.getByRole("group", { name: "Project sections and actions" });
 
   await tabs.getByRole("link", { name: /^Comments/ }).click();
@@ -62,16 +64,23 @@ test("project tabs: comments are posted, client input is tracked", async ({ page
   await expect(page.getByText("Received", { exact: true }).first()).toBeVisible();
 });
 
-test("team page shows people with their work, and the filter narrows it", async ({ page }) => {
+test("team page lists teams; opening one shows members with task counts; search narrows; Add team is a modal", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/teams");
   await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Team summary" })).toContainText("Tasks assigned");
-  await page.getByRole("link", { name: /Ravi Employee/ }).click();
-  const work = page.getByRole("region", { name: "Selected person's work" });
-  await expect(work).toContainText("Design homepage");
-  await page.getByRole("navigation", { name: "Filter work" }).getByRole("link", { name: "Done" }).click();
-  await expect(work).not.toContainText("Design homepage");
+  await expect(page.getByRole("link", { name: "Manage teams" })).toHaveCount(0);
+  const teams = page.getByRole("region", { name: "Teams" });
+  await teams.locator("summary").first().click();
+  await expect(teams.getByRole("row", { name: /Ravi Employee/ })).toContainText(/[0-9]/);
+  await page.getByLabel("Search teams").fill("zzz-no-such-team");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByText(/No team matches/)).toBeVisible();
+  await page.getByRole("link", { name: "Clear" }).click();
+  await page.getByRole("link", { name: "Add team" }).click();
+  const dialog = page.getByRole("dialog", { name: "Create" });
+  await expect(dialog.getByLabel("Team name")).toBeVisible();
+  await expect(dialog.getByLabel(/Team lead/)).toBeVisible();
+  await expect(dialog.getByRole("group", { name: /Members/ })).toBeVisible();
 });
 
 test("notifications: mark all as read, then mark one unread again", async ({ page }) => {
@@ -114,11 +123,10 @@ test("quick New task panel: validation and success state", async ({ page }) => {
   await login(page, ADMIN);
   await page.getByRole("button", { name: "New task" }).click();
   const panel = page.getByRole("dialog");
-  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // needs a title, a project and a person
+  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // needs a title and a person
   await panel.getByLabel("Task title").fill("Quick task from the panel");
   await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled();
-  await panel.getByLabel("Project").selectOption({ label: "Northwind Website" });
-  await expect(panel.getByRole("button", { name: "Create task" })).toBeDisabled(); // still nobody to give it to
+  await expect(panel.getByLabel("Project")).toHaveValue(""); // no project: an individual task
   await panel.getByLabel(/Ravi Employee/).check();
   await expect(panel.getByLabel("Due date")).toHaveAttribute("min", /\d{4}-\d{2}-\d{2}/);
   await panel.getByRole("button", { name: "Create task" }).click();
