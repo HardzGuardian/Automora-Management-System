@@ -41,7 +41,7 @@ export function AutoSubmitSelect({
         defaultValue={value}
         disabled={disabled}
         onChange={() => form.current?.requestSubmit()}
-        className={cn("h-10 rounded-lg border px-2 text-sm disabled:opacity-60", className ?? "border-field bg-surface text-foreground")}
+        className={cn("h-9 min-w-40 rounded-lg border pl-2.5 text-sm font-medium disabled:opacity-60", className ?? "border-field bg-surface text-foreground")}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

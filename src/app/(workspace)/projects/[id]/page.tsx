@@ -514,7 +514,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                   <li key={m.employeeId} className="flex items-center gap-3 border-t border-border px-5 py-3 first:border-t-0">
                     <Avatar name={m.fullName} />
                     <span className="min-w-0 flex-1">
-                      <span className="block font-medium">{m.fullName}</span>
+                      <Link href={`/employees/${m.employeeId}`} className="block font-medium hover:text-primary-ink hover:underline">{m.fullName}</Link>
                       <span className="block text-xs text-muted">{m.membershipRole === "owner" ? "Project owner" : m.viaTeamId ? "Member · via team" : "Member"}</span>
                     </span>
                     <span className="tabular-nums text-body">{openByPerson.get(m.employeeId) ?? 0} open tasks</span>

@@ -17,7 +17,7 @@ IDs are used in branch names and `progress.md`. "AC" = blueprint acceptance test
 | D1-01 | **DB baseline**: schemas `company`, `auth` (Better Auth generated + `invitations`), `rbac`, `employees`, `clients`, `projects`, `tasks`, `files`, `audit`; `code_sequences`; composite company FKs; unique/check constraints and indexes from blueprint §6.4; first migration | Migration applies on empty DB; integration test proves a cross-company FK fails |
 | D1-02 | **Better Auth**: Drizzle adapter, email+password, login/logout pages, session cookie settings, rate limiting, `proxy.ts` redirect, disabled-user rejection | Login works; suspended user cannot sign in and existing sessions die |
 | D1-03 | **Foundation libs**: `getActor()`, permission `catalog.ts` + seed, `can/requirePermission`, `scope.ts` (first version: tasks/projects), `audit.record` (+ redaction + append-only guard), `DomainError`, `nextCode`, `withTransaction` | Documented in `02-contracts.md` §4; unit tests; Chintan and Shubhangi unblocked |
-| D1-04 | **Seed**: company, Super Admin invitation flow (no hard-coded password), system roles with default permissions (per `02-contracts.md` §2), `SEED_DEMO` demo data | Fresh DB + seed → Admin can accept invite and log in |
+| D1-04 | **Seed**: company, Super Admin invitation flow (no hard-coded password), system roles with default permissions (per `02-contracts.md` §2) | Fresh DB + seed → Admin can accept invite and log in |
 
 ### Sprint 2 — Access + employees
 | ID | Task | Done when |

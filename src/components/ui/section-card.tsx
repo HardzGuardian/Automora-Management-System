@@ -20,7 +20,7 @@ export function SectionCard({
 }) {
   const headingId = id ? `${id}-heading` : undefined;
   return (
-    <section id={id} aria-labelledby={headingId} className={cn("flex flex-col gap-3 rounded-md border border-border bg-surface p-4", className)}>
+    <section id={id} aria-labelledby={headingId} className={cn("flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-[var(--elev-1)]", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={headingId} className="m-0 text-base font-semibold">
           {title}

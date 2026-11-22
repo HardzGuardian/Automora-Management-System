@@ -137,10 +137,13 @@ test("employee: log time on their own task from the task page", async ({ page })
 test("employee: a team member sees teammates but only their own tasks", async ({ page }) => {
   await login(page, EMPLOYEE);
   await page.goto("/teams");
-  await expect(page.getByRole("region", { name: "Team summary" })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "People" })).toContainText("Asha Admin");
-  await expect(page.getByRole("link", { name: /Asha Admin/ })).toHaveCount(0); // teammates are names only, no work pages
-  await expect(page.getByRole("region", { name: "Selected person's work" })).toContainText("Design homepage");
+  const teams = page.getByRole("region", { name: "Teams" });
+  await teams.locator("details", { has: page.getByText("Team A", { exact: true }) }).locator("summary").click();
+  const asha = teams.getByRole("row", { name: /Asha Admin/ });
+  await expect(asha).toBeVisible(); // teammates are listed
+  await expect(asha).toContainText("—"); // but not their task count
+  await expect(page.getByRole("link", { name: /Asha Admin/ })).toHaveCount(0); // names only, no work pages
+  await expect(teams.getByRole("row", { name: /Ravi Employee/ })).toContainText(/[0-9]/); // own count is shown
 });
 
 test("finance: filter by status and clear; the tab counts stay put", async ({ page }) => {
@@ -165,13 +168,41 @@ test("dashboard: the set-up checklist is hidden once people, a team, a client an
 test("employees: search and status pills", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/employees");
-  await expect(page.getByRole("link", { name: "Ravi Employee" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Employees" }).getByText("Ravi Employee", { exact: true })).toBeVisible();
   await page.getByRole("navigation", { name: "Filter by status" }).getByRole("link", { name: /^Suspended/ }).click();
   await expect(page.getByText("No employees match.")).toBeVisible();
   await page.getByRole("navigation", { name: "Filter by status" }).getByRole("link", { name: /^All/ }).click();
   await expect(page).not.toHaveURL(/status=/);
   await page.getByLabel("Search employees").fill("ravi");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("link", { name: "Ravi Employee" })).toBeVisible();
-  await expect(page.locator("#main").getByRole("link", { name: "Asha Admin" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Employees" }).getByText("Ravi Employee", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Employees" }).getByText("Asha Admin", { exact: true })).toHaveCount(0);
+});
+
+test("employees tab: teams and tasks per person, Edit opens a modal and saves", async ({ page }) => {
+  await login(page, ADMIN);
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Employees" })).toBeVisible();
+  await page.goto("/employees");
+  const row = page.getByRole("region", { name: "Employees" }).locator("li", { hasText: "Ravi Employee" });
+  await expect(row).toContainText("Team A");
+  await row.locator("summary").click();
+  await expect(row).toContainText("Employee code");
+  await expect(row).toContainText(/open\)/);
+  await page.getByRole("link", { name: "Edit Ravi Employee" }).click();
+  const d = page.getByRole("dialog", { name: "Create" });
+  await expect(d.getByLabel("Full name")).toHaveValue("Ravi Employee");
+  await d.getByLabel("Designation").fill("Senior Developer");
+  await d.getByRole("button", { name: "Save employee" }).click();
+  await expect(page.getByRole("dialog", { name: "Create" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Employees" }).locator("li", { hasText: "Ravi Employee" })).toContainText("Senior Developer");
+  await page.getByRole("link", { name: "Add employee" }).click();
+  await expect(page.getByRole("dialog", { name: "Create" }).getByLabel("Full name")).toBeVisible();
+});
+
+test("employees tab: an employee cannot open it or the edit page", async ({ page }) => {
+  await login(page, EMPLOYEE);
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Employees" })).toHaveCount(0);
+  const res = await page.goto("/employees/00000000-0000-4000-8000-000000000000/edit");
+  expect(res?.status()).toBeLessThan(500);
+  await expect(page.getByText(/Only admins can edit employees/)).toBeVisible();
 });

@@ -47,7 +47,7 @@ pnpm db:seed                    # company, permissions, system roles, Super Admi
 pnpm dev                        # http://localhost:3000
 ```
 
-`db:seed` prints a one-time **accept-invite link** for `SEED_ADMIN_EMAIL` (and emails it through Mailpit when it is running). Open the link, choose a password, then sign in. There is no hard-coded admin password. Set `SEED_DEMO=true` to also create labelled `[DEMO]` employees, clients, projects and tasks.
+`db:seed` prints a one-time **accept-invite link** for `SEED_ADMIN_EMAIL` (and emails it through Mailpit when it is running). Open the link, choose a password, then sign in. There is no hard-coded admin password. The seed creates no sample data.
 
 **Lost or expired first-admin link?** The token is stored hashed, so it cannot be shown again, and `db:seed` will not make a second one while the first is still valid. Run `pnpm db:admin-invite` (optionally `--email=you@company.com`): it revokes the pending Super Admin invitations and prints a fresh link. It refuses once a Super Admin exists; after that use "Forgot password" or invite people from Settings > Users.
 

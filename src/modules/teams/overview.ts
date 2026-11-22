@@ -3,7 +3,7 @@ import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm
 import { db } from "@/db";
 import { departments, employees, taskAssignees, tasks, teamMembers, teams } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
-import { can, taskScope } from "@/lib/permissions";
+import { can, requirePermission, taskScope } from "@/lib/permissions";
 
 export type TeamOverviewMember = {
   employeeId: string;
@@ -16,7 +16,52 @@ export type TeamOverviewMember = {
 };
 export type TeamOverview = { id: string; name: string; department: string; members: TeamOverviewMember[] };
 
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+export type EmployeeTeamsAndWork = {
+  teams: { teamId: string; team: string; department: string; role: "lead" | "member" }[];
+  openTasks: number;
+  totalTasks: number;
+};
+
+/**
+ * For the employee directory: each person's live teams (with their role) and how many tasks they hold.
+ * Needs employees.read; task counts still follow the viewer's own task scope.
+ */
+export async function employeeTeamsAndWork(actor: Actor, employeeIds: string[]): Promise<Map<string, EmployeeTeamsAndWork>> {
+  requirePermission(actor, "employees.read");
+  const out = new Map<string, EmployeeTeamsAndWork>();
+  if (employeeIds.length === 0) return out;
+  for (const id of employeeIds) out.set(id, { teams: [], openTasks: 0, totalTasks: 0 });
+  const memberships = await db
+    .select({ employeeId: teamMembers.employeeId, teamId: teams.id, team: teams.name, department: departments.name, role: teamMembers.role })
+    .from(teamMembers)
+    .innerJoin(teams, and(eq(teams.id, teamMembers.teamId), eq(teams.companyId, teamMembers.companyId), isNull(teams.archivedAt)))
+    .innerJoin(departments, and(eq(departments.id, teams.departmentId), eq(departments.companyId, teams.companyId), isNull(departments.archivedAt)))
+    .where(and(eq(teamMembers.companyId, actor.companyId), inArray(teamMembers.employeeId, employeeIds)))
+    .orderBy(asc(departments.name), asc(teams.name));
+  for (const m of memberships) {
+    out.get(m.employeeId)?.teams.push({ teamId: m.teamId, team: m.team, department: m.department, role: m.role === "lead" ? "lead" : "member" });
+  }
+  const counts = await db
+    .select({
+      employeeId: taskAssignees.employeeId,
+      total: sql<number>`count(*)::int`,
+      open: sql<number>`(count(*) FILTER (WHERE ${tasks.status} <> 'Completed'))::int`,
+    })
+    .from(taskAssignees)
+    .innerJoin(tasks, and(eq(tasks.id, taskAssignees.taskId), eq(tasks.companyId, taskAssignees.companyId)))
+    .where(and(inArray(taskAssignees.employeeId, employeeIds), eq(taskAssignees.companyId, actor.companyId), isNull(tasks.archivedAt), taskScope(actor)))
+    .groupBy(taskAssignees.employeeId);
+  for (const c of counts) {
+    const e = out.get(c.employeeId);
+    if (e) {
+      e.openTasks = c.open;
+      e.totalTasks = c.total;
+    }
+  }
+  return out;
+}
+
+const escapeLike =(s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**
  * Every team the viewer can see (all of them with teams.read, otherwise their own), each with its

@@ -98,7 +98,7 @@ src/
 │  │                   notifications.ts                                                 H
 │  │                   index.ts   re-exports all
 │  ├─ migrations/      generated, committed, never hand-edited
-│  ├─ seed.ts          roles, permissions, categories, optional demo data              S (finance seed data: C)
+│  ├─ seed.ts          roles, permissions, categories                                  S (finance seed data: C)
 │  └─ (append-only guard for audit tables is added as a migration — trigger or DB grants, see ADR-09)  S
 │
 ├─ lib/

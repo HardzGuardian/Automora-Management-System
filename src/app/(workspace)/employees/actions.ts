@@ -11,6 +11,7 @@ import {
   deactivateEmployee,
   reactivateEmployee,
   suspendEmployee,
+  updateEmployee,
 } from "@/modules/employees";
 
 export type EmployeeFormState = { error?: string; fieldErrors?: Record<string, string[]> };
@@ -34,6 +35,29 @@ export async function createEmployeeAction(_prev: EmployeeFormState, formData: F
 }
 
 const idSchema = z.string().uuid();
+
+export type EditEmployeeState = EmployeeFormState & { saved?: boolean };
+
+/** Change a person's details from the Edit employee modal (people with employees.update). */
+export async function updateEmployeeAction(_prev: EditEmployeeState, formData: FormData): Promise<EditEmployeeState> {
+  const actor = await requireActor();
+  const id = idSchema.safeParse(formData.get("id"));
+  if (!id.success) return { error: "This employee could not be found." };
+  const raw = Object.fromEntries(formData) as Record<string, string>;
+  const result = await toActionResult(() =>
+    updateEmployee(actor, id.data, {
+      fullName: raw.fullName ?? "",
+      workEmail: raw.workEmail ?? "",
+      phone: raw.phone ?? null,
+      designation: raw.designation ?? null,
+      joiningDate: raw.joiningDate ? raw.joiningDate : null,
+    }),
+  );
+  if (!result.ok) return { error: result.error.message, fieldErrors: result.error.fieldErrors };
+  revalidatePath("/employees");
+  revalidatePath(`/employees/${id.data}`);
+  return { saved: true };
+}
 
 async function lifecycle(formData: FormData, op: "deactivate" | "suspend" | "reactivate"): Promise<void> {
   const actor = await requireActor();

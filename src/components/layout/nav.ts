@@ -18,7 +18,8 @@ export const NAV: readonly NavItem[] = [
   { href: "/tasks", label: "Tasks", icon: "tasks", match: ["/my-tasks"] },
   { href: "/documents", label: "Documents", icon: "documents" },
   { href: "/clients", label: "Clients", icon: "clients", anyOf: ["clients.read"] },
-  { href: "/teams", label: "Team", icon: "team", match: ["/employees"] },
+  { href: "/employees", label: "Employees", icon: "employees", anyOf: ["employees.read"] },
+  { href: "/teams", label: "Team", icon: "team" },
   {
     href: "/finance",
     label: "Finance",

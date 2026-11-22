@@ -6,7 +6,9 @@ test.describe.configure({ mode: "serial" });
 test("employee page has all six views: Overview, Assigned, Completed, Overdue, Projects, Activity", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/employees");
-  await page.getByRole("link", { name: "Ravi Employee" }).first().click();
+  const row = page.getByRole("region", { name: "Employees" }).locator("li", { hasText: "Ravi Employee" });
+  await row.locator("summary").click();
+  await row.getByRole("link", { name: "Open full profile" }).click();
   await page.waitForURL(/\/employees\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Ravi Employee" })).toBeVisible(); // overview
 

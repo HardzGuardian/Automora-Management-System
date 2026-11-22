@@ -2,13 +2,17 @@
 
 /* Design tokens (from the "Automora redesign" canvas; blueprint §9). Everyone uses these via Tailwind utilities (bg-primary, text-muted...). Light theme only in V1. */
 :root {
-  --background: #f6f7f5;
+  --background: #f7f8f7;
   --surface: #ffffff;
-  --foreground: #17201b;
-  --body: #3a453f;
-  --muted: #5b6760;
-  --border: #e3e7e3;
-  --field: #cbd2cd;
+  --foreground: #121a16;
+  --body: #34413a;
+  --muted: #5f6b64;
+  --border: #e6e9e6;
+  --field: #d3d9d4;
+  --elev-1: 0 1px 2px rgb(16 24 20 / 0.05);
+  --elev-2: 0 1px 3px rgb(16 24 20 / 0.08), 0 1px 2px rgb(16 24 20 / 0.04);
+  --elev-3: 0 20px 40px -12px rgb(16 24 20 / 0.25);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6b64' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --primary: #167c50;
   --primary-hover: #0f6b43;
   --primary-ink: #0f6b43;
@@ -22,7 +26,7 @@
   --warning-soft: #fbf1dc;
   --danger: #b42318;
   --danger-soft: #fdeceb;
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 }
 
 @theme inline {
@@ -76,6 +80,25 @@ body {
 /* Base styles for plain semantic HTML inside the app shell, so every screen (including ones written
    without utility classes) looks like one product. Utility classes on an element override these. */
 @layer base {
+  /* One look for every dropdown: same height, radius and chevron. Utilities on an element still override. */
+  select {
+    appearance: none;
+    background-image: var(--chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1rem;
+    padding-right: 2rem;
+    cursor: pointer;
+    text-overflow: ellipsis;
+  }
+  select:hover:not(:disabled) { border-color: #b9c2bb; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):hover:not(:disabled), textarea:hover:not(:disabled) { border-color: #b9c2bb; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus, select:focus, textarea:focus {
+    outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+    outline-offset: 0;
+    border-color: var(--primary);
+  }
+  ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); }
   #main h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; }
   #main h2 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; }
   #main h3 { font-size: 1rem; font-weight: 600; }
@@ -87,12 +110,25 @@ body {
   #main th { text-align: left; font-weight: 500; font-size: 0.75rem; color: var(--muted); padding: 0.625rem 0.75rem; white-space: nowrap; }
   #main td { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); }
   #main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main select, #main textarea {
-    min-height: 2.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 0.4rem 0.75rem; max-width: 100%;
+    min-height: 2.5rem; border: 1px solid var(--field); border-radius: var(--radius); background-color: var(--surface); padding-block: 0.4rem; padding-left: 0.75rem; max-width: 100%;
   }
   #main label { font-weight: 500; }
-  #main button:not([class]) { min-height: 2.5rem; border-radius: var(--radius); padding: 0.4rem 1rem; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); }
-  #main button[type="submit"]:not([class]) { background: var(--primary); border-color: var(--primary); color: #fff; }
+  #main button:not([class]) { min-height: 2.5rem; border-radius: var(--radius); padding: 0.4rem 1rem; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background-color: var(--surface); }
+  #main button[type="submit"]:not([class]) { background-color: var(--primary); border-color: var(--primary); color: #fff; }
   #main button:disabled { opacity: 0.5; cursor: not-allowed; }
   #main form:not([class]) { display: flex; flex-direction: column; gap: 0.75rem; max-width: 40rem; }
   #main p[role="alert"] { color: var(--danger); }
 }
+
+/* Touch screens keep the larger 44px target; mouse users get the tighter 40px controls. */
+@media (pointer: coarse) {
+  a.min-h-10, button.min-h-10, input.min-h-10, select.min-h-10 { min-height: 2.75rem; }
+}
+
+/* Dialogs fade and rise in; backdrops fade. */
+@keyframes dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+dialog[open] { animation: dialog-in 160ms ease-out; }
+dialog[open]::backdrop { animation: backdrop-in 160ms ease-out; }
+#main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main textarea { padding-right: 0.75rem; }
+#main select { padding-right: 2rem; }

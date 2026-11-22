@@ -109,7 +109,7 @@ test.describe("workflow: client → project → task", () => {
     await page.getByRole("button", { name: "Create employee" }).click();
     await expect(page.getByRole("heading", { name: `E2E Person ${unique}` })).toBeVisible();
     await page.goto(`/employees?q=E2E+Person+${unique}`);
-    await expect(page.getByRole("link", { name: `E2E Person ${unique}` })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Employees" }).getByText(`E2E Person ${unique}`, { exact: true })).toBeVisible();
   });
 });
 

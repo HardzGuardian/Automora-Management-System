@@ -36,14 +36,14 @@ export function ConfirmDialog({
       <dialog
         ref={ref}
         aria-labelledby={titleId}
-        className="m-auto w-[min(28rem,92vw)] rounded-md border border-border p-0 shadow-lg backdrop:bg-black/40"
+        className="m-auto w-[min(28rem,92vw)] rounded-2xl border border-border bg-surface p-0 text-body shadow-[var(--elev-3)] backdrop:bg-black/40"
       >
-        <div className="flex flex-col gap-3 p-5">
-          <h2 id={titleId} className="m-0 text-lg font-semibold">
+        <div className="flex flex-col gap-4 p-6">
+          <h2 id={titleId} className="m-0 text-lg font-semibold text-foreground">
             {title}
           </h2>
           <p className="text-sm text-muted">{description}</p>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.close()}>
               Cancel
             </button>

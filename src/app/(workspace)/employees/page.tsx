@@ -8,12 +8,21 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { parsePage } from "@/lib/pagination";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
-import { departmentNamesForEmployees } from "@/modules/teams";
+import { employeeTeamsAndWork } from "@/modules/teams";
 
 export const metadata = { title: "Employees" };
 
 const PAGE_SIZE = 20;
 const STATUSES = ["Active", "Inactive", "Suspended"] as const;
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="m-0 mt-0.5 break-words text-sm text-foreground">{children}</dd>
+    </div>
+  );
+}
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string }> }) {
   const actor = await requireActor();
@@ -28,8 +37,8 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     listEmployees(actor, { pageSize: 1, search: sp.q }),
     ...STATUSES.map((s) => listEmployees(actor, { pageSize: 1, search: sp.q, status: s })),
   ]);
-  // Department comes from team membership; the legacy free-text value is only a fallback.
-  const departments = await departmentNamesForEmployees(actor, rows.map((e) => e.id));
+  const work = await employeeTeamsAndWork(actor, rows.map((e) => e.id));
+  const canEdit = can(actor, "employees.update");
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const link = (patch: { status?: string; page?: number }) => {
     const qs = new URLSearchParams();
@@ -46,18 +55,18 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Employees</h1>
-          <p className="mt-1 text-muted">Everyone in the company. Open a person to invite them, change their details or role.</p>
+          <p className="mt-1 text-muted">Everyone in the company, the teams they are on and the work they hold. Open a person to see their details.</p>
         </div>
         {can(actor, "employees.create") ? (
           <Link href="/employees/new" className={buttonClass("primary", "gap-2")}>
             <Icon name="plus" size={18} strokeWidth={2.2} />
-            New employee
+            Add employee
           </Link>
         ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <form role="search" className="relative max-w-[360px] min-w-60 flex-1">
+        <form role="search" aria-label="Employee search" className="relative max-w-[360px] min-w-60 flex-1">
           {status ? <input type="hidden" name="status" value={status} /> : null}
           <label htmlFor="emp-q" className="sr-only">Search employees</label>
           <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
@@ -79,37 +88,69 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         />
       </div>
 
-      <section aria-label="Employees" tabIndex={0} className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <section aria-label="Employees" className="overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="px-5 py-10 text-center text-muted">{sp.q || status ? "No employees match." : "No employees yet."}</p>
+          <p className="px-6 py-10 text-sm text-muted">{sp.q || status ? "No employees match." : "No employees yet."}</p>
         ) : (
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted">
-                <th scope="col" className="py-3.5 pl-6 pr-3 font-medium">Name</th>
-                <th scope="col" className="px-3 py-3.5 font-medium">Designation</th>
-                <th scope="col" className="px-3 py-3.5 font-medium">Team</th>
-                <th scope="col" className="py-3.5 pl-3 pr-6 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((e) => (
-                <tr key={e.id} className="border-t border-border align-top">
-                  <td className="py-4 pl-6 pr-3">
-                    <Link href={`/employees/${e.id}`} className="font-semibold text-foreground hover:text-primary-ink">
-                      {e.fullName}
+          <ul className="m-0 list-none p-0">
+            {rows.map((e) => {
+              const w = work.get(e.id) ?? { teams: [], openTasks: 0, totalTasks: 0 };
+              const teamLine = w.teams.length === 0 ? "No team yet" : w.teams.map((t) => t.team + (t.role === "lead" ? " (lead)" : "")).join(", ");
+              return (
+                <li key={e.id} className="flex items-start gap-2 border-t border-border pr-4 first:border-t-0">
+                  <details className="group min-w-0 flex-1">
+                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1.6fr)_auto_auto_auto] items-start gap-x-4 gap-y-1 py-[18px] pl-6 max-md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <span className="min-w-0">
+                        <span className="block font-semibold text-foreground">{e.fullName}</span>
+                        <span className="mt-0.5 block truncate text-xs text-muted">{e.workEmail}</span>
+                      </span>
+                      <span className="min-w-0 text-body max-md:hidden">{e.designation ?? "—"}</span>
+                      <span className={w.teams.length === 0 ? "min-w-0 text-muted max-md:hidden" : "min-w-0 text-body max-md:hidden"}>{teamLine}</span>
+                      <span className="whitespace-nowrap text-xs tabular-nums text-muted max-md:hidden">{w.openTasks} open</span>
+                      <StatusBadge status={e.employmentStatus} />
+                      <Icon name="chevronDown" size={18} strokeWidth={2.2} className="mt-0.5 text-body transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mb-4 ml-6 rounded-lg border border-border bg-background px-5 py-4">
+                      <dl className="m-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <Fact label="Employee code">{e.employeeCode}</Fact>
+                        <Fact label="Designation">{e.designation ?? "—"}</Fact>
+                        <Fact label="Phone">{e.phone ?? "—"}</Fact>
+                        <Fact label="Joined">{e.joiningDate ?? "—"}</Fact>
+                        <Fact label="Sign-in">{e.hasAccount ? "Has an account" : "Not invited yet"}</Fact>
+                        <Fact label="Tasks">{w.totalTasks === 0 ? "None" : `${w.totalTasks} (${w.openTasks} open)`}</Fact>
+                        <div className="sm:col-span-2">
+                          <Fact label="Teams">
+                            {w.teams.length === 0 ? (
+                              <span className="text-muted">Not on a team. Add them from the Team tab.</span>
+                            ) : (
+                              <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+                                {w.teams.map((t) => (
+                                  <li key={t.teamId} className="rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-medium text-primary-ink">
+                                    {t.team} · {t.department}
+                                    {t.role === "lead" ? " · Lead" : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </Fact>
+                        </div>
+                      </dl>
+                      <p className="mb-0 mt-4 text-sm">
+                        <Link href={`/employees/${e.id}`} className="font-medium text-primary-ink hover:text-primary-hover">
+                          Open full profile
+                        </Link>
+                      </p>
+                    </div>
+                  </details>
+                  {canEdit ? (
+                    <Link href={`/employees/${e.id}/edit`} aria-label={`Edit ${e.fullName}`} className={buttonClass("secondary", "mt-3 min-h-9 px-3 text-xs")}>
+                      Edit
                     </Link>
-                    <div className="mt-0.5 text-xs text-muted">{e.workEmail}</div>
-                  </td>
-                  <td className="px-3 py-4 text-body">{e.designation ?? "—"}</td>
-                  <td className="px-3 py-4 text-body">{departments.get(e.id)?.join(", ") ?? e.department ?? "—"}</td>
-                  <td className="py-4 pl-3 pr-6">
-                    <StatusBadge status={e.employmentStatus} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
       <Pager page={page} pages={pages} prevHref={page > 1 ? link({ page: page - 1 }) : undefined} nextHref={page < pages ? link({ page: page + 1 }) : undefined} />

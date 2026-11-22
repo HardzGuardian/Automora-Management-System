@@ -59,7 +59,7 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
         badges={team.archived ? <StatusBadge status="Archived" /> : null}
         facts={[
           <span key="m">{team.members.length} {team.members.length === 1 ? "member" : "members"}</span>,
-          <Link key="w" href={`/teams?team=${id}`} className={linkClass}>See work on the Team tab</Link>,
+          <Link key="w" href={`/teams?team=${id}`} className={buttonClass("secondary", "min-h-8 px-3 py-1")}>View team workload</Link>,
         ]}
       />
 

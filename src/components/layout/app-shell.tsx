@@ -21,9 +21,11 @@ function NavLink({ item, pathname, collapsed, onNavigate }: { item: NavItem; pat
       aria-current={active ? "page" : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm",
+        "relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
         collapsed && "justify-center px-0",
-        active ? "bg-primary-soft font-semibold text-primary-ink" : "text-body hover:bg-primary-soft",
+        active
+          ? "bg-primary-soft text-primary-ink before:absolute before:left-0 before:top-2 before:h-[calc(100%-1rem)] before:w-[3px] before:rounded-full before:bg-primary"
+          : "text-body hover:bg-background hover:text-foreground",
       )}
     >
       <Icon name={item.icon} className={active ? "text-primary" : "text-muted"} />
@@ -47,7 +49,7 @@ function Sidebar({
 }) {
   return (
     <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col justify-between gap-6">
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-0.5">
         {main.map((i) => (
           <li key={i.href}>
             <NavLink item={i} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
@@ -64,7 +66,7 @@ function Avatar({ user }: { user: ShellUser }) {
     <Link
       href="/profile"
       aria-label={`My account (${user.name})`}
-      className="inline-flex size-11 items-center justify-center rounded-full bg-primary font-semibold text-white hover:bg-primary-hover"
+      className="inline-flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-white ring-2 ring-surface hover:bg-primary-hover"
     >
       {user.name.slice(0, 1).toUpperCase()}
     </Link>
@@ -129,13 +131,13 @@ export function AppShell({
       {/* Desktop sidebar: 248px, or 76px when collapsed to icons */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-surface p-3 lg:flex",
+          "sticky top-0 hidden h-screen shrink-0 flex-col gap-5 overflow-y-auto border-r border-border bg-surface p-3 lg:flex",
           collapsed ? "w-[76px]" : "w-[248px]",
         )}
       >
         <div className={cn("flex min-h-11 items-center", collapsed ? "justify-center" : "justify-between px-2")}>
           {collapsed ? null : (
-            <Link href="/dashboard" className="text-lg font-bold text-primary-ink">
+            <Link href="/dashboard" className="text-lg font-bold tracking-tight text-primary-ink">
               Automora
             </Link>
           )}
@@ -144,7 +146,7 @@ export function AppShell({
             onClick={toggle}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={collapsed}
-            className="flex size-11 items-center justify-center rounded-md text-muted hover:bg-primary-soft"
+            className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-background hover:text-foreground"
           >
             <Icon name="panel" />
           </button>
@@ -169,7 +171,7 @@ export function AppShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface px-3 py-2 sm:px-6">
+        <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface px-3 py-2.5 sm:px-8">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -187,13 +189,13 @@ export function AppShell({
               type="search"
               aria-label="Search"
               placeholder="Search projects, tasks, documents"
-              className="min-h-11 w-full rounded-md border border-field bg-background pl-10 pr-3 text-sm placeholder:text-muted"
+              className="min-h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm placeholder:text-muted focus:bg-surface"
             />
           </form>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {quickTask ? <QuickTaskButton actions={quickTask} /> : null}
-            <Link href="/notifications" className="relative flex size-11 items-center justify-center rounded-md hover:bg-primary-soft">
+            <Link href="/notifications" className="relative flex size-10 items-center justify-center rounded-lg hover:bg-background">
               <Icon name="bell" className="text-body" />
               <span className="sr-only">Notifications{unread > 0 ? `, ${unread} unread` : ""}</span>
               {unread > 0 ? (
@@ -209,8 +211,8 @@ export function AppShell({
           </div>
         </header>
 
-        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-6">
-          {children}
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-3 sm:p-8">
+          <div className="mx-auto w-full max-w-[1320px]">{children}</div>
         </main>
       </div>
     </div>

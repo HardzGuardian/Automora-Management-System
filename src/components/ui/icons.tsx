@@ -8,6 +8,8 @@ export const PATHS = {
   tasks: "M9 11l3 3 8-8 M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9",
   documents: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M9 13h6 M9 17h6",
   clients: "M3 8h18v11H3z M8 8V5h8v3 M3 13h18",
+  // An ID card: one person with their details, for the employee directory.
+  employees: "M3 5h18v14H3z M9 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M5.5 16.5a3.5 3.5 0 0 1 7 0 M15 9h3 M15 13h3",
   team: "M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1 M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M21 20v-1a4 4 0 0 0-3-3.9 M16 4.1a3.5 3.5 0 0 1 0 6.8",
   finance: "M3 6h18v12H3z M3 10h18 M7 15h3",
   reports: "M4 20V10 M10 20V4 M16 20v-7 M22 20H2",

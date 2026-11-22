@@ -105,7 +105,14 @@ export default async function EmployeeDetailPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <BackLink href="/employees">Employees</BackLink>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BackLink href="/employees">Employees</BackLink>
+        {can(actor, "employees.update") ? (
+          <Link href={`/employees/${id}/edit`} className={buttonClass("secondary")}>
+            Edit employee
+          </Link>
+        ) : null}
+      </div>
       {actionError ? <Alert tone="error">{actionError.slice(0, 300)}</Alert> : null}
       <DetailHeader
         title={employee.fullName}

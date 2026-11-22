@@ -18,6 +18,8 @@ describe("visibleNav", () => {
 
   it("shows Clients and Finance (which includes Reports) by permission", () => {
     expect(labels(["clients.read"])).toContain("Clients");
+    expect(labels(["employees.read"])).toContain("Employees");
+    expect(labels([])).not.toContain("Employees");
     expect(labels(["clients.read"])).not.toContain("Finance");
     expect(labels(["finance.expenses.read"])).toContain("Finance");
     expect(labels(["finance.reports.read"])).toContain("Finance");
