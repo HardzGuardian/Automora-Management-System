@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { withTransaction } from "@/db";
-import { taskAssignees, tasks } from "@/db/schema";
+import { employees, projects, taskAssignees, tasks } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { notify, type NotifyEvent } from "@/lib/notify";
@@ -55,11 +55,26 @@ export async function changeTaskStatus(actor: Actor, taskId: string, toRaw: stri
 
     await logTaskActivity(tx, actor, taskId, reopening ? "reopened" : "status_changed", { status: before.status }, { status: to });
 
+    // Review and completion go to whoever manages the work: the task's creator and, when the task is in a
+    // project, the project owner. The person who made the change is never notified about their own action.
     let event: NotifyEvent | null = null;
-    if ((to === "In Review" || to === "Completed") && before.createdBy && before.createdBy !== actor.userId) {
+    const managers = new Set<string>();
+    if (to === "In Review" || to === "Completed") {
+      if (before.createdBy) managers.add(before.createdBy);
+      if (before.projectId) {
+        const [owner] = await tx
+          .select({ userId: employees.userId })
+          .from(projects)
+          .innerJoin(employees, and(eq(employees.id, projects.ownerEmployeeId), eq(employees.companyId, projects.companyId)))
+          .where(and(eq(projects.id, before.projectId), eq(projects.companyId, actor.companyId)));
+        if (owner?.userId) managers.add(owner.userId);
+      }
+      managers.delete(actor.userId);
+    }
+    if (managers.size > 0) {
       event = {
         type: to === "Completed" ? "task.completed" : "task.review",
-        userIds: [before.createdBy],
+        userIds: [...managers],
         entity: { type: "task", id: taskId },
         eventKey:
           to === "Completed"

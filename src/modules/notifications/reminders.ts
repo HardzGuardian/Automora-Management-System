@@ -23,6 +23,7 @@ async function taskReminders(companyId: string, today: string): Promise<void> {
       title: tasks.title,
       dueDate: tasks.dueDate,
       userId: employees.userId,
+      createdBy: tasks.createdBy,
       overdue: sql<boolean>`${overdueCondition(today)}`,
     })
     .from(tasks)
@@ -38,10 +39,12 @@ async function taskReminders(companyId: string, today: string): Promise<void> {
     );
   for (const r of rows) {
     if (!r.userId || !r.dueDate) continue;
+    // The assignee, plus the manager who created the task (one notification each; the key dedupes per user).
+    const recipients = [...new Set([r.userId, r.createdBy].filter((u): u is string => !!u))];
     if (r.overdue) {
       await deliver({
         type: "task.overdue",
-        userIds: [r.userId],
+        userIds: recipients,
         entity: { type: "task", id: r.id },
         eventKey: `task:${r.id}:overdue:${today}`, // a daily nudge while the task stays overdue
         title: `Overdue: ${r.title}`,
@@ -50,7 +53,7 @@ async function taskReminders(companyId: string, today: string): Promise<void> {
     } else {
       await deliver({
         type: "task.due_soon",
-        userIds: [r.userId],
+        userIds: recipients,
         entity: { type: "task", id: r.id },
         eventKey: `task:${r.id}:duesoon:${r.dueDate}`, // once per due date
         title: `Due soon: ${r.title}`,

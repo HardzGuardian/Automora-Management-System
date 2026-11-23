@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { taskActivityLogs, tasks } from "@/db/schema";
 import { resetNotifier, setNotifier, type NotifyEvent } from "@/lib/notify";
-import { buildActor } from "@/test/factories";
+import { buildActor, createEmployee, createProject, createUser } from "@/test/factories";
 import { workWorld } from "@/test/work";
 import { createTask } from "./service";
 import { changeTaskStatus } from "./status";
@@ -118,5 +118,22 @@ describe("notifications", () => {
     await changeTaskStatus(w.manager, t.id, "Completed"); // creator completes: no self-notification
     expect(events.map((x) => x.type)).toEqual(["task.review"]);
     expect(events[0].userIds).toEqual([w.managerUserId]);
+  });
+
+  it("also notifies the project owner on review and completion, but never the person acting", async () => {
+    const w = await workWorld();
+    const e = await w.employee();
+    const ownerUser = await createUser(w.company.id);
+    const ownerEmp = await createEmployee(w.company.id, { userId: ownerUser.id });
+    const project = await createProject(w.company.id, ownerEmp.id, { type: "Internal", clientId: null });
+    const t = await createTask(w.manager, { title: "x", projectId: project.id, assigneeIds: [e.employeeId] });
+    const events: NotifyEvent[] = [];
+    setNotifier(async (ev) => void events.push(ev));
+    await changeTaskStatus(e.actor, t.id, "In Progress");
+    await changeTaskStatus(e.actor, t.id, "In Review");
+    await changeTaskStatus(w.manager, t.id, "Completed"); // the creator acts: only the owner hears about it
+    expect(events.map((x) => x.type)).toEqual(["task.review", "task.completed"]);
+    expect([...events[0].userIds].sort()).toEqual([w.managerUserId, ownerUser.id].sort());
+    expect(events[1].userIds).toEqual([ownerUser.id]);
   });
 });

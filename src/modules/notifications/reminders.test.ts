@@ -52,6 +52,17 @@ describe("task reminders", () => {
     expect(forB.some((t) => t.includes("Due today"))).toBe(true);
   });
 
+  it("the manager who created the tasks gets one copy of each overdue and due-soon alert", async () => {
+    const s = await setup();
+    await runReminders({ companyId: s.w.company.id });
+    const forManager = await titlesFor(s.w.managerUserId);
+    expect(forManager.some((t) => t.includes("Overdue one"))).toBe(true);
+    expect(forManager.some((t) => t.includes("Due in 2 days"))).toBe(true);
+    // "Due today" is assigned to two people but the manager still gets exactly one alert.
+    expect(forManager.filter((t) => t.includes("Due today"))).toHaveLength(1);
+    expect(forManager.join("|")).not.toMatch(/Far away|No date|Done and late|Archived late/);
+  });
+
   it("running twice (or concurrently) creates no duplicates", async () => {
     const s = await setup();
     await runReminders({ companyId: s.w.company.id });
