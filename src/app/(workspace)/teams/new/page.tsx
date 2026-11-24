@@ -9,8 +9,9 @@ import { createTeamAction } from "../actions";
 
 export const metadata = { title: "Add team" };
 
-export default async function NewTeamPage() {
+export default async function NewTeamPage({ searchParams }: { searchParams?: Promise<{ department?: string }> }) {
   const actor = await requireActor();
+  const preselected = (await searchParams)?.department;
   if (!can(actor, "teams.manage")) {
     return <p role="alert" className="rounded-lg bg-warning-soft px-5 py-4 font-medium text-warning">Only admins can add teams.</p>;
   }
@@ -38,7 +39,7 @@ export default async function NewTeamPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="nt-dept" className="text-sm font-medium">Department</label>
-            <select id="nt-dept" name="departmentId" required className={inputClass}>
+            <select id="nt-dept" name="departmentId" required defaultValue={departments.some((d) => d.id === preselected) ? preselected : undefined} className={inputClass}>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}

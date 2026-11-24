@@ -20,5 +20,5 @@ export {
   type TeamMemberDTO,
   type TeamSummary,
 } from "./service";
-export { employeeTeamsAndWork, listTeamOverview, type EmployeeTeamsAndWork, type TeamOverview, type TeamOverviewMember } from "./overview";
+export { employeeTeamsAndWork, listEmptyDepartments, listTeamOverview, type EmployeeTeamsAndWork, type TeamOverview, type TeamOverviewMember } from "./overview";
 export { getTeamWork, type TeamWork, type WorkPerson, type WorkTask } from "./work";

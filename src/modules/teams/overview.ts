@@ -61,6 +61,28 @@ export async function employeeTeamsAndWork(actor: Actor, employeeIds: string[]):
   return out;
 }
 
+/**
+ * Departments that have no active team yet. The overview lists teams, so a new department would
+ * otherwise be invisible until a team is added (and creating it again says "already exists").
+ * Only people who can see every team (teams.read) get this list.
+ */
+export async function listEmptyDepartments(actor: Actor, opts: { search?: string } = {}): Promise<{ id: string; name: string }[]> {
+  if (!can(actor, "teams.read")) return [];
+  const q = opts.search?.trim().slice(0, 100);
+  return db
+    .select({ id: departments.id, name: departments.name })
+    .from(departments)
+    .where(
+      and(
+        eq(departments.companyId, actor.companyId),
+        isNull(departments.archivedAt),
+        sql`NOT EXISTS (SELECT 1 FROM teams t WHERE t.department_id = ${departments.id} AND t.archived_at IS NULL)`,
+        q ? ilike(departments.name, `%${escapeLike(q)}%`) : undefined,
+      ),
+    )
+    .orderBy(asc(departments.name));
+}
+
 const escapeLike =(s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**

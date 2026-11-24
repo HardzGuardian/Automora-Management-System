@@ -16,6 +16,8 @@ import {
   getOrgChart,
   getTeam,
   listAssignableTeams,
+  listEmptyDepartments,
+  listTeamOverview,
   removeTeamMember,
   setTeamMemberRole,
 } from "./index";
@@ -247,5 +249,32 @@ describe("departments shown for employees", () => {
     const plain = await w.employee(["teams.read"]);
     await expect(departmentNamesForEmployees(plain.actor, [e.employeeId])).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect((await departmentNamesForEmployees(w.manager, [])).size).toBe(0);
+  });
+});
+
+describe("departments with no team", () => {
+  it("shows a new department in the Team list until it has a team, then moves it under its team", async () => {
+    const w = await workWorld(BOSS);
+    const dept = await createDepartment(w.manager, { name: "Computer" });
+
+    // Visible even though it has no team (otherwise creating it again says "already exists" with nothing on screen).
+    expect((await listEmptyDepartments(w.manager)).map((d) => d.name)).toEqual(["Computer"]);
+    expect((await listEmptyDepartments(w.manager, { search: "comp" })).map((d) => d.name)).toEqual(["Computer"]);
+    expect(await listEmptyDepartments(w.manager, { search: "design" })).toEqual([]);
+
+    await createTeam(w.manager, { departmentId: dept.id, name: "Team Zed" });
+    expect(await listEmptyDepartments(w.manager)).toEqual([]);
+    expect((await listTeamOverview(w.manager)).map((t) => t.department)).toEqual(["Computer"]);
+  });
+
+  it("hides archived departments, and from people who cannot see every team", async () => {
+    const w = await workWorld(BOSS);
+    const dept = await createDepartment(w.manager, { name: "Old" });
+    await archiveDepartment(w.manager, dept.id);
+    expect(await listEmptyDepartments(w.manager)).toEqual([]);
+
+    await createDepartment(w.manager, { name: "Still here" });
+    const plain = await w.employee();
+    expect(await listEmptyDepartments(plain.actor)).toEqual([]);
   });
 });
