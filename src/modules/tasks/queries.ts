@@ -37,7 +37,7 @@ export type ListTasksInput = z.input<typeof listTasksSchema>;
 
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-const PRIORITY_RANK = sql`CASE ${tasks.priority} WHEN 'High' THEN 0 WHEN 'Medium' THEN 1 ELSE 2 END`;
+const PRIORITY_RANK = sql`CASE ${tasks.priority} WHEN 'Critical' THEN 0 WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END`;
 const STATUS_RANK = sql`CASE ${tasks.status} WHEN 'Pending' THEN 0 WHEN 'In Progress' THEN 1 WHEN 'In Review' THEN 2 ELSE 3 END`;
 
 function orderBy(sort: z.infer<typeof listTasksSchema>["sort"], dir: "asc" | "desc"): SQL[] {

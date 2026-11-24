@@ -45,6 +45,7 @@ export function EditTaskForm(t: Props) {
             <option>Low</option>
             <option>Medium</option>
             <option>High</option>
+            <option>Critical</option>
           </select>
         </Field>
         <Field id="et-due" label="Due date" error={err("dueDate")}>

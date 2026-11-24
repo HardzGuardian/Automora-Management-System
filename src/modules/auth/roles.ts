@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, withTransaction, type Tx } from "@/db";
 import { permissions, rolePermissions, roles, user, userRoles } from "@/db/schema";
@@ -183,7 +183,8 @@ export async function removeRole(actor: Actor, userId: string, roleId: string): 
       const [{ n }] = await tx
         .select({ n: count() })
         .from(userRoles)
-        .where(eq(userRoles.roleId, role.id));
+        .innerJoin(user, eq(user.id, userRoles.userId))
+        .where(and(eq(userRoles.roleId, role.id), sql`coalesce(${user.banned}, false) = false`));
       if (n <= 1) throw new DomainError("CONFLICT", "At least one Super Admin must remain");
     }
     await tx.delete(userRoles).where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, role.id)));

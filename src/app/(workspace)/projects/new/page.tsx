@@ -2,6 +2,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
+import { listEmployees } from "@/modules/employees";
 import { listTeamCards } from "@/modules/teams";
 import { NewProjectForm } from "./new-project-form";
 
@@ -16,6 +17,7 @@ export default async function NewProjectPage() {
         listTeamCards(actor, "projects.members.manage"),
       ])
     : [{ rows: [] }, []];
+  const owners = allowed && can(actor, "employees.read") ? (await listEmployees(actor, { pageSize: 100, status: "Active" }).catch(() => ({ rows: [] }))).rows.map((e) => ({ id: e.id, name: e.fullName })) : [];
 
   return (
     <div className="flex max-w-[800px] flex-col gap-5">
@@ -25,7 +27,7 @@ export default async function NewProjectPage() {
         <p className="mt-1 text-muted">Add the details, attach reference documents, then choose the team that will do the work.</p>
       </div>
       {allowed ? (
-        <NewProjectForm clients={clients.rows.map((c) => ({ id: c.id, name: c.name }))} teams={teams} />
+        <NewProjectForm clients={clients.rows.map((c) => ({ id: c.id, name: c.name }))} teams={teams} owners={owners} defaultOwnerId={actor.employeeId ?? ""} />
       ) : (
         <div role="alert" className="rounded-lg bg-warning-soft px-5 py-4 font-medium text-warning">
           Only admins can create projects and upload documents. Ask an admin to set this project up.

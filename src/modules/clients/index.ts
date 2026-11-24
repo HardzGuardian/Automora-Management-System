@@ -2,6 +2,8 @@ export {
   addClientNote,
   archiveClient,
   createClient,
+  deleteClientNote,
+  editClientNote,
   getClient,
   listClientNotes,
   listClients,

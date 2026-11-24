@@ -49,6 +49,14 @@ export function ClientForm({ client }: { client?: ClientDTO }) {
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.saved ? <Alert tone="success">Saved.</Alert> : null}
       {MAIN.map(renderField)}
+      {client ? (
+        <Field id="edit-status" label="Status" hint="Inactive clients stay on record but are hidden from new work.">
+          <select id="edit-status" name="status" defaultValue={client.status} className={inputClass}>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </Field>
+      ) : null}
       <MoreOptions defaultOpen={MORE.some((f) => Boolean(client?.[f.name]))}>{MORE.map(renderField)}</MoreOptions>
       <FormActions label={client ? "Save changes" : "Create client"} pending={pending} cancelHref={client ? undefined : "/clients"} />
     </form>

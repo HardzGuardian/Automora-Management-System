@@ -34,10 +34,13 @@ import { departmentNamesForEmployees } from "@/modules/teams";
 import { deactivateAction, reactivateAction, suspendAction } from "../actions";
 import { ProfilePhotoCard } from "../_components/profile-photo-card";
 import { ActivityPanel, ProjectsPanel } from "./_components/work-panels";
+import { listPendingInvitations } from "@/modules/auth";
+import { PendingInvitations } from "../../settings/users/pending-invitations";
 import { InviteForm } from "./invite-form";
 
-type Tab = TaskTab | "projects" | "activity";
+type Tab = TaskTab | "overview" | "projects" | "activity";
 const TABS: { key: Tab; label: string }[] = [
+  { key: "overview", label: "Overview" },
   { key: "assigned", label: "Assigned" },
   { key: "completed", label: "Completed" },
   { key: "overdue", label: "Overdue" },
@@ -58,7 +61,7 @@ export default async function EmployeeDetailPage({
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
   const { tab: rawTab, error: actionError } = await searchParams;
-  const tab: Tab = TABS.some((t) => t.key === rawTab) ? (rawTab as Tab) : "assigned";
+  const tab: Tab = TABS.some((t) => t.key === rawTab) ? (rawTab as Tab) : "overview";
 
   let employee;
   try {
@@ -74,20 +77,22 @@ export default async function EmployeeDetailPage({
 
   const canSeeWork = actor.employeeId === id || can(actor, "employees.workload.read");
   // Only the tab being shown is loaded.
-  const isTaskTab = tab !== "projects" && tab !== "activity";
+  const isOverview = tab === "overview";
+  const isTaskTab = tab !== "projects" && tab !== "activity" && !isOverview;
   const none = <T,>(): Promise<T[]> => Promise.resolve([]);
   const [workload, tasks, projectRows, activityRows]: [Awaited<ReturnType<typeof getWorkload>> | null, EmployeeTaskRow[], EmployeeProjectRow[], EmployeeActivityRow[]] = canSeeWork
     ? await Promise.all([
         getWorkload(actor, id),
-        isTaskTab ? getEmployeeTasks(actor, id, tab) : none<EmployeeTaskRow>(),
-        tab === "projects" ? getEmployeeProjects(actor, id) : none<EmployeeProjectRow>(),
-        tab === "activity" ? getEmployeeActivity(actor, id) : none<EmployeeActivityRow>(),
+        isTaskTab ? getEmployeeTasks(actor, id, tab) : isOverview ? getEmployeeTasks(actor, id, "assigned") : none<EmployeeTaskRow>(),
+        tab === "projects" || isOverview ? getEmployeeProjects(actor, id) : none<EmployeeProjectRow>(),
+        tab === "activity" || isOverview ? getEmployeeActivity(actor, id) : none<EmployeeActivityRow>(),
       ])
     : [null, [], [], []];
 
   const canInvite =
     !employee.hasAccount && employee.employmentStatus === "Active" && can(actor, "users.invite") && can(actor, "roles.read");
   const inviteRoles = canInvite ? (await listRoles(actor)).map((r) => ({ id: r.id, name: r.name })) : [];
+  const pendingInvites = !employee.hasAccount && can(actor, "users.invite") ? await listPendingInvitations(actor, { employeeId: id }).catch(() => []) : [];
   const today = todayInTz(actor.timezone);
   const active = employee.employmentStatus === "Active";
   const canDeactivate = can(actor, "employees.deactivate");
@@ -132,8 +137,11 @@ export default async function EmployeeDetailPage({
                   title={`Deactivate ${employee.fullName}?`}
                   description="They are signed out, cannot sign in, and cannot be assigned new work. Their history and existing assignments are kept. You can reactivate them later."
                   confirmLabel="Deactivate"
+                  formClassName="flex flex-col gap-2"
                 >
                   <input type="hidden" name="id" value={id} />
+                  <label className="sr-only" htmlFor="deactivate-reason">Reason</label>
+                  <input id="deactivate-reason" name="reason" maxLength={300} placeholder="Reason (optional)" className="min-h-10 rounded-md border border-field bg-surface px-3 text-sm" />
                 </ConfirmForm>
               ) : null}
               {canSuspend ? (
@@ -143,8 +151,11 @@ export default async function EmployeeDetailPage({
                   title={`Suspend ${employee.fullName}?`}
                   description="Their account is blocked and all their sessions end immediately. Their history and assignments are kept. A user with the right permission can reactivate them."
                   confirmLabel="Suspend"
+                  formClassName="flex flex-col gap-2"
                 >
                   <input type="hidden" name="id" value={id} />
+                  <label className="sr-only" htmlFor="suspend-reason">Reason</label>
+                  <input id="suspend-reason" name="reason" maxLength={300} placeholder="Reason (optional)" className="min-h-10 rounded-md border border-field bg-surface px-3 text-sm" />
                 </ConfirmForm>
               ) : null}
             </>
@@ -172,7 +183,13 @@ export default async function EmployeeDetailPage({
             </section>
           ) : null}
 
-          {canInvite ? (
+          {!employee.hasAccount && can(actor, "users.invite") && pendingInvites.length > 0 ? (
+            <SectionCard title="Pending invitation">
+              <PendingInvitations rows={pendingInvites} returnTo={`/employees/${id}`} />
+            </SectionCard>
+          ) : null}
+
+          {canInvite && pendingInvites.length === 0 ? (
             <SectionCard title="Sign-in access">
               <p className="text-sm text-muted">This employee has no account yet. Invite them to create a password and sign in.</p>
               <InviteForm employeeId={id} email={employee.workEmail} roles={inviteRoles} />
@@ -184,7 +201,40 @@ export default async function EmployeeDetailPage({
               title="Work"
               action={<SegmentedNav label="Work view" items={TABS.map((t) => ({ label: t.label, href: { query: { tab: t.key } }, active: t.key === tab }))} />}
             >
-              {tab === "projects" ? (
+              {isOverview ? (
+                <div className="flex flex-col gap-5">
+                  <section aria-label="Next tasks">
+                    <h3 className="mb-2 mt-0 text-sm font-semibold">Open tasks (next 5)</h3>
+                    {tasks.length === 0 ? (
+                      <p className="m-0 text-sm text-muted">No open tasks.</p>
+                    ) : (
+                      <ul className="m-0 flex list-none flex-col divide-y divide-border rounded-md border border-border p-0">
+                        {tasks.slice(0, 5).map((t) => {
+                          const overdue = t.dueDate !== null && t.dueDate < today && t.status !== "Completed";
+                          return (
+                            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                              <Link href={`/tasks/${t.id}`} className={linkClass}>{t.title}</Link>
+                              <span className="flex items-center gap-2">
+                                <StatusBadge status={t.status} overdue={overdue} />
+                                <DueDate value={t.dueDate} overdue={overdue} />
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    <p className="mb-0 mt-2 text-xs"><Link href={`/employees/${id}?tab=assigned`} className={linkClass}>All assigned tasks</Link></p>
+                  </section>
+                  <section aria-label="Projects">
+                    <h3 className="mb-2 mt-0 text-sm font-semibold">Projects ({projectRows.length})</h3>
+                    <ProjectsPanel rows={projectRows.slice(0, 5)} />
+                  </section>
+                  <section aria-label="Recent activity">
+                    <h3 className="mb-2 mt-0 text-sm font-semibold">Recent activity</h3>
+                    <ActivityPanel rows={activityRows.slice(0, 5)} timezone={actor.timezone} />
+                  </section>
+                </div>
+              ) : tab === "projects" ? (
                 <ProjectsPanel rows={projectRows} />
               ) : tab === "activity" ? (
                 <ActivityPanel rows={activityRows} timezone={actor.timezone} />

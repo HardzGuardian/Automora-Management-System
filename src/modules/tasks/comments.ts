@@ -2,9 +2,10 @@ import "server-only";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db, withTransaction, type Tx } from "@/db";
-import { taskComments, user } from "@/db/schema";
+import { employees, taskAssignees, taskComments, user } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
+import { notify } from "@/lib/notify";
 import { can, requirePermission } from "@/lib/permissions";
 import { loadTask, logTaskActivity } from "./core";
 
@@ -61,7 +62,7 @@ export async function listComments(actor: Actor, taskId: string): Promise<Commen
 export async function addComment(actor: Actor, taskId: string, body: string): Promise<CommentDTO> {
   requirePermission(actor, "tasks.comment");
   const text = bodySchema.parse(body);
-  return withTransaction(async (tx) => {
+  const { dto, task } = await withTransaction(async (tx) => {
     const task = await loadTask(tx, actor, taskId);
     if (task.archivedAt) throw new DomainError("VALIDATION", "Archived tasks cannot be commented on");
     const [row] = await tx
@@ -70,8 +71,35 @@ export async function addComment(actor: Actor, taskId: string, body: string): Pr
       .returning();
     // History records that a comment exists, never its text.
     await logTaskActivity(tx, actor, taskId, "comment_added", undefined, { commentId: row.id });
-    return toDTO(row, await authorName(tx, actor.userId));
+    return { dto: toDTO(row, await authorName(tx, actor.userId)), task };
   });
+  await notifyTaskComment(actor, task, dto);
+  return dto;
+}
+
+/** Tells the task's assignees and its creator about a new comment (not the author). After commit; never throws. */
+async function notifyTaskComment(actor: Actor, task: { id: string; title: string; createdBy: string | null }, comment: CommentDTO): Promise<void> {
+  try {
+    const rows = await db
+      .select({ userId: employees.userId })
+      .from(taskAssignees)
+      .innerJoin(employees, and(eq(employees.id, taskAssignees.employeeId), eq(employees.companyId, taskAssignees.companyId)))
+      .where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.companyId, actor.companyId)));
+    const ids = new Set(rows.map((r) => r.userId).filter((id): id is string => Boolean(id)));
+    if (task.createdBy) ids.add(task.createdBy);
+    ids.delete(actor.userId);
+    if (ids.size === 0) return;
+    await notify({
+      type: "comment.task",
+      userIds: [...ids],
+      entity: { type: "task", id: task.id },
+      eventKey: `task:${task.id}:comment:${comment.id}`,
+      title: `New comment on ${task.title}`,
+      body: comment.body.length > 120 ? `${comment.body.slice(0, 117)}…` : comment.body,
+    });
+  } catch {
+    // a failed notification never fails the comment
+  }
 }
 
 export async function editComment(actor: Actor, commentId: string, body: string): Promise<CommentDTO> {

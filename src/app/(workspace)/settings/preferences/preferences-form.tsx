@@ -22,7 +22,7 @@ export function PreferencesForm({ prefs, canEdit }: { prefs: Preferences; canEdi
       ) : null}
       <Field id="priority" label="Default task priority" hint="Used when a new task does not specify one.">
         <select id="priority" name="tasks.defaultPriority" defaultValue={prefs["tasks.defaultPriority"]} disabled={!canEdit} aria-describedby="priority-hint" className={inputClass}>
-          {["Low", "Medium", "High"].map((p) => (
+          {["Low", "Medium", "High", "Critical"].map((p) => (
             <option key={p}>{p}</option>
           ))}
         </select>

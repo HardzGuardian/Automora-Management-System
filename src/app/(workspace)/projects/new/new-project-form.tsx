@@ -9,6 +9,7 @@ import { createProjectSetupAction, uploadProjectDocumentAction } from "../action
 
 export type TeamOption = { id: string; name: string; department: string; people: string[] };
 export type ClientOption = { id: string; name: string };
+export type OwnerOption = { id: string; name: string };
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt";
@@ -26,10 +27,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function NewProjectForm({ clients, teams }: { clients: ClientOption[]; teams: TeamOption[] }) {
+export function NewProjectForm({ clients, teams, owners, defaultOwnerId }: { clients: ClientOption[]; teams: TeamOption[]; owners: OwnerOption[]; defaultOwnerId: string }) {
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [budget, setBudget] = useState("");
+  const [ownerId, setOwnerId] = useState(defaultOwnerId);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [fileNote, setFileNote] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function NewProjectForm({ clients, teams }: { clients: ClientOption[]; te
       return;
     }
     start(async () => {
-      const r = await createProjectSetupAction({ name, clientId, dueDate, description, teamId });
+      const r = await createProjectSetupAction({ name, clientId, dueDate, description, teamId, startDate, budgetAmount: budget, ownerEmployeeId: ownerId });
       if (!r.ok) {
         setError(r.error);
         setNameError(r.fieldErrors?.name?.[0] ?? null);
@@ -159,6 +163,25 @@ export function NewProjectForm({ clients, teams }: { clients: ClientOption[]; te
           <div className="flex min-w-48 flex-1 flex-col gap-1.5">
             <label htmlFor="np-due" className="font-medium">Due date</label>
             <input id="np-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+            <label htmlFor="np-start" className="font-medium">Start date</label>
+            <input id="np-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+            <label htmlFor="np-budget" className="font-medium">Budget</label>
+            <input id="np-budget" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="For example, 250000" className={inputClass} />
+          </div>
+          <div className="flex min-w-60 flex-1 flex-col gap-1.5">
+            <label htmlFor="np-owner" className="font-medium">Project owner</label>
+            <select id="np-owner" value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={inputClass}>
+              {owners.length === 0 || !owners.some((o) => o.id === ownerId) ? <option value={ownerId}>Me</option> : null}
+              {owners.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="flex flex-col gap-1.5">

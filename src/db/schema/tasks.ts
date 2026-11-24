@@ -21,7 +21,7 @@ import { files } from "./files";
 import { projects } from "./projects";
 
 export const TASK_STATUSES = ["Pending", "In Progress", "In Review", "Completed"] as const;
-export const TASK_PRIORITIES = ["Low", "Medium", "High"] as const;
+export const TASK_PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 
 export const tasks = pgTable(
   "tasks",

@@ -48,10 +48,11 @@ test.describe("permission-aware navigation and access", () => {
 
   test("an employee sees only their own tasks", async ({ page }) => {
     await login(page, EMPLOYEE);
-    // The Tasks tab holds individual tasks; project tasks are under Projects.
+    // The Tasks tab lists every task assigned to them, including project tasks.
     await page.goto("/tasks");
     await expect(page.getByRole("link", { name: "Renew office licence" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Design homepage" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Design homepage" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Set up hosting" })).toHaveCount(0);
     await page.goto("/projects");
     await expect(page.getByRole("link", { name: "Design homepage" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Fix login bug" })).toBeVisible();
@@ -90,7 +91,7 @@ test.describe("workflow: client → project → task", () => {
     await expect(panel.getByText("Task created")).toBeVisible();
     await panel.getByRole("button", { name: "Done" }).click();
 
-    // A project task lives under its project, not in the individual Tasks tab.
+    // A project task is shown under its project (and, with its project name, in All Tasks).
     await page.goto("/projects");
     await page.locator("details", { hasText: `E2E Project ${unique}` }).evaluate((d) => d.setAttribute("open", ""));
     const row = page.getByRole("row", { name: new RegExp(`E2E Task ${unique}`) });

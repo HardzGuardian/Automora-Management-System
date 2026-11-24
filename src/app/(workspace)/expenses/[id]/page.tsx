@@ -1,3 +1,6 @@
+import { ConfirmForm } from "@/components/ui/confirm-dialog";
+import { archiveExpenseAction } from "../category-actions";
+import { HistoryPanel } from "../../_components/history-panel";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
@@ -53,6 +56,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
   const projects = canEdit || expense.projectId ? await loadProjectOptions(actor, expense.projectId) : [];
   const projectLabel = expense.projectId ? projects.find((p) => p.id === expense.projectId)?.label ?? "Linked project" : null;
   const canPay = actor.permissions.has("finance.expenses.pay");
+  const canArchive = actor.permissions.has("finance.expenses.update") && payments.every((p) => p.status === "reversed");
   const canReverse = actor.permissions.has("finance.expenses.reverse");
   const hasActions = payments.some((p) => (p.status === "pending" && canPay) || (p.status === "confirmed" && canReverse));
 
@@ -80,6 +84,23 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           {canEdit && <ExpenseEditForm expense={expense} categories={categories} projects={projects} />}
           {canPay && expense.outstanding !== "0.00" && <NewExpensePaymentForm expenseId={expense.id} />}
+          {canArchive && (
+            <Section title="Archive">
+              <p className="m-0 text-sm text-muted">Archiving removes this expense from lists and reports. Its history is kept. Only an expense with no payments can be archived.</p>
+              <ConfirmForm
+                action={archiveExpenseAction}
+                label="Archive expense"
+                title={`Archive ${expense.expenseCode}?`}
+                description="It leaves the expense list and reports. The record and its history stay on file."
+                confirmLabel="Archive expense"
+                formClassName="flex flex-col gap-2"
+              >
+                <input type="hidden" name="expenseId" value={expense.id} />
+                <label className="sr-only" htmlFor="archive-reason">Reason</label>
+                <input id="archive-reason" name="reason" maxLength={300} placeholder="Reason (optional)" className="min-h-10 rounded-md border border-field bg-surface px-3 text-sm" />
+              </ConfirmForm>
+            </Section>
+          )}
 
           <Section title="Outgoing payments">
             {payments.length === 0 ? (
@@ -157,6 +178,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
               ]}
             />
           </Section>
+          <HistoryPanel actor={actor} entity="expense" entityId={expense.id} />
         </aside>
       </div>
     </div>

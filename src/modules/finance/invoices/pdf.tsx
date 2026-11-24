@@ -66,10 +66,12 @@ const styles = StyleSheet.create({
   section: { marginBottom: 18 },
   tableHeader: { flexDirection: "row", backgroundColor: "#edf1f5", padding: 7, fontWeight: 700 },
   tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#d9dee7", padding: 7 },
-  description: { width: "46%" },
-  quantity: { width: "14%", textAlign: "right" },
-  unit: { width: "20%", textAlign: "right" },
-  amount: { width: "20%", textAlign: "right" },
+  description: { width: "34%" },
+  quantity: { width: "9%", textAlign: "right" },
+  unit: { width: "17%", textAlign: "right" },
+  discount: { width: "14%", textAlign: "right" },
+  tax: { width: "10%", textAlign: "right" },
+  amount: { width: "16%", textAlign: "right" },
   totals: { width: "42%", alignSelf: "flex-end", marginTop: 12 },
   total: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
   grandTotal: { borderTopWidth: 1, borderTopColor: "#172033", paddingTop: 6, fontWeight: 700 },
@@ -117,6 +119,8 @@ export function InvoicePdfDocument({ data }: { data: InvoicePdfData }) {
           <Text style={styles.description}>Description</Text>
           <Text style={styles.quantity}>Qty</Text>
           <Text style={styles.unit}>Unit price</Text>
+          <Text style={styles.discount}>Discount</Text>
+          <Text style={styles.tax}>Tax %</Text>
           <Text style={styles.amount}>Line total</Text>
         </View>
         {invoice.items.map((item) => (
@@ -124,6 +128,8 @@ export function InvoicePdfDocument({ data }: { data: InvoicePdfData }) {
             <Text style={styles.description}>{item.description}</Text>
             <Text style={styles.quantity}>{item.quantity}</Text>
             <Text style={styles.unit}>{money(item.unitPrice)}</Text>
+            <Text style={styles.discount}>{Number(item.discount) > 0 ? `-${money(item.discount)}` : "—"}</Text>
+            <Text style={styles.tax}>{Number(item.taxRate) > 0 ? `${Number(item.taxRate)}%` : "—"}</Text>
             <Text style={styles.amount}>{money(item.lineTotal)}</Text>
           </View>
         ))}

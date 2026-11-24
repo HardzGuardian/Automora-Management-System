@@ -71,6 +71,7 @@ const FINANCE_KEYS: Record<FinanceExportRequest["report"], string[]> = {
   "expense-register": ["expenseCode", "category", "projectId", "payee", "description", "expenseDate", "dueDate", "currency", "total", "confirmedPayments", "outstanding", "status"],
   "cash-movement": ["date", "currency", "confirmedReceipts", "confirmedExpensePayments", "netCashMovement"],
   summary: ["metric", "currency", "amount", "count", "confirmedReceipts", "confirmedExpensePayments", "netCashMovement"],
+  "project-finance": ["projectCode", "projectName", "status", "currency", "budget", "invoiced", "confirmedReceipts", "confirmedExpensePayments", "netCashMovement"],
 };
 const labelFor = (k: string) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
 
@@ -101,6 +102,18 @@ function financeAdapter(report: FinanceExportRequest["report"]): FinanceExportAd
       async function* run() {
         const { columns, rows: r } = await columnsFor(rows);
         yield* toChunks(toXlsxStream(columns, r, { sheetName: "Finance report" }));
+      }
+      return run();
+    },
+    toPdf: (rows, meta) => {
+      async function* run() {
+        const { columns, rows: r } = await columnsFor(rows);
+        const all: ExportRow[] = [];
+        for await (const row of r) {
+          all.push(row);
+          if (all.length >= 2000) break;
+        }
+        yield new Uint8Array(await toPdf(meta.title, columns, all, { subtitle: meta.subtitle }));
       }
       return run();
     },

@@ -18,6 +18,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
     roles && { href: "/settings/roles", label: "Roles and permissions" },
     settings && { href: "/settings/numbering", label: "Numbering" },
     settings && { href: "/settings/preferences", label: "Preferences" },
+    security && { href: "/settings/audit", label: "Audit log" },
     security && { href: "/settings/security", label: "Security" },
   ].filter(Boolean) as { href: string; label: string }[];
   return (

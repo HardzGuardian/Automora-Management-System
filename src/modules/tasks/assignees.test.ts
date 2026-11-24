@@ -14,6 +14,16 @@ const assignedIds = async (taskId: string) =>
 const actions = async (taskId: string) =>
   (await db.select().from(taskActivityLogs).where(eq(taskActivityLogs.taskId, taskId))).map((a) => a.action);
 
+describe("createTask with assignees", () => {
+  it("needs tasks.assign as well as tasks.create (a custom role cannot assign through create)", async () => {
+    const w = await workWorld(["tasks.read.all", "tasks.create"]);
+    const a = await w.employee();
+    await expect(createTask(w.manager, { title: "x", assigneeIds: [a.employeeId] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    // without assignees it is still allowed
+    await expect(createTask(w.manager, { title: "no assignee" })).resolves.toMatchObject({ title: "no assignee" });
+  });
+});
+
 describe("assignTask", () => {
   it("assigns several employees, is idempotent, logs and notifies only new assignees", async () => {
     const w = await workWorld();

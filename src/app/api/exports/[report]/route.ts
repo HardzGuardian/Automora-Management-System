@@ -3,7 +3,7 @@ import { DomainError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { REPORT_KEYS, exportFinanceReportResponse, exportReport, type ReportFilters, type ReportKey } from "@/modules/reports";
 
-const FINANCE_REPORTS = ["receivables", "expense-register", "cash-movement", "summary"] as const;
+const FINANCE_REPORTS = ["receivables", "expense-register", "cash-movement", "summary", "project-finance"] as const;
 
 const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : undefined);
 
@@ -29,7 +29,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ report: str
       if (!(FINANCE_REPORTS as readonly string[]).includes(name)) return new Response("Not found", { status: 404 });
       return await exportFinanceReportResponse(auth.actor, {
         report: name as (typeof FINANCE_REPORTS)[number],
-        format: format === "xlsx" ? "xlsx" : "csv",
+        format: format === "xlsx" ? "xlsx" : format === "pdf" ? "pdf" : "csv",
         fromDate: q.get("fromDate") ?? "",
         toDate: q.get("toDate") ?? "",
       });

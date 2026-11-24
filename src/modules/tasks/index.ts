@@ -9,7 +9,7 @@ export type { CreateTaskInput, UpdateTaskInput } from "./schemas";
 export { listTaskActivity, listTasks, type ListTasksInput, type TaskActivityDTO } from "./queries";
 export { addComment, deleteComment, editComment, listComments, type CommentDTO } from "./comments";
 export { attachToTask, canAccessTaskAttachment, listAttachments, removeAttachment, type AttachmentDTO } from "./attachments";
-export { bulkArchive, bulkChangeStatus, bulkReassign, type BulkItemResult, type BulkResult } from "./bulk";
+export { bulkArchive, bulkAssign, bulkChangeStatus, bulkReassign, type BulkItemResult, type BulkResult } from "./bulk";
 export {
   assignTaskToTeam,
   listTaskTeams,

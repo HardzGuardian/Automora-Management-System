@@ -1,3 +1,4 @@
+import { HistoryPanel } from "../../_components/history-panel";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -23,6 +24,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
   }
   const canConfirm = actor.permissions.has("finance.payments.confirm") && receipt.status === "pending" && !receipt.awaitingSecondPerson;
   const canReverse = actor.permissions.has("finance.payments.reverse") && receipt.status === "confirmed";
+  const canVoid = receipt.status === "pending" && (actor.permissions.has("finance.payments.record") || actor.permissions.has("finance.payments.reverse"));
   const invoiceName = receipt.invoiceNumber ?? receipt.invoiceId;
 
   return (
@@ -50,7 +52,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
       {receipt.status === "reversed" ? (
         <p className="text-sm text-muted">This receipt was reversed and no longer counts toward the invoice balance.</p>
       ) : null}
-      {canConfirm || canReverse ? <ReceiptActions paymentId={receipt.id} canConfirm={canConfirm} canReverse={canReverse} /> : null}
+      {canConfirm || canReverse || canVoid ? <ReceiptActions paymentId={receipt.id} canConfirm={canConfirm} canReverse={canReverse} canVoid={canVoid} /> : null}
 
       <Section title="Details" className="max-w-2xl">
         <DetailList
@@ -63,6 +65,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
           ]}
         />
       </Section>
+      <HistoryPanel actor={actor} entity="payment" entityId={receipt.id} />
     </div>
   );
 }

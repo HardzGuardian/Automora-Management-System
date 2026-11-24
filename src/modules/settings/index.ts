@@ -5,6 +5,8 @@ export {
   getPreferences,
   requiresSecondConfirmer,
   updateCompanyProfile,
+  updateNumbering,
+  type NumberingRow,
   updatePreferences,
   type CompanyProfile,
   type CompanyProfileInput,

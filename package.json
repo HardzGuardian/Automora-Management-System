@@ -14,11 +14,14 @@
     "e2e:seed": "tsx --conditions=react-server e2e/seed.ts",
     "db:seed": "tsx --conditions=react-server src/db/seed.ts",
     "db:admin-invite": "tsx --conditions=react-server src/db/admin-invite.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "mcp": "tsx --tsconfig mcp/tsconfig.json mcp/server.ts",
+    "mcp:smoke": "tsx mcp/smoke.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1165.0",
     "@hookform/resolvers": "^7.0.6",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@react-pdf/renderer": "4.9.0",
     "@tanstack/react-table": "^9.3.1",
     "better-auth": "1.7.19",

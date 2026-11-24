@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import type { CodeKind } from "@/db/schema";
+import { formatSequence, loadNumberingConfig } from "./config";
 
 /**
  * Atomically allocates the next number in a company's sequence (1, 2, 3 ...).
@@ -18,8 +19,8 @@ export async function nextSequence(tx: Tx, companyId: string, kind: CodeKind): P
   return Number(result.rows[0].n);
 }
 
-/** Allocates the next human-readable code, e.g. TSK-000123. */
+/** Allocates the next human-readable code using the company's numbering format, e.g. TSK-000123. */
 export async function nextCode(tx: Tx, companyId: string, kind: CodeKind): Promise<string> {
   const n = await nextSequence(tx, companyId, kind);
-  return `${kind}-${String(n).padStart(6, "0")}`;
+  return formatSequence(await loadNumberingConfig(tx, companyId, kind), n);
 }

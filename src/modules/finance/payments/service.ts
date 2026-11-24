@@ -20,6 +20,7 @@ import {
   type ReverseReceiptInput,
 } from "./schemas";
 import { assertNotSelfConfirmed } from "../second-person";
+import { notifyPaymentEvent } from "../notify";
 import { calcOutstanding, isReceivableInvoiceState } from "../invoices/balance";
 import { calcAvailablePaymentAmount } from "./reservations";
 import { invoices, paymentAllocations, payments } from "@/db/schema";
@@ -57,14 +58,18 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
   const amount = fromMinor(amountMinor);
   const requestHash = createHash("sha256").update(JSON.stringify(parsed)).digest("hex");
 
-  return withTransaction(async (tx) => {
+  let replayed = false;
+  const recorded = await withTransaction(async (tx) => {
     const claim = await beginIdempotentOperation(tx, {
       companyId: actor.companyId,
       key: parsed.idempotencyKey,
       operation: "payment.recordReceipt",
       requestHash,
     });
-    if (claim.replay) return parseInput(receiptDtoSchema, claim.response);
+    if (claim.replay) {
+      replayed = true;
+      return parseInput(receiptDtoSchema, claim.response);
+    }
 
     const invoiceRows = await tx.select({
       id: invoices.id,
@@ -154,6 +159,8 @@ export async function recordReceipt(actor: Actor, input: CreateReceiptInput): Pr
     });
     return receipt;
   });
+  if (!replayed) await notifyPaymentEvent(actor, { kind: "recorded", paymentId: recorded.id, amount: recorded.amount, invoiceId: recorded.invoiceId });
+  return recorded;
 }
 
 async function lockInvoiceForPayment(
@@ -197,7 +204,7 @@ async function getConfirmedInvoiceAllocationTotal(
 export async function confirmReceipt(actor: Actor, paymentId: string): Promise<ReceiptDTO> {
   requirePermission(actor, "finance.payments.confirm");
   const parsed = parseInput(confirmReceiptSchema, { paymentId });
-  return withTransaction(async (tx) => {
+  const confirmed = await withTransaction(async (tx) => {
     const [preflight] = await tx.select({ invoiceId: payments.invoiceId }).from(payments).where(and(
       eq(payments.id, parsed.paymentId),
       eq(payments.companyId, actor.companyId),
@@ -243,9 +250,11 @@ export async function confirmReceipt(actor: Actor, paymentId: string): Promise<R
       method: payment.method,
       reference: payment.reference,
       notes: payment.notes,
-      status: "confirmed",
+      status: "confirmed" as const,
     };
   });
+  await notifyPaymentEvent(actor, { kind: "confirmed", paymentId: confirmed.id, amount: confirmed.amount, invoiceId: confirmed.invoiceId });
+  return confirmed;
 }
 
 export async function reverseReceipt(actor: Actor, input: ReverseReceiptInput): Promise<ReceiptDTO> {
@@ -301,4 +310,57 @@ export async function reverseReceipt(actor: Actor, input: ReverseReceiptInput): 
       status: "reversed",
     };
   });
+}
+
+/**
+ * Cancels a receipt that is still pending, releasing the balance it reserved on the invoice.
+ * The row is kept (as reversed, with a reason) so the history and audit trail stay complete.
+ */
+export async function voidPendingReceipt(actor: Actor, input: ReverseReceiptInput): Promise<ReceiptDTO> {
+  if (!actor.permissions.has("finance.payments.record") && !actor.permissions.has("finance.payments.reverse")) {
+    requirePermission(actor, "finance.payments.record");
+  }
+  const parsed = parseInput(reverseReceiptSchema, input);
+  const voided = await withTransaction(async (tx) => {
+    const [preflight] = await tx.select({ invoiceId: payments.invoiceId }).from(payments).where(and(
+      eq(payments.id, parsed.paymentId),
+      eq(payments.companyId, actor.companyId),
+    )).limit(1);
+    if (!preflight) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
+    const [payment] = await tx.select().from(payments).where(and(
+      eq(payments.id, parsed.paymentId),
+      eq(payments.companyId, actor.companyId),
+    )).limit(1).for("update");
+    if (!payment) throw new DomainError("PAYMENT_NOT_FOUND", "Receipt was not found.");
+    if (payment.status !== "pending") throw new DomainError("CONFLICT", "Only pending receipts can be voided.");
+    const now = new Date();
+    await tx.update(payments).set({
+      status: "reversed",
+      reversedAt: now,
+      reversedBy: actor.userId,
+      reverseReason: `Voided before confirmation: ${parsed.reason}`,
+      updatedAt: now,
+      updatedBy: actor.userId,
+    }).where(and(eq(payments.id, payment.id), eq(payments.companyId, actor.companyId), eq(payments.status, "pending")));
+    await audit.record(tx, {
+      actor,
+      entity: "payment",
+      entityId: payment.id,
+      action: "payment.voided",
+      before: { status: "pending", amount: payment.amount },
+      after: { status: "reversed", invoiceId: payment.invoiceId, reason: parsed.reason },
+    });
+    return {
+      id: payment.id,
+      invoiceId: payment.invoiceId,
+      amount: payment.amount,
+      paymentDate: payment.paymentDate,
+      method: payment.method,
+      reference: payment.reference,
+      notes: payment.notes,
+      status: "reversed" as const,
+    };
+  });
+  await notifyPaymentEvent(actor, { kind: "voided", paymentId: voided.id, amount: voided.amount, invoiceId: voided.invoiceId });
+  return voided;
 }

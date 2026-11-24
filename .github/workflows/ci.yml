@@ -109,3 +109,44 @@ jobs:
       - name: Container logs
         if: always()
         run: docker logs app || true
+  restore-drill:
+    # AC-14, automated: migrate a database, take an ENCRYPTED backup with the real script, restore it
+    # into a scratch database and compare every table's row count with the source.
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: automora
+          POSTGRES_PASSWORD: automora
+          POSTGRES_DB: automora
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U automora" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://automora:automora@localhost:5432/automora
+      SOURCE_URL: postgres://automora:automora@localhost:5432/automora
+      ADMIN_URL: postgres://automora:automora@localhost:5432/postgres
+      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+      BETTER_AUTH_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
+      BACKUP_PASSPHRASE: ci-backup-passphrase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - name: PostgreSQL 17 client tools (the runner ships an older pg_dump)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - name: Backup (encrypted), then restore drill
+        run: |
+          bash ./scripts/backup.sh ./backups
+          FILE="$(ls ./backups/*.dump.enc | head -n1)"
+          bash ./scripts/restore-check.sh "$FILE"

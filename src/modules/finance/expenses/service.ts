@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import type { ZodType } from "zod";
 import { withTransaction } from "@/db";
 import { expenseCategories, expensePayments, expenses, projects } from "@/db/schema";
@@ -180,5 +180,31 @@ export async function updateExpense(actor: Actor, input: UpdateExpenseInput): Pr
       after: { categoryId: updated.categoryId, projectId: updated.projectId, total: updated.total, status: updated.status },
     });
     return dto;
+  });
+}
+
+/**
+ * Archives an expense so it leaves the lists and reports. Allowed only while no payment is recorded
+ * against it (a paid expense must be reversed first); the row and its history are kept.
+ */
+export async function archiveExpense(actor: Actor, expenseId: string, reason?: string): Promise<void> {
+  requirePermission(actor, "finance.expenses.update");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(expenseId)) throw new DomainError("VALIDATION", "Expense ID is invalid.");
+  await withTransaction(async (tx) => {
+    const [current] = await tx.select({ id: expenses.id, expenseCode: expenses.expenseCode }).from(expenses).where(and(
+      eq(expenses.id, expenseId),
+      eq(expenses.companyId, actor.companyId),
+      isNull(expenses.archivedAt),
+    )).limit(1).for("update");
+    if (!current) throw new DomainError("EXPENSE_NOT_FOUND", "Expense was not found.");
+    const [live] = await tx.select({ id: expensePayments.id }).from(expensePayments).where(and(
+      eq(expensePayments.expenseId, current.id),
+      eq(expensePayments.companyId, actor.companyId),
+      ne(expensePayments.status, "reversed"),
+    )).limit(1);
+    if (live) throw new DomainError("CONFLICT", "This expense has a payment recorded. Reverse the payment first, then archive it.");
+    const now = new Date();
+    await tx.update(expenses).set({ archivedAt: now, updatedAt: now, updatedBy: actor.userId }).where(and(eq(expenses.id, current.id), eq(expenses.companyId, actor.companyId)));
+    await audit.record(tx, { actor, entity: "expense", entityId: current.id, action: "expense.archived", after: { expenseCode: current.expenseCode, reason: reason?.trim().slice(0, 300) || null } });
   });
 }

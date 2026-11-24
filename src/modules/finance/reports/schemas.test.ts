@@ -23,7 +23,8 @@ describe("finance export request", () => {
     const valid = { report: "receivables", format: "csv", fromDate: "2026-01-01", toDate: "2026-01-31" };
     expect(financeExportRequestSchema.safeParse(valid).success).toBe(true);
     expect(financeExportRequestSchema.safeParse({ ...valid, report: "employees" }).success).toBe(false);
-    expect(financeExportRequestSchema.safeParse({ ...valid, format: "pdf" }).success).toBe(false);
+    expect(financeExportRequestSchema.safeParse({ ...valid, format: "pdf" }).success).toBe(true);
+    expect(financeExportRequestSchema.safeParse({ ...valid, format: "docx" }).success).toBe(false);
   });
 
   it("rejects malformed or reversed date ranges", () => {

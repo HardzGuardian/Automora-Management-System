@@ -1,10 +1,11 @@
+import { HistoryPanel } from "../../_components/history-panel";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass } from "@/components/ui/styles";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
-import { getInvoiceDetail, listReceipts } from "@/modules/finance";
+import { getInvoiceDetail, listInvoiceClients, listReceipts } from "@/modules/finance";
 import type { InvoiceDetailDTO } from "@/modules/finance";
 import {
   BackLink,
@@ -45,6 +46,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     : null;
   const canEditDraft = invoice.status === "draft" && actor.permissions.has("finance.invoices.update");
   const projects = canEditDraft || invoice.projectId ? await loadProjectOptions(actor, invoice.projectId) : [];
+  const draftClients = canEditDraft && actor.permissions.has("finance.invoices.create") ? await listInvoiceClients(actor).catch(() => []) : [];
   const projectLabel = invoice.projectId ? projects.find((p) => p.id === invoice.projectId)?.label ?? "Linked project" : null;
   const canIssue = actor.permissions.has("finance.invoices.issue") && invoice.status === "draft";
   const canCancel = actor.permissions.has("finance.invoices.cancel") && (invoice.status === "draft" || invoice.status === "issued" || invoice.status === "overdue");
@@ -135,6 +137,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               dueDate={invoice.dueDate}
               items={invoice.items}
               projects={projects}
+              clients={draftClients}
             />
           )}
 
@@ -190,6 +193,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               ]}
             />
           </Section>
+          <HistoryPanel actor={actor} entity="invoice" entityId={invoice.id} />
         </aside>
       </div>
     </div>

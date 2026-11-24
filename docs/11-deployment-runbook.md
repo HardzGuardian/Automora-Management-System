@@ -57,9 +57,27 @@ Example: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://app.example.
 | Item | Status |
 |---|---|
 | Dockerfile | Written following Next.js standalone output; **not built or run here (no Docker on the development machine)** |
-| Staging deployment | **Not done** (needs hosting decision, open decision #1) |
+| Staging deployment | Pipeline and stack written (section 9); **no server provisioned yet** (needs hosting decision, open decision #1) |
 | Health check, headers, error pages | Implemented and exercised by the browser suite |
 | Docker image, S3 driver | CI now builds the image, migrates a database, starts the container and runs the S3 driver against MinIO (`.github/workflows/ci.yml`). **Written and parsed here, not yet run: first CI run is the real check** |
 | Monitoring | Security page and `security_events` implemented and tested; no external pager or error-reporting service (decision: built-in only) |
 | Backup + restore | Scripts written and drilled locally (section 6) |
 | Rate limiting | Login/reset rate limits are in-memory (per instance); use database storage before running several instances |
+
+## 9. Production and staging stack (added)
+Files: `docker-compose.prod.yml`, `deploy/Caddyfile`, `deploy/scheduler/*`, `deploy/backup/crontab`, `.env.production.example`, `.github/workflows/deploy.yml`.
+
+| Piece | What it does |
+|---|---|
+| `proxy` (Caddy) | HTTPS with automatic Let's Encrypt certificates, reverse proxy to the app, hides `/api/cron/*` from the internet |
+| `scheduler` | Calls `/api/cron/reminders` and `/api/cron/invoice-due` inside the private network every morning (`deploy/scheduler/crontab`); optional `CRON_PING_URL` heartbeat |
+| `backup` | Nightly `scripts/backup.sh`: dump, verify, AES-256 encrypt (`BACKUP_PASSPHRASE`), SHA-256 file, off-site copy (`BACKUP_S3_URI`), prune files older than `BACKUP_RETENTION_DAYS` (default 14), optional ping URLs |
+| `migrate` (profile `tools`) | One-off migration container; always run before starting a new app version |
+
+Set up a server once: install Docker, copy `.env.production.example` to `.env.production` on the server and fill it in, then run the commands at the top of `docker-compose.prod.yml`.
+
+**Automated deploys.** `deploy.yml` builds the app and migration images, pushes them to GitHub Container Registry, copies the compose files over SSH, migrates, starts the new version and waits for `/api/health`. `main` goes to the `staging` environment; production is a manual run that can require approvals. Repository secrets/vars per environment: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`, and variable `APP_DOMAIN`.
+
+**Restore.** Encrypted backups restore with `BACKUP_PASSPHRASE=... scripts/restore-check.sh automora-<stamp>.dump.enc` (checks the SHA-256 first). CI job `restore-drill` runs migrate, an encrypted backup and this restore check on every push.
+
+**Honest status of section 9:** written and reviewed here but **not run** (no Docker or server on the development machine). The first CI run, and the first deploy to a real staging server, are the real check. The passphrase must be stored off the server; without it backups cannot be restored.

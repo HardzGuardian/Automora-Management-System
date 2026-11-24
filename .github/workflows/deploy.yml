@@ -1,0 +1,99 @@
+name: Deploy
+# Builds the image, publishes it to GitHub Container Registry, then deploys it over SSH:
+#   migrate first, then start the new app, then check /api/health.
+# staging deploys on every push to main; production is started by hand and waits for an approval
+# (set "Required reviewers" on the `production` environment in the repository settings).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push the application image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push the migration image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrate
+          push: true
+          tags: ${{ steps.meta.outputs.tag }}-migrate
+          cache-from: type=gha
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      IMAGE: ${{ needs.image.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+      - name: Copy the deployment files
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+          $SSH "mkdir -p ${{ secrets.DEPLOY_PATH }}"
+          scp -i ~/.ssh/id_deploy -r docker-compose.prod.yml deploy scripts ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/
+      - name: Migrate, then start the new version
+        run: |
+          ssh -i ~/.ssh/id_deploy ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash -s <<'REMOTE'
+          set -euo pipefail
+          cd "${{ secrets.DEPLOY_PATH }}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          export APP_IMAGE="${{ env.IMAGE }}"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.production"
+          docker pull "$APP_IMAGE"
+          # Migrations are additive; run them before the new app version starts.
+          docker pull "$APP_IMAGE-migrate"
+          docker run --rm --network "$(basename "$PWD")_internal" --env-file .env.production \
+            -e DATABASE_URL="postgres://${POSTGRES_USER:-automora}:$(grep ^POSTGRES_PASSWORD .env.production | cut -d= -f2-)@postgres:5432/${POSTGRES_DB:-automora}" \
+            "$APP_IMAGE-migrate"
+          $COMPOSE up -d --no-build postgres app proxy scheduler backup
+          for i in $(seq 1 40); do
+            if $COMPOSE exec -T app wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1; then echo "healthy"; exit 0; fi
+            sleep 3
+          done
+          echo "the new version did not become healthy; roll back by re-running this workflow with the previous commit" >&2
+          $COMPOSE logs --tail 80 app >&2
+          exit 1
+          REMOTE
+      - name: Check the public address
+        run: curl -fsS "https://${{ vars.APP_DOMAIN }}/api/health"

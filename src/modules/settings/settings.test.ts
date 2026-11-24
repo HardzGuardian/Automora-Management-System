@@ -87,7 +87,7 @@ describe("preferences", () => {
 
   it("rejects unknown keys and invalid values", async () => {
     const a = await admin();
-    await expect(updatePreferences(a.actor, { "tasks.defaultPriority": "Critical" })).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(updatePreferences(a.actor, { "tasks.defaultPriority": "Urgent" })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(updatePreferences(a.actor, { "invoices.defaultDueDays": -1 })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(updatePreferences(a.actor, { "invoices.defaultDueDays": 1.5 })).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(updatePreferences(a.actor, { "evil.key": "x" })).rejects.toMatchObject({ code: "VALIDATION" });

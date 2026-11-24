@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "automora": {
+      "command": "pnpm",
+      "args": ["mcp"],
+      "env": {
+        "AUTOMORA_MCP_USER_EMAIL": "admin@e2e.test",
+        "DATABASE_URL": "postgres://automora:automora@localhost:5432/automora_test",
+        "BETTER_AUTH_SECRET": "change-me-to-a-random-string-of-32-chars-or-more",
+        "BETTER_AUTH_URL": "http://localhost:3000",
+        "APP_URL": "http://localhost:3000"
+      }
+    }
+  }
+}

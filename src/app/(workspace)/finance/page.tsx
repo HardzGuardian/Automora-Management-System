@@ -52,7 +52,7 @@ const Td = ({ children, right, strong }: { children: React.ReactNode; right?: bo
   <td className={cn("p-4", right && "text-right tabular-nums", strong ? "font-semibold text-foreground" : "text-body")}>{children}</td>
 );
 
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string; clientId?: string; page?: string; report?: string; period?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string; clientId?: string; page?: string; report?: string; period?: string; from?: string; to?: string; priority?: string; projectId?: string; assigneeId?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
   const allowed: Record<Tab, boolean> = {
@@ -78,7 +78,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             pills={[...tabs.map((t) => ({ label: TAB_LABEL[t], href: `/finance?tab=${t}`, active: false })), { label: "Reports", href: "/finance?tab=reports", active: true }]}
           />
         ) : null}
-        <ReportsPanel actor={actor} sp={{ report: sp.report, period: sp.period }} />
+        <ReportsPanel actor={actor} sp={{ report: sp.report, period: sp.period, from: sp.from, to: sp.to, status: sp.status, priority: sp.priority, clientId: sp.clientId, projectId: sp.projectId, assigneeId: sp.assigneeId, page: sp.page }} />
       </div>
     );
   }
@@ -91,10 +91,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   if (can(actor, "finance.reports.read")) {
     snapshot = await getFinanceSnapshot(actor, { fromDate: month.fromDate, toDate: month.toDate }).catch(() => null);
   }
+  // Sum EVERY overdue invoice (not just the first page), one currency at a time.
   const overdue = allowed.invoices ? await listInvoices(actor, { status: "overdue", pageSize: 100 }) : null;
   const overdueByCurrency = new Map<string, number>();
-  for (const r of overdue?.rows ?? []) overdueByCurrency.set(r.currency, (overdueByCurrency.get(r.currency) ?? 0) + Number(r.outstanding));
-  const overdueAmounts = [...overdueByCurrency].map(([currency, n]) => ({ currency, amount: n.toFixed(2) }));
+  const addOverdue = (rows: { currency: string; outstanding: string }[]) => {
+    for (const r of rows) overdueByCurrency.set(r.currency, (overdueByCurrency.get(r.currency) ?? 0) + Math.round(Number(r.outstanding) * 100));
+  };
+  addOverdue(overdue?.rows ?? []);
+  if (overdue) {
+    const lastPage = Math.min(Math.ceil(overdue.total / 100), 50);
+    for (let p = 2; p <= lastPage; p += 1) addOverdue((await listInvoices(actor, { status: "overdue", page: p, pageSize: 100 })).rows);
+  }
+  const overdueAmounts = [...overdueByCurrency].map(([currency, n]) => ({ currency, amount: (n / 100).toFixed(2) }));
 
   // Filters and paging apply to the open tab only; the other tabs just need their total for the pill.
   const status = STATUS_OPTIONS[tab].find((x) => x === sp.status);
@@ -166,6 +174,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <div className="flex flex-wrap gap-2">
           {can(actor, "finance.reports.read") ? (
             <Link href="/finance-reports" className={buttonClass("secondary")}>Finance reports</Link>
+          ) : null}
+          {can(actor, "finance.categories.manage") ? (
+            <Link href="/expenses/categories" className={buttonClass("secondary")}>Expense categories</Link>
           ) : null}
           {primary ? (
             <Link href={primary.href} className={buttonClass("primary", "gap-2")}>

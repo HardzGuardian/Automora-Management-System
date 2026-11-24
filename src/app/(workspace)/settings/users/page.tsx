@@ -4,8 +4,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
-import { listRoles, listUsers } from "@/modules/auth";
-import { addRoleAction, removeRoleAction } from "./actions";
+import { listPendingInvitations, listRoles, listUsers } from "@/modules/auth";
+import { addRoleAction, inviteUserAction, reactivateUserAction, removeRoleAction, suspendUserAction } from "./actions";
+import { PendingInvitations } from "./pending-invitations";
 import { parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Users" };
@@ -19,9 +20,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const page = parsePage(sp.page);
   const canManage = can(actor, "roles.manage") && can(actor, "roles.read");
 
-  const [list, allRoles] = await Promise.all([
+  const canInvite = can(actor, "users.invite") && can(actor, "roles.read");
+  const canSuspend = can(actor, "users.suspend");
+  const [pending, list, allRoles] = await Promise.all([
+    canInvite ? listPendingInvitations(actor).catch(() => []) : Promise.resolve([]),
     listUsers(actor, { page, pageSize: PAGE_SIZE, search: q || undefined }),
-    canManage ? listRoles(actor) : Promise.resolve([]),
+    canManage || canInvite ? listRoles(actor) : Promise.resolve([]),
   ]);
   const pages = Math.max(Math.ceil(list.total / list.pageSize), 1);
   const query = (p: number) => new URLSearchParams({ ...(q ? { q } : {}), ...(p > 1 ? { page: String(p) } : {}) }).toString();
@@ -38,6 +42,30 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <p role="alert" className="rounded-md border border-danger bg-surface p-3 text-sm text-danger">
           {sp.error}
         </p>
+      ) : null}
+
+      {canInvite ? (
+        <section aria-label="Invite a user" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
+          <h2 className="m-0 text-base font-semibold">Invite a user</h2>
+          <form action={inviteUserAction} className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs text-muted">
+              Email
+              <input name="email" type="email" required maxLength={254} className={inputClass} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-muted">
+              Role
+              <select name="roleId" required defaultValue="" className={inputClass}>
+                <option value="" disabled>Choose a role</option>
+                {allRoles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className={buttonClass("primary")}>Send invitation</button>
+          </form>
+          <h3 className="m-0 text-sm font-semibold">Pending invitations ({pending.length})</h3>
+          <PendingInvitations rows={pending} returnTo="/settings/users" />
+        </section>
       ) : null}
 
       <form method="get" className="flex max-w-xl gap-2" role="search">
@@ -81,6 +109,30 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   </td>
                   <td className="px-3 py-3">
                     <StatusBadge status={u.banned ? "Suspended" : "Active"} />
+                    {canSuspend && u.employeeId ? (
+                      u.banned ? (
+                        <form action={reactivateUserAction} className="mt-2">
+                          <input type="hidden" name="employeeId" value={u.employeeId} />
+                          <button type="submit" className={buttonClass("secondary", "min-h-9! px-3!")}>Reactivate</button>
+                        </form>
+                      ) : (
+                        <div className="mt-2">
+                          <ConfirmForm
+                            action={suspendUserAction}
+                            label="Suspend"
+                            triggerClassName="min-h-9! px-3!"
+                            title={`Suspend ${u.name}?`}
+                            description="Their account is blocked and all their sessions end immediately. Their history is kept."
+                            confirmLabel="Suspend"
+                            formClassName="flex flex-col gap-2"
+                          >
+                            <input type="hidden" name="employeeId" value={u.employeeId} />
+                            <label className="sr-only" htmlFor={`reason-${u.id}`}>Reason</label>
+                            <input id={`reason-${u.id}`} name="reason" maxLength={300} placeholder="Reason (optional)" className={inputClass} />
+                          </ConfirmForm>
+                        </div>
+                      )
+                    ) : null}
                   </td>
                   <td className="px-3 py-3 text-muted">
                     {u.lastLoginAt ? `${u.lastLoginAt.toISOString().slice(0, 16).replace("T", " ")} UTC` : "Never"}

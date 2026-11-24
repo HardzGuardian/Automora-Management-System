@@ -2,6 +2,8 @@ export {
   acceptInvitation,
   createInvitation,
   getInvitationPreview,
+  listPendingInvitations,
+  type PendingInvitationDTO,
   resendInvitation,
   revokeInvitation,
 } from "./invitations";

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RangeFilter } from "@/components/dashboard/range-filter";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pager } from "@/components/ui/pager";
+import { parsePage } from "@/lib/pagination";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { buttonClass } from "@/components/ui/styles";
 import { cn } from "@/lib/cn";
@@ -12,6 +14,7 @@ import {
   getCashMovementReport,
   getExpenseRegisterReport,
   getFinanceReportSummary,
+  getProjectFinanceOverview,
   getReceivablesReport,
 } from "@/modules/finance";
 import { resolveRange, RANGE_PRESETS, type RangePreset } from "@/modules/reports";
@@ -20,8 +23,9 @@ import { TableShell, tdClass, tdNumClass, thClass, thNumClass } from "../invoice
 export const metadata = { title: "Finance reports" };
 
 type Money = { currency: string; amount: string };
-const NUMERIC_HEADS = new Set(["Total", "Received", "Outstanding", "Paid out", "Net", "Paid"]);
-const TAB_LABEL: Record<string, string> = { receivables: "Receivables", "cash-movement": "Cash movement", "expense-register": "Expense register" };
+const NUMERIC_HEADS = new Set(["Total", "Received", "Outstanding", "Paid out", "Net", "Paid", "Budget", "Invoiced"]);
+const TAB_LABEL: Record<string, string> = { receivables: "Receivables", "cash-movement": "Cash movement", "expense-register": "Expense register", "project-finance": "Projects" };
+const PAGE_SIZE = 50;
 
 /** One line per currency: currencies are never added together. */
 function MoneyLines({ rows }: { rows: Money[] }) {
@@ -49,12 +53,13 @@ function Stat({ label, basis, rows }: { label: string; basis: string; rows: Mone
   );
 }
 
-export default async function FinanceReportsPage({ searchParams }: { searchParams: Promise<{ preset?: string; from?: string; to?: string; tab?: string }> }) {
+export default async function FinanceReportsPage({ searchParams }: { searchParams: Promise<{ preset?: string; from?: string; to?: string; tab?: string; page?: string }> }) {
   const actor = await requireActor();
   if (!can(actor, "finance.reports.read")) notFound();
   const sp = await searchParams;
   const preset: RangePreset = (RANGE_PRESETS as readonly string[]).includes(sp.preset ?? "") ? (sp.preset as RangePreset) : "month";
-  const tab = ["receivables", "cash-movement", "expense-register"].includes(sp.tab ?? "") ? (sp.tab as string) : "receivables";
+  const page = parsePage(sp.page);
+  const tab = ["receivables", "cash-movement", "expense-register", "project-finance"].includes(sp.tab ?? "") ? (sp.tab as string) : "receivables";
 
   let range;
   let rangeError: string | undefined;
@@ -72,21 +77,28 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
   try {
     summary = await getFinanceReportSummary(actor, input);
     if (tab === "receivables") {
-      const r = await getReceivablesReport(actor, { ...input, page: 1, pageSize: 100 });
+      const r = await getReceivablesReport(actor, { ...input, page, pageSize: PAGE_SIZE });
       table = {
         head: ["Invoice", "Client", "Issued", "Due", "Total", "Received", "Outstanding", "Status"],
         total: r.total,
         rows: r.rows.map((x) => [x.invoiceNumber, x.clientName, x.issueDate, x.dueDate, `${x.currency} ${x.total}`, `${x.currency} ${x.confirmedReceipts}`, `${x.currency} ${x.outstanding}`, x.status.replace(/_/g, " ")]),
       };
     } else if (tab === "cash-movement") {
-      const r = await getCashMovementReport(actor, { ...input, page: 1, pageSize: 100 });
+      const r = await getCashMovementReport(actor, { ...input, page, pageSize: PAGE_SIZE });
       table = {
         head: ["Date", "Currency", "Received", "Paid out", "Net"],
         total: r.total,
         rows: r.rows.map((x) => [x.date, x.currency, x.confirmedReceipts, x.confirmedExpensePayments, x.netCashMovement]),
       };
+    } else if (tab === "project-finance") {
+      const r = await getProjectFinanceOverview(actor, { page, pageSize: PAGE_SIZE });
+      table = {
+        head: ["Project", "Status", "Currency", "Budget", "Invoiced", "Received", "Paid out", "Net"],
+        total: r.total,
+        rows: r.rows.map((x) => [`${x.projectCode} ${x.projectName}`, x.status, x.currency, x.budget, x.invoiced, x.confirmedReceipts, x.confirmedExpensePayments, x.netCashMovement]),
+      };
     } else {
-      const r = await getExpenseRegisterReport(actor, { ...input, page: 1, pageSize: 100 });
+      const r = await getExpenseRegisterReport(actor, { ...input, page, pageSize: PAGE_SIZE });
       table = {
         head: ["Code", "Category", "Payee", "Expense date", "Total", "Paid", "Outstanding", "Status"],
         total: r.total,
@@ -98,6 +110,8 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
     else throw e;
   }
 
+  const pageHref = (n: number) => `?${new URLSearchParams({ preset: range.preset, from: range.from, to: range.to, tab, ...(n > 1 ? { page: String(n) } : {}) }).toString()}`;
+  const pages = table ? Math.max(1, Math.ceil(table.total / PAGE_SIZE)) : 1;
   const q = (extra: Record<string, string>) => new URLSearchParams({ preset: range.preset, from: range.from, to: range.to, ...extra }).toString();
   const canExport = can(actor, "finance.reports.export");
   const exportQuery = (format: string) => `/api/exports/finance-${tab}?${new URLSearchParams({ fromDate: range.from, toDate: range.to, format })}`;
@@ -116,10 +130,14 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
               <a href={exportQuery("xlsx")} className={buttonClass("secondary")}>
                 Export XLSX
               </a>
+              <a href={exportQuery("pdf")} className={buttonClass("secondary")}>
+                Export PDF
+              </a>
             </>
           ) : null
         }
       />
+      {tab === "project-finance" ? <p className="m-0 text-xs text-muted">Projects are shown cash-based across their whole life (confirmed receipts less confirmed expense payments); the period above does not apply to this tab.</p> : null}
       <RangeFilter preset={range.preset} from={range.from} to={range.to} error={rangeError} />
 
       {summary ? (
@@ -177,11 +195,12 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
           </tbody>
         </TableShell>
       )}
-      {table && table.total > table.rows.length ? (
+      {table && table.total > 0 ? (
         <p className="text-xs text-muted">
-          Showing the first {table.rows.length} of {table.total} rows.{canExport ? " Export to get every row." : ""}
+          Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + table.rows.length} of {table.total}.{canExport ? " Export to get every row (PDF is limited to the first 2,000 rows)." : ""}
         </p>
       ) : null}
+      <Pager page={page} pages={pages} prevHref={page > 1 ? pageHref(page - 1) : undefined} nextHref={page < pages ? pageHref(page + 1) : undefined} />
     </div>
   );
 }

@@ -58,7 +58,7 @@ describe("schema constraints", () => {
   it("rejects invalid status and priority values", async () => {
     const a = await createCompany();
     await rejects(createTask(a.id, { status: "Blocked" }));
-    await rejects(createTask(a.id, { priority: "Critical" }));
+    await rejects(createTask(a.id, { priority: "Urgent" }));
   });
 
   it("rejects a project owned by an employee of another company", async () => {

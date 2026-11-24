@@ -5,6 +5,7 @@ import {
   financeActionFailure,
   recordReceipt,
   reverseReceipt,
+  voidPendingReceipt,
   type FinanceActionResult,
 } from "@/modules/finance";
 import { getActor } from "@/lib/auth/actor";
@@ -56,6 +57,22 @@ export async function reverseReceiptAction(
   try {
     const actor = await getActor();
     const receipt = await reverseReceipt(actor, {
+      paymentId: text(formData, "paymentId"),
+      reason: text(formData, "reason"),
+    });
+    return { ok: true, data: { id: receipt.id } };
+  } catch (error) {
+    return financeActionFailure(error);
+  }
+}
+
+export async function voidReceiptAction(
+  _previous: FinanceActionResult<{ id: string }> | null,
+  formData: FormData,
+): Promise<FinanceActionResult<{ id: string }>> {
+  try {
+    const actor = await getActor();
+    const receipt = await voidPendingReceipt(actor, {
       paymentId: text(formData, "paymentId"),
       reason: text(formData, "reason"),
     });

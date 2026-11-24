@@ -38,7 +38,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Edit employee</h1>
         <p className="mt-1 text-muted">{e.employeeCode}. Teams are changed from the Team tab.</p>
       </div>
-      <EditEmployeeForm id={id} fullName={e.fullName} workEmail={e.workEmail} phone={e.phone} designation={e.designation} joiningDate={e.joiningDate} />
+      <EditEmployeeForm id={id} fullName={e.fullName} workEmail={e.workEmail} phone={e.phone} designation={e.designation} department={e.department} joiningDate={e.joiningDate} />
       {showStatus ? (
         <section aria-label="Account status" className="flex flex-col gap-3 border-t border-border pt-4">
           <div className="flex items-center gap-2">

@@ -22,7 +22,7 @@ describe("exportReport", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     const body = await text(res);
     const lines = body.replace(/^﻿/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("Code,Title,Status,Priority,Due date,Overdue,Project,Client,Assignees,Completed on");
+    expect(lines[0]).toBe("Code,Title,Status,Priority,Start date,Due date,Overdue,Project,Client,Assignees,Completed on");
     expect(lines).toHaveLength(1 + (await runReport(w.manager, "task-register", {})).total);
     expect(body).toContain('"Beta, with comma"');
   });

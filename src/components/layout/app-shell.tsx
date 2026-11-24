@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { isActive, type NavItem } from "./nav";
@@ -115,11 +115,39 @@ export function AppShell({
       return !c;
     });
 
+  // Focus trap for the mobile drawer: focus moves in when it opens, Tab and Shift+Tab stay inside it,
+  // Escape closes it, and focus returns to whatever opened it.
+  const drawerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const opener = document.activeElement as HTMLElement | null;
+    const root = drawerRef.current;
+    const focusables = () =>
+      Array.from(root?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []).filter((el) => !el.hasAttribute("aria-hidden"));
+    focusables().find((el) => el.getAttribute("aria-label") === "Close menu" && el.tagName === "BUTTON" && el.closest("aside"))?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
   }, [open, setOpen]);
 
   return (
@@ -156,7 +184,7 @@ export function AppShell({
 
       {/* Mobile / tablet drawer */}
       {open ? (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+        <div ref={drawerRef} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-surface p-3">
             <div className="flex min-h-11 items-center justify-between px-2">

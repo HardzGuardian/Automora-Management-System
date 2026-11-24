@@ -38,6 +38,9 @@ import {
   addMemberAction,
   addMilestoneAction,
   addClientItemAction,
+  deleteMilestoneAction,
+  editMilestoneAction,
+  setMemberRoleAction,
   addProjectTaskAction,
   assignProjectTeamAction,
   changeStatusAction,
@@ -214,6 +217,12 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
             </Link>
           );
         })}
+
+        {canDocs && !project.archived ? (
+          <Link href={`/projects/${id}/edit`} className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-[13px] font-medium text-foreground hover:bg-primary-soft">
+            Edit project
+          </Link>
+        ) : null}
 
         {canChangeStatus && menuStatuses.length > 0 ? (
           <details className="relative">
@@ -506,6 +515,10 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                       <option key={e.id} value={e.id}>{e.fullName}</option>
                     ))}
                   </select>
+                  <select name="role" aria-label="Role" defaultValue="member" className="min-h-11 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+                    <option value="member">Member</option>
+                    <option value="viewer">Viewer (read only)</option>
+                  </select>
                   <button type="submit" className={buttonClass("secondary")}>Add member</button>
                 </form>
               ) : null}
@@ -515,9 +528,20 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                     <Avatar name={m.fullName} />
                     <span className="min-w-0 flex-1">
                       <Link href={`/employees/${m.employeeId}`} className="block font-medium hover:text-primary-ink hover:underline">{m.fullName}</Link>
-                      <span className="block text-xs text-muted">{m.membershipRole === "owner" ? "Project owner" : m.viaTeamId ? "Member · via team" : "Member"}</span>
+                      <span className="block text-xs text-muted">{m.membershipRole === "owner" ? "Project owner" : `${m.membershipRole === "viewer" ? "Viewer" : "Member"}${m.viaTeamId ? " · via team" : ""}`}</span>
                     </span>
                     <span className="tabular-nums text-body">{openByPerson.get(m.employeeId) ?? 0} open tasks</span>
+                    {canManageMembers && m.membershipRole !== "owner" ? (
+                      <AutoSubmitSelect
+                        action={setMemberRoleAction}
+                        name="role"
+                        value={m.membershipRole === "viewer" ? "viewer" : "member"}
+                        label={`Role for ${m.fullName}`}
+                        hidden={{ id, employeeId: m.employeeId }}
+                        options={[{ value: "member", label: "Member" }, { value: "viewer", label: "Viewer" }]}
+                        className="w-[110px] border-field bg-surface text-foreground"
+                      />
+                    ) : null}
                     {canManageMembers && m.membershipRole !== "owner" && !m.viaTeamId ? (
                       <ConfirmForm
                         action={removeMemberAction}
@@ -581,7 +605,33 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
                         <span className="block font-medium">{m.name}</span>
                         <span className="block text-xs tabular-nums text-muted">Due {m.dueDate ?? "—"}</span>
                       </span>
-                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", done ? TONE_CLASS.success : TONE_CLASS.warning)}>{done ? "Done" : "Upcoming"}</span>
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", done ? TONE_CLASS.success : m.status === "In Progress" ? TONE_CLASS.info : TONE_CLASS.warning)}>{done ? "Done" : m.status === "In Progress" ? "In progress" : "Upcoming"}</span>
+                      {canMilestones ? (
+                        <details className="relative">
+                          <summary className="cursor-pointer list-none rounded-md px-2 py-1 text-xs font-medium text-primary-ink hover:bg-primary-soft">Edit</summary>
+                          <div className="absolute right-0 top-8 z-20 w-72 rounded-lg border border-border bg-surface p-3 shadow-lg">
+                            <form action={editMilestoneAction} className="flex flex-col gap-2">
+                              <input type="hidden" name="id" value={id} />
+                              <input type="hidden" name="milestoneId" value={m.id} />
+                              <label className="flex flex-col gap-1 text-xs text-muted">Name<input name="name" defaultValue={m.name} required className={inputClass} /></label>
+                              <label className="flex flex-col gap-1 text-xs text-muted">Due date<input name="dueDate" type="date" defaultValue={m.dueDate ?? ""} className={inputClass} /></label>
+                              <label className="flex flex-col gap-1 text-xs text-muted">Status
+                                <select name="status" defaultValue={m.status} className={inputClass}>
+                                  <option value="Pending">Pending</option>
+                                  <option value="In Progress">In progress</option>
+                                  <option value="Completed">Completed</option>
+                                </select>
+                              </label>
+                              <button type="submit" className={buttonClass("primary")}>Save milestone</button>
+                            </form>
+                            <form action={deleteMilestoneAction} className="mt-2 border-t border-border pt-2">
+                              <input type="hidden" name="id" value={id} />
+                              <input type="hidden" name="milestoneId" value={m.id} />
+                              <button type="submit" className="min-h-9 text-xs font-medium text-danger hover:underline">Delete milestone</button>
+                            </form>
+                          </div>
+                        </details>
+                      ) : null}
                     </li>
                   );
                 })}

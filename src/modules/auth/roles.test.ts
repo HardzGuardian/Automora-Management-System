@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { activityLogs, permissions, rolePermissions, roles, userRoles } from "@/db/schema";
+import { activityLogs, permissions, rolePermissions, roles, user, userRoles } from "@/db/schema";
 import { ALL_PERMISSION_KEYS } from "@/lib/permissions";
 import { loadActor } from "@/lib/auth/load-actor";
 import { createCompany, createUser, grantPermissions, buildActor } from "@/test/factories";
@@ -111,6 +111,20 @@ describe("roles", () => {
     const sa2 = await createUser(a.company.id);
     await assignRole(a.actor, sa2.id, sys.id);
     await expect(removeRole(a.actor, sa.id, sys.id)).resolves.toBeUndefined();
+  });
+});
+
+describe("last Super Admin", () => {
+  it("does not count a suspended Super Admin as a remaining one", async () => {
+    const a = await admin(["roles.read", "roles.manage", ...ALL_PERMISSION_KEYS]);
+    const [sys] = await db.insert(roles).values({ companyId: a.company.id, name: "Super Admin", isSystem: true }).returning();
+    const active = await createUser(a.company.id);
+    const suspended = await createUser(a.company.id);
+    await assignRole(a.actor, active.id, sys.id);
+    await assignRole(a.actor, suspended.id, sys.id);
+    await db.update(user).set({ banned: true }).where(eq(user.id, suspended.id));
+    // the only ACTIVE Super Admin must stay, even though two people hold the role
+    await expect(removeRole(a.actor, active.id, sys.id)).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });
 

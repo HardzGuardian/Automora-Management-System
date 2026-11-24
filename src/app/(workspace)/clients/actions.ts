@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
-import { addClientNote, archiveClient, createClient, unarchiveClient, updateClient } from "@/modules/clients";
+import { addClientNote, archiveClient, createClient, deleteClientNote, editClientNote, unarchiveClient, updateClient } from "@/modules/clients";
+import { flashed } from "@/lib/flash";
 
 export type ClientFormState = { error?: string; fieldErrors?: Record<string, string[]>; saved?: boolean };
 
@@ -19,6 +20,7 @@ function clientFields(fd: FormData) {
     phone: str(fd.get("phone")),
     address: str(fd.get("address")),
     serviceType: str(fd.get("serviceType")),
+    ...(fd.get("status") ? { status: str(fd.get("status")) as "Active" | "Inactive" } : {}),
   };
 }
 
@@ -42,14 +44,28 @@ export async function updateClientAction(_prev: ClientFormState, fd: FormData): 
 export async function archiveClientAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = z.string().uuid().parse(fd.get("id"));
-  await toActionResult(() => (fd.get("undo") ? unarchiveClient(actor, id) : archiveClient(actor, id)));
+  await flashed(() => (fd.get("undo") ? unarchiveClient(actor, id) : archiveClient(actor, id)));
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
+}
+
+export async function editNoteAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = z.string().uuid().parse(fd.get("id"));
+  await flashed(() => editClientNote(actor, id, z.string().uuid().parse(fd.get("noteId")), str(fd.get("note"))), "Note saved.");
+  revalidatePath(`/clients/${id}`);
+}
+
+export async function deleteNoteAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = z.string().uuid().parse(fd.get("id"));
+  await flashed(() => deleteClientNote(actor, id, z.string().uuid().parse(fd.get("noteId"))), "Note deleted.");
+  revalidatePath(`/clients/${id}`);
 }
 
 export async function addNoteAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = z.string().uuid().parse(fd.get("id"));
-  await toActionResult(() => addClientNote(actor, id, str(fd.get("note"))));
+  await flashed(() => addClientNote(actor, id, str(fd.get("note"))));
   revalidatePath(`/clients/${id}`);
 }

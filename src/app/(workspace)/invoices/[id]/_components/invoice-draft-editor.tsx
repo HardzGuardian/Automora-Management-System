@@ -94,7 +94,9 @@ export function InvoiceDraftEditor({
   dueDate,
   items,
   projects,
+  clients = [],
 }: {
+  clients?: { id: string; name: string }[];
   invoiceId: string;
   clientId: string;
   projectId: string | null;
@@ -111,7 +113,19 @@ export function InvoiceDraftEditor({
     <Section title="Edit draft" description="Changes apply to the draft only. Issuing locks the lines.">
       <form action={metadataAction} className="flex max-w-xl flex-col gap-3">
         <input type="hidden" name="invoiceId" value={invoiceId} />
-        <input type="hidden" name="clientId" value={clientId} />
+        {clients.length > 0 ? (
+          <Field id="draft-clientId" label="Client">
+            <select id="draft-clientId" name="clientId" defaultValue={clientId} className={inputClass}>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          <input type="hidden" name="clientId" value={clientId} />
+        )}
         <ProjectSelect id="draft-projectId" projects={projects} defaultValue={projectId} />
         <Field id="draft-dueDate" label="Due date">
           <input id="draft-dueDate" name="dueDate" type="date" defaultValue={dueDate ?? ""} className={inputClass} />

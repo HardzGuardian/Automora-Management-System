@@ -12,7 +12,7 @@ import { resolveRange, type RangePreset, type ResolvedRange } from "./range";
 
 export type Audience = "company" | "operational" | "personal";
 export const TASK_STATUS_ORDER = ["Pending", "In Progress", "In Review", "Completed"] as const;
-export const PRIORITY_ORDER = ["High", "Medium", "Low"] as const;
+export const PRIORITY_ORDER = ["Critical", "High", "Medium", "Low"] as const;
 
 export type DeadlineRow = { id: string; taskCode: string; title: string; status: string; priority: string; dueDate: string; href: string; projectName: string | null };
 export type ActiveProjectRow = { id: string; name: string; percent: number; openTasks: number; dueDate: string | null; href: string };

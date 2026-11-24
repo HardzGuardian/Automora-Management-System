@@ -50,6 +50,7 @@ export async function updateEmployeeAction(_prev: EditEmployeeState, formData: F
       workEmail: raw.workEmail ?? "",
       phone: raw.phone ?? null,
       designation: raw.designation ?? null,
+      department: raw.department ?? null,
       joiningDate: raw.joiningDate ? raw.joiningDate : null,
     }),
   );

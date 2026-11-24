@@ -14,8 +14,8 @@ export const financeReportRangeSchema = z.object({
 });
 
 export const financeExportRequestSchema = z.object({
-  report: z.enum(["receivables", "expense-register", "cash-movement", "summary"]),
-  format: z.enum(["csv", "xlsx"]),
+  report: z.enum(["receivables", "expense-register", "cash-movement", "summary", "project-finance"]),
+  format: z.enum(["csv", "xlsx", "pdf"]),
   fromDate: z.string(),
   toDate: z.string(),
 });

@@ -6,6 +6,7 @@ import { CODE_KINDS, codeSequences, companies, companySettings, expenses, invoic
 import type { Actor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
+import { loadNumberingConfig, numberingKey, numberingSchema } from "@/lib/codes";
 import { audit } from "@/modules/audit";
 
 export type CompanyProfile = {
@@ -79,7 +80,7 @@ export async function updateCompanyProfile(actor: Actor, input: CompanyProfileIn
 
 // ---- Preferences: a small, typed set. Unknown keys are rejected, never stored. ----
 const PREFS = {
-  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High"]), fallback: "Medium" as string | number | boolean },
+  "tasks.defaultPriority": { schema: z.enum(["Low", "Medium", "High", "Critical"]), fallback: "Medium" as string | number | boolean },
   "invoices.defaultDueDays": { schema: z.number().int().min(0).max(365), fallback: 30 as string | number | boolean },
   "finance.requireSecondConfirmer": { schema: z.boolean(), fallback: false as string | number | boolean },
 } as const;
@@ -157,13 +158,36 @@ export async function updatePreferences(actor: Actor, input: Record<string, unkn
 // ---- Numbering (display only; sequences are allocated atomically by lib/codes) ----
 const LABELS: Record<(typeof CODE_KINDS)[number], string> = { TSK: "Tasks", PRJ: "Projects", CLI: "Clients", EMP: "Employees", INV: "Invoices", EXP: "Expenses" };
 
-export async function getNumbering(actor: Actor): Promise<{ kind: string; label: string; next: string }[]> {
+export type NumberingRow = { kind: (typeof CODE_KINDS)[number]; label: string; next: string; prefix: string; padding: number };
+
+export async function getNumbering(actor: Actor): Promise<NumberingRow[]> {
   requirePermission(actor, "settings.read");
   const rows = await db.select().from(codeSequences).where(and(eq(codeSequences.companyId, actor.companyId)));
   const next = new Map(rows.map((r) => [r.kind, r.nextValue]));
   const year = new Date().getUTCFullYear(); // invoices carry the issue year, e.g. INV-2026-000001
-  return CODE_KINDS.map((kind) => {
-    const n = String(next.get(kind) ?? 1).padStart(6, "0");
-    return { kind, label: LABELS[kind], next: kind === "INV" ? `INV-${year}-${n}` : `${kind}-${n}` };
+  return Promise.all(
+    CODE_KINDS.map(async (kind) => {
+      const cfg = await loadNumberingConfig(db, actor.companyId, kind);
+      const n = String(next.get(kind) ?? 1).padStart(cfg.padding, "0");
+      return { kind, label: LABELS[kind], next: kind === "INV" ? `${cfg.prefix}-${year}-${n}` : `${cfg.prefix}-${n}`, prefix: cfg.prefix, padding: cfg.padding };
+    }),
+  );
+}
+
+/** Changes the letters and digit count used for FUTURE numbers of one kind. Numbers already issued never change. */
+export async function updateNumbering(actor: Actor, kind: string, input: { prefix: string; padding: number }): Promise<NumberingRow[]> {
+  requirePermission(actor, "settings.manage");
+  if (!(CODE_KINDS as readonly string[]).includes(kind)) throw new DomainError("VALIDATION", "Unknown number type");
+  const parsed = numberingSchema.safeParse(input);
+  if (!parsed.success) throw new DomainError("VALIDATION", parsed.error.issues[0]?.message ?? "Invalid numbering");
+  const k = kind as (typeof CODE_KINDS)[number];
+  const before = await loadNumberingConfig(db, actor.companyId, k);
+  await withTransaction(async (tx) => {
+    await tx
+      .insert(companySettings)
+      .values({ companyId: actor.companyId, settingKey: numberingKey(k), settingValueJson: parsed.data })
+      .onConflictDoUpdate({ target: [companySettings.companyId, companySettings.settingKey], set: { settingValueJson: parsed.data } });
+    await audit.record(tx, { actor, entity: "company", entityId: actor.companyId, action: "settings.numbering_updated", before: { kind: k, ...before }, after: { kind: k, ...parsed.data } });
   });
+  return getNumbering(actor);
 }

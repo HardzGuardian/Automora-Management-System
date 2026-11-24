@@ -168,6 +168,35 @@ export async function addClientNote(actor: Actor, clientId: string, note: string
   });
 }
 
+export async function editClientNote(actor: Actor, clientId: string, noteId: string, note: string): Promise<ClientNoteDTO> {
+  requirePermission(actor, "clients.update");
+  const text = noteSchema.parse(note);
+  return withTransaction(async (tx) => {
+    await loadClient(tx, actor, clientId);
+    const [row] = await tx
+      .update(clientNotes)
+      .set({ note: text })
+      .where(and(eq(clientNotes.id, noteId), eq(clientNotes.clientId, clientId), eq(clientNotes.companyId, actor.companyId)))
+      .returning();
+    if (!row) throw new DomainError("NOT_FOUND", "Note not found");
+    await audit.record(tx, { actor, entity: "client", entityId: clientId, action: "client.note_edited" });
+    return toNoteDTO(row);
+  });
+}
+
+export async function deleteClientNote(actor: Actor, clientId: string, noteId: string): Promise<void> {
+  requirePermission(actor, "clients.update");
+  await withTransaction(async (tx) => {
+    await loadClient(tx, actor, clientId);
+    const removed = await tx
+      .delete(clientNotes)
+      .where(and(eq(clientNotes.id, noteId), eq(clientNotes.clientId, clientId), eq(clientNotes.companyId, actor.companyId)))
+      .returning({ id: clientNotes.id });
+    if (removed.length === 0) throw new DomainError("NOT_FOUND", "Note not found");
+    await audit.record(tx, { actor, entity: "client", entityId: clientId, action: "client.note_deleted" });
+  });
+}
+
 export async function listClientNotes(actor: Actor, clientId: string): Promise<ClientNoteDTO[]> {
   requirePermission(actor, "clients.read");
   await loadClient(db, actor, clientId);

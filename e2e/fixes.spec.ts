@@ -9,7 +9,7 @@ test("employee: no controls that would only fail, and clean no-access pages for 
   // Only their own tasks are listed, with a personal heading and no "All" view.
   await expect(page.getByRole("row", { name: /Set up hosting/ })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Filter tasks" }).getByRole("link", { name: /^All/ })).toHaveCount(0);
-  await expect(page.getByText("Tasks that are just yours")).toBeVisible();
+  await expect(page.getByText("Your tasks across all projects.")).toBeVisible();
   // Their own task: a status menu that stops at In Review, and no done tick.
   const own = page.getByLabel("Status for Renew office licence");
   await expect(own).toBeVisible();

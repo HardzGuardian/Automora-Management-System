@@ -2,13 +2,15 @@ import "server-only";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { TASK_PRIORITIES, TASK_STATUSES, clients, employees, projects, taskAssignees, tasks } from "@/db/schema";
+import { TASK_PRIORITIES, TASK_STATUSES, clients, employees, invoices, paymentAllocations, payments, projectMembers, projects, taskAssignees, tasks, teams, projectTeams } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { overdueCondition } from "@/lib/dates";
 import { DomainError } from "@/lib/errors";
 import type { ExportColumn } from "@/lib/export";
 import { can, taskScope } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
+import { fromMinor, toMinor } from "@/lib/money";
+import { getProjectFinanceSummary } from "@/modules/finance";
 import { listProjects, getProgressForProjects } from "@/modules/projects";
 import { listTasks } from "@/modules/tasks";
 import { RANGE_PRESETS, resolveRange } from "./range";
@@ -42,6 +44,7 @@ const DEFS: Def[] = [
       { key: "title", label: "Title" },
       { key: "status", label: "Status" },
       { key: "priority", label: "Priority" },
+      { key: "startDate", label: "Start date" },
       { key: "dueDate", label: "Due date" },
       { key: "overdue", label: "Overdue" },
       { key: "project", label: "Project" },
@@ -58,6 +61,7 @@ const DEFS: Def[] = [
     columns: [
       { key: "employeeCode", label: "Code" },
       { key: "employee", label: "Employee" },
+      { key: "projects", label: "Projects" },
       { key: "open", label: "Open", type: "number" },
       { key: "inProgress", label: "In progress", type: "number" },
       { key: "overdue", label: "Overdue", type: "number" },
@@ -76,6 +80,9 @@ const DEFS: Def[] = [
       { key: "status", label: "Status" },
       { key: "client", label: "Client" },
       { key: "owner", label: "Owner" },
+      { key: "team", label: "Team" },
+      { key: "budget", label: "Budget" },
+      { key: "cash", label: "Cash (received less paid)" },
       { key: "startDate", label: "Start" },
       { key: "dueDate", label: "Due" },
       { key: "progress", label: "Progress" },
@@ -95,6 +102,9 @@ const DEFS: Def[] = [
       { key: "contact", label: "Contact" },
       { key: "projects", label: "Projects", type: "number" },
       { key: "openTasks", label: "Open tasks", type: "number" },
+      { key: "invoiced", label: "Invoiced" },
+      { key: "received", label: "Received" },
+      { key: "outstanding", label: "Outstanding" },
     ],
     allowed: (a) => (wide(a) || limited(a)) && can(a, "clients.read"),
   },
@@ -156,6 +166,7 @@ async function taskRegister(actor: Actor, f: z.output<typeof reportFiltersSchema
       title: t.title,
       status: t.status,
       priority: t.priority,
+      startDate: t.startDate,
       dueDate: t.dueDate,
       overdue: isOverdue({ dueDate: t.dueDate, status: t.status, archivedAt: t.archived ? new Date() : null }, today) ? "Yes" : "No",
       project: t.projectId ? (projectNames.get(t.projectId) ?? "") : "",
@@ -188,9 +199,20 @@ async function employeeWorkload(actor: Actor, f: z.output<typeof reportFiltersSc
     .orderBy(asc(employees.fullName), asc(employees.id))
     .limit(f.pageSize)
     .offset((f.page - 1) * f.pageSize);
+  const memberships = rows.length
+    ? await db
+        .select({ code: employees.employeeCode, project: projects.name })
+        .from(projectMembers)
+        .innerJoin(employees, and(eq(employees.id, projectMembers.employeeId), eq(employees.companyId, projectMembers.companyId)))
+        .innerJoin(projects, and(eq(projects.id, projectMembers.projectId), eq(projects.companyId, projectMembers.companyId)))
+        .where(and(eq(projectMembers.companyId, actor.companyId), inArray(employees.employeeCode, rows.map((r) => r.code)), isNull(projects.archivedAt)))
+        .orderBy(asc(projects.name))
+    : [];
+  const byCode = new Map<string, string[]>();
+  for (const m of memberships) byCode.set(m.code, [...(byCode.get(m.code) ?? []), m.project]);
   return {
     total,
-    rows: rows.map((r) => ({ employeeCode: r.code, employee: r.name, open: r.open, inProgress: r.inProgress, overdue: r.overdue, completed: r.completed })),
+    rows: rows.map((r) => ({ employeeCode: r.code, employee: r.name, projects: (byCode.get(r.code) ?? []).join("; "), open: r.open, inProgress: r.inProgress, overdue: r.overdue, completed: r.completed })),
   };
 }
 
@@ -200,7 +222,8 @@ async function projectStatus(actor: Actor, f: z.output<typeof reportFiltersSchem
   const ids = rows.map((p) => p.id);
   const { todayInTz } = await import("@/lib/dates");
   const today = todayInTz(actor.timezone);
-  const [progress, taskCounts, owners, clientRows] = await Promise.all([
+  const showMoney = can(actor, "finance.invoices.read") && can(actor, "finance.expenses.read");
+  const [progress, taskCounts, owners, clientRows, teamRows, memberCounts, cashRows] = await Promise.all([
     getProgressForProjects(actor, ids),
     db
       .select({
@@ -215,7 +238,26 @@ async function projectStatus(actor: Actor, f: z.output<typeof reportFiltersSchem
     can(actor, "clients.read")
       ? db.select({ id: clients.id, name: clients.name }).from(clients).where(and(inArray(clients.id, rows.flatMap((p) => (p.clientId ? [p.clientId] : []))), eq(clients.companyId, actor.companyId)))
       : Promise.resolve([] as { id: string; name: string }[]),
+    db
+      .select({ projectId: projectTeams.projectId, team: teams.name })
+      .from(projectTeams)
+      .innerJoin(teams, and(eq(teams.id, projectTeams.teamId), eq(teams.companyId, projectTeams.companyId)))
+      .where(and(inArray(projectTeams.projectId, ids), eq(projectTeams.companyId, actor.companyId)))
+      .orderBy(asc(teams.name)),
+    db
+      .select({ projectId: projectMembers.projectId, n: count() })
+      .from(projectMembers)
+      .where(and(inArray(projectMembers.projectId, ids), eq(projectMembers.companyId, actor.companyId)))
+      .groupBy(projectMembers.projectId),
+    showMoney ? Promise.all(ids.map((id) => getProjectFinanceSummary(actor, id).catch(() => null))) : Promise.resolve([]),
   ]);
+  const teamNames = new Map<string, string[]>();
+  for (const t of teamRows) teamNames.set(t.projectId, [...(teamNames.get(t.projectId) ?? []), t.team]);
+  const memberCount = new Map(memberCounts.map((m) => [m.projectId, m.n]));
+  const cashText = new Map<string, string>();
+  for (const c of cashRows) {
+    if (c) cashText.set(c.projectId, c.currencies.map((x) => `${x.currency} ${x.netCashMovement}`).join("; "));
+  }
   const counts = new Map(taskCounts.map((c) => [c.projectId, c]));
   const ownerName = new Map(owners.map((o) => [o.id, o.name]));
   const clientName = new Map(clientRows.map((c) => [c.id, c.name]));
@@ -228,6 +270,9 @@ async function projectStatus(actor: Actor, f: z.output<typeof reportFiltersSchem
       status: p.status,
       client: p.clientId ? (clientName.get(p.clientId) ?? "") : "",
       owner: ownerName.get(p.ownerEmployeeId) ?? "",
+      team: `${(teamNames.get(p.id) ?? []).join(", ") || "No team"} (${memberCount.get(p.id) ?? 0} people)`,
+      budget: p.budgetAmount ? `${p.currency} ${p.budgetAmount}` : null,
+      cash: showMoney ? (cashText.get(p.id) ?? "—") : null,
       startDate: p.startDate,
       dueDate: p.dueDate,
       progress: `${progress.get(p.id)?.percent ?? 0}%`,
@@ -241,14 +286,42 @@ async function clientSummary(actor: Actor, f: z.output<typeof reportFiltersSchem
   const { rows, total } = await listClients(actor, { page: f.page, pageSize: f.pageSize });
   if (rows.length === 0) return { rows: [], total };
   const ids = rows.map((c) => c.id);
-  const [projectCounts, taskCounts] = await Promise.all([
+  const showMoney = can(actor, "finance.invoices.read");
+  const [projectCounts, taskCounts, invoicedRows, receivedRows] = await Promise.all([
     db.select({ clientId: projects.clientId, n: count() }).from(projects).where(and(inArray(projects.clientId, ids), isNull(projects.archivedAt), eq(projects.companyId, actor.companyId))).groupBy(projects.clientId),
     db
       .select({ clientId: tasks.clientId, n: count() })
       .from(tasks)
       .where(and(inArray(tasks.clientId, ids), isNull(tasks.archivedAt), sql`${tasks.status} <> 'Completed'`, taskScope(actor)))
       .groupBy(tasks.clientId),
+    showMoney
+      ? db
+          .select({ clientId: invoices.clientId, currency: invoices.currency, amount: sql<string>`COALESCE(SUM(${invoices.total}::numeric), 0)::numeric` })
+          .from(invoices)
+          .where(and(inArray(invoices.clientId, ids), eq(invoices.companyId, actor.companyId), eq(invoices.status, "issued")))
+          .groupBy(invoices.clientId, invoices.currency)
+      : Promise.resolve([] as { clientId: string; currency: string; amount: string }[]),
+    showMoney
+      ? db
+          .select({ clientId: invoices.clientId, currency: invoices.currency, amount: sql<string>`COALESCE(SUM(${paymentAllocations.amount}::numeric), 0)::numeric` })
+          .from(paymentAllocations)
+          .innerJoin(payments, and(eq(payments.id, paymentAllocations.paymentId), eq(payments.companyId, paymentAllocations.companyId), eq(payments.status, "confirmed"), isNull(payments.reversedAt)))
+          .innerJoin(invoices, and(eq(invoices.id, paymentAllocations.invoiceId), eq(invoices.companyId, paymentAllocations.companyId)))
+          .where(and(inArray(invoices.clientId, ids), eq(paymentAllocations.companyId, actor.companyId)))
+          .groupBy(invoices.clientId, invoices.currency)
+      : Promise.resolve([] as { clientId: string; currency: string; amount: string }[]),
   ]);
+  const money = (rows: { clientId: string; currency: string; amount: string }[], clientId: string) =>
+    rows.filter((r) => r.clientId === clientId).map((r) => `${r.currency} ${fromMinor(toMinor(r.amount))}`).join("; ") || "—";
+  const outstandingText = (clientId: string) => {
+    const cur = new Set([...invoicedRows, ...receivedRows].filter((r) => r.clientId === clientId).map((r) => r.currency));
+    const parts = [...cur].sort().map((c) => {
+      const inv = toMinor(invoicedRows.find((r) => r.clientId === clientId && r.currency === c)?.amount ?? "0");
+      const rec = toMinor(receivedRows.find((r) => r.clientId === clientId && r.currency === c)?.amount ?? "0");
+      return `${c} ${fromMinor(Math.max(inv - rec, 0))}`;
+    });
+    return parts.join("; ") || "—";
+  };
   const pc = new Map(projectCounts.map((r) => [r.clientId, r.n]));
   const tc = new Map(taskCounts.map((r) => [r.clientId, r.n]));
   return {
@@ -260,6 +333,9 @@ async function clientSummary(actor: Actor, f: z.output<typeof reportFiltersSchem
       contact: c.contactPerson,
       projects: pc.get(c.id) ?? 0,
       openTasks: tc.get(c.id) ?? 0,
+      invoiced: showMoney ? money(invoicedRows, c.id) : null,
+      received: showMoney ? money(receivedRows, c.id) : null,
+      outstanding: showMoney ? outstandingText(c.id) : null,
     })),
   };
 }

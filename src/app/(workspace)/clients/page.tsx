@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Pager } from "@/components/ui/pager";
 import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
@@ -10,20 +11,25 @@ import { projectsOverview, type ProjectOverviewRow } from "@/modules/projects";
 export const metadata = { title: "Clients" };
 
 /** A client reads as Active while any project runs, then On hold, then Completed (design). */
-function clientStatus(projects: ProjectOverviewRow[], own: string): string {
+function clientStatus(projects: ProjectOverviewRow[], own: string, archived: boolean): string {
+  if (archived) return "Archived"; // an archived client never reads as Active, whatever its projects do
   if (projects.length === 0) return own;
   if (projects.some((p) => p.status === "Active" || p.status === "Planning")) return "Active";
   if (projects.some((p) => p.status === "On Hold")) return "On Hold";
   return "Completed";
 }
 
-export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string }> }) {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string; page?: string }> }) {
   const actor = await requireActor();
   if (!can(actor, "clients.read")) {
     return <p className="rounded-lg border border-border bg-surface p-5 text-muted">You do not have access to clients.</p>;
   }
   const sp = await searchParams;
-  const [{ rows: clients }, projects] = await Promise.all([listClients(actor, { page: 1, pageSize: 100, search: sp.q, includeArchived: sp.archived === "1" }), projectsOverview(actor)]);
+  const PAGE_SIZE = 25;
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const [{ rows: clients, total }, projects] = await Promise.all([listClients(actor, { page, pageSize: PAGE_SIZE, search: sp.q, includeArchived: sp.archived === "1" }), projectsOverview(actor)]);
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageHref = (n: number) => `/clients?${new URLSearchParams({ ...(sp.q ? { q: sp.q } : {}), ...(sp.archived === "1" ? { archived: "1" } : {}), page: String(n) }).toString()}`;
   const byClient = new Map<string, ProjectOverviewRow[]>();
   for (const p of projects) if (p.clientId) byClient.set(p.clientId, [...(byClient.get(p.clientId) ?? []), p]);
 
@@ -65,7 +71,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <ul className="m-0 list-none p-0">
             {clients.map((c, i) => {
               const list = byClient.get(c.id) ?? [];
-              const status = clientStatus(list, c.archived ? "Archived" : c.status);
+              const status = clientStatus(list, c.status, c.archived);
               return (
                 <li key={c.id} className="border-t border-border first:border-t-0">
                   <details open={i === 0 && clients.length > 1 ? true : undefined} className="group">
@@ -99,7 +105,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                           ))}
                         </ul>
                       )}
-                      <Link href={`/clients/${c.id}`} className="mt-3 inline-flex min-h-8 items-center text-[13px] font-medium text-primary-ink hover:text-primary-hover">
+                      <Link href={`/clients/${c.id}`} className={buttonClass("secondary", "mt-3")}>
                         Client details and notes
                       </Link>
                     </div>
@@ -110,6 +116,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           </ul>
         )}
       </section>
+      <Pager page={page} pages={pages} prevHref={page > 1 ? pageHref(page - 1) : undefined} nextHref={page < pages ? pageHref(page + 1) : undefined} />
     </div>
   );
 }

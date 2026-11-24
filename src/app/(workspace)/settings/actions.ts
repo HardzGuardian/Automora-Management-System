@@ -6,7 +6,8 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
 import { ALL_PERMISSION_KEYS, type PermissionKey } from "@/lib/permissions";
 import { createRole, setRolePermissions } from "@/modules/auth";
-import { updateCompanyProfile, updatePreferences } from "@/modules/settings";
+import { updateCompanyProfile, updateNumbering, updatePreferences } from "@/modules/settings";
+import { flashed } from "@/lib/flash";
 
 export type SettingsState = { error?: string; fieldErrors?: Record<string, string[]>; saved?: boolean };
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
@@ -44,17 +45,26 @@ export async function savePreferencesAction(_prev: SettingsState, fd: FormData):
   return { saved: true };
 }
 
+export async function saveNumberingAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  await flashed(
+    () => updateNumbering(actor, str(fd.get("kind")), { prefix: str(fd.get("prefix")), padding: Number(str(fd.get("padding"))) }),
+    "Numbering saved. It applies to new records only.",
+  );
+  revalidatePath("/settings/numbering");
+}
+
 export async function savePermissionsAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const roleId = z.string().uuid().parse(fd.get("roleId"));
   const known = new Set<string>(ALL_PERMISSION_KEYS);
   const keys = fd.getAll("permissions").map(String).filter((k) => known.has(k)) as PermissionKey[];
-  await toActionResult(() => setRolePermissions(actor, roleId, keys));
+  await flashed(() => setRolePermissions(actor, roleId, keys));
   revalidatePath("/settings/roles");
 }
 
 export async function createRoleAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
-  await toActionResult(() => createRole(actor, { name: str(fd.get("name")), description: str(fd.get("description")) || undefined }));
+  await flashed(() => createRole(actor, { name: str(fd.get("name")), description: str(fd.get("description")) || undefined }));
   revalidatePath("/settings/roles");
 }

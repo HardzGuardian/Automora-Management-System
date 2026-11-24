@@ -5,7 +5,7 @@ import type { Actor } from "@/lib/auth/actor";
 import { DomainError, type ErrorCode } from "@/lib/errors";
 import { requirePermission } from "@/lib/permissions";
 import { audit } from "@/modules/audit";
-import { reassignTask } from "./assignees";
+import { assignTask, reassignTask } from "./assignees";
 import { statusSchema } from "./schemas";
 import { archiveTask } from "./service";
 import { changeTaskStatus } from "./status";
@@ -79,5 +79,15 @@ export async function bulkArchive(actor: Actor, taskIds: string[]): Promise<Bulk
   requirePermission(actor, "tasks.bulk");
   const r = await runEach(actor, taskIds, (id) => archiveTask(actor, id));
   await auditBulk(actor, "tasks.bulk_archive", {}, r);
+  return r;
+}
+
+/** Adds one more assignee to every selected task (tasks keep their current assignees). */
+export async function bulkAssign(actor: Actor, taskIds: string[], employeeId: string): Promise<BulkResult> {
+  requirePermission(actor, "tasks.bulk");
+  requirePermission(actor, "tasks.assign");
+  const to = z.string().uuid().parse(employeeId);
+  const r = await runEach(actor, taskIds, (id) => assignTask(actor, id, [to]));
+  await auditBulk(actor, "tasks.bulk_assign", { employeeId: to }, r);
   return r;
 }

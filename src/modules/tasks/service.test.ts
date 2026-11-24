@@ -62,7 +62,7 @@ describe("createTask", () => {
     await expect(createTask(w.manager, { title: "x", startDate: "2026-02-01", dueDate: "2026-01-01" })).rejects.toThrow();
     await expect(createTask(w.manager, { title: "x", estimatedHours: "-1" })).rejects.toThrow();
     await expect(createTask(w.manager, { title: "x", estimatedHours: "1.234" })).rejects.toThrow();
-    await expect(createTask(w.manager, { title: "x", priority: "Critical" as never })).rejects.toThrow();
+    await expect(createTask(w.manager, { title: "x", priority: "Urgent" as never })).rejects.toThrow();
     expect((await createTask(w.manager, { title: "ok", estimatedHours: "12.5", priority: "High" })).estimatedHours).toBe("12.50");
   });
 

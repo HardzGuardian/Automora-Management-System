@@ -18,7 +18,7 @@ import { getClientFinanceSummary, type ClientFinanceSummary } from "@/modules/fi
 import { listProjects } from "@/modules/projects";
 import { LinkedRecords } from "../../_components/linked-records";
 import { loadLinkedFinance, loadLinkedTasks } from "../../_components/linked-data";
-import { addNoteAction, archiveClientAction } from "../actions";
+import { addNoteAction, archiveClientAction, deleteNoteAction, editNoteAction } from "../actions";
 import { ClientForm } from "../client-form";
 
 export const metadata = { title: "Client" };
@@ -150,6 +150,20 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   <li key={n.id} className="rounded-md bg-background p-3">
                     <p className="whitespace-pre-wrap">{n.note}</p>
                     <p className="mt-2 text-xs text-muted">{formatDateTime(n.createdAt, tz)}</p>
+                    {canUpdate ? (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs font-medium text-primary-ink">Edit or delete</summary>
+                        <form action={editNoteAction} className="mt-2 flex flex-col gap-2">
+                          <input type="hidden" name="id" value={id} />
+                          <input type="hidden" name="noteId" value={n.id} />
+                          <textarea name="note" required rows={3} defaultValue={n.note} aria-label="Note text" className={inputClass} />
+                          <div className="flex items-center gap-3">
+                            <button type="submit" className={buttonClass("secondary")}>Save note</button>
+                            <button type="submit" formAction={deleteNoteAction} formNoValidate className="text-xs font-medium text-danger hover:underline">Delete note</button>
+                          </div>
+                        </form>
+                      </details>
+                    ) : null}
                   </li>
                 ))}
               </ul>

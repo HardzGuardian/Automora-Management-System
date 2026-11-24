@@ -8,6 +8,7 @@ import { getReceivablesReport } from "./receivables";
 import { getExpenseRegisterReport } from "./expense-register";
 import { getCashMovementReport } from "./cash-movement";
 import { getFinanceReportSummary } from "./summary";
+import { getProjectFinanceOverview } from "./projects-overview";
 import { iterateReportPages } from "./export-pagination";
 import { financeExportRequestSchema, financeReportRangeSchema, type FinanceExportRequest } from "./schemas";
 
@@ -19,6 +20,8 @@ export type FinanceExportAdapter = {
   toCsv(rows: AsyncIterable<FinanceExportRecord>): AsyncIterable<Uint8Array>;
   /** Must encode strings as text and emit XLSX chunks without buffering all report rows. */
   toXlsx(rows: AsyncIterable<FinanceExportRecord>): AsyncIterable<Uint8Array>;
+  /** Optional: a formatted PDF (capped at the first rows; CSV/XLSX carry everything). */
+  toPdf?(rows: AsyncIterable<FinanceExportRecord>, meta: { title: string; subtitle: string }): AsyncIterable<Uint8Array>;
   streamExport(input: {
     body: AsyncIterable<Uint8Array>;
     contentType: string;
@@ -79,6 +82,28 @@ async function* streamCashMovement(actor: Actor, range: { fromDate: string; toDa
   };
 }
 
+async function* streamProjectFinance(actor: Actor): AsyncGenerator<FinanceExportRecord> {
+  // Pages are by project (a project can span several currencies), so this pages on projects rather than rows.
+  const first = await getProjectFinanceOverview(actor, { page: 1, pageSize: 100 });
+  const pages = Math.max(1, Math.ceil(first.total / first.pageSize));
+  for (let page = 1; page <= pages; page += 1) {
+    const result = page === 1 ? first : await getProjectFinanceOverview(actor, { page, pageSize: 100 });
+    for (const row of result.rows) {
+      yield {
+        projectCode: row.projectCode,
+        projectName: row.projectName,
+        status: row.status,
+        currency: row.currency,
+        budget: row.budget,
+        invoiced: row.invoiced,
+        confirmedReceipts: row.confirmedReceipts,
+        confirmedExpensePayments: row.confirmedExpensePayments,
+        netCashMovement: row.netCashMovement,
+      };
+    }
+  }
+}
+
 async function* streamRows(rows: readonly FinanceExportRecord[]): AsyncGenerator<FinanceExportRecord> {
   yield* rows;
 }
@@ -106,6 +131,9 @@ export async function exportFinanceReport(
     case "cash-movement":
       rows = streamCashMovement(actor, range.data);
       break;
+    case "project-finance":
+      rows = streamProjectFinance(actor);
+      break;
     case "summary": {
       const summary = await getFinanceReportSummary(actor, range.data);
       rows = streamRows([
@@ -120,10 +148,20 @@ export async function exportFinanceReport(
   }
 
   const fileName = `finance-${parsed.data.report}-${range.data.fromDate}-${range.data.toDate}.${parsed.data.format}`;
-  const body = parsed.data.format === "csv" ? adapter.toCsv(rows) : adapter.toXlsx(rows);
-  const contentType = parsed.data.format === "csv"
-    ? "text/csv; charset=utf-8"
-    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (parsed.data.format === "pdf" && !adapter.toPdf) throw new DomainError("VALIDATION", "PDF export is not available for this report.");
+  const format = parsed.data.format;
+  const body =
+    format === "csv"
+      ? adapter.toCsv(rows)
+      : format === "xlsx"
+        ? adapter.toXlsx(rows)
+        : adapter.toPdf!(rows, { title: `Finance: ${parsed.data.report.replace(/-/g, " ")}`, subtitle: `${range.data.fromDate} to ${range.data.toDate}` });
+  const contentType =
+    format === "csv"
+      ? "text/csv; charset=utf-8"
+      : format === "xlsx"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : "application/pdf";
   await withTransaction(async (tx) => audit.record(tx, {
     actor,
     entity: "finance_report",

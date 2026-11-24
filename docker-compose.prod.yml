@@ -1,0 +1,118 @@
+# Production / staging stack: app + PostgreSQL + HTTPS reverse proxy + scheduler + backups.
+#
+#   cp .env.production.example .env.production      # then fill in real values
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Order on every release (the deploy workflow does this for you): migrate first, then start the new app.
+#   docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d app
+#
+# File storage: set STORAGE_DRIVER=s3 and the S3_* values to a private bucket (any S3-compatible store).
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-automora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-automora}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-automora} -d ${POSTGRES_DB:-automora}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    profiles: ["tools"]
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-automora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-automora}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal]
+
+  app:
+    build: .
+    image: ${APP_IMAGE:-automora:latest}
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-automora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-automora}
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [internal]
+
+  # TLS (automatic Let's Encrypt certificates) and reverse proxy. Edit deploy/Caddyfile for your domain.
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    networks: [internal]
+
+  # Calls the reminder jobs on a schedule (see deploy/scheduler/crontab).
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET}
+      APP_INTERNAL_URL: http://app:3000
+      PING_URL: ${CRON_PING_URL:-}
+    volumes:
+      - ./deploy/scheduler/crontab:/etc/crontabs/root:ro
+      - ./deploy/scheduler/run-job.sh:/usr/local/bin/run-job.sh:ro
+    command: ["sh", "-c", "apk add --no-cache curl >/dev/null && chmod +x /usr/local/bin/run-job.sh && crond -f -l 8"]
+    depends_on: [app]
+    networks: [internal]
+
+  # Nightly encrypted backup with retention and an optional off-site copy (see scripts/backup.sh).
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-automora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-automora}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?set BACKUP_PASSPHRASE}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_S3_URI: ${BACKUP_S3_URI:-}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_PING_URL: ${BACKUP_PING_URL:-}
+      BACKUP_PING_FAIL_URL: ${BACKUP_PING_FAIL_URL:-}
+      AWS_ACCESS_KEY_ID: ${BACKUP_AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${BACKUP_AWS_REGION:-us-east-1}
+    volumes:
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+      - ./deploy/backup/crontab:/etc/crontabs/root:ro
+      - backups:/backups
+    command: ["sh", "-c", "apk add --no-cache bash curl openssl aws-cli coreutils findutils >/dev/null && crond -f -l 8"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  pgdata:
+  backups:
+  caddy_data:
+  caddy_config:

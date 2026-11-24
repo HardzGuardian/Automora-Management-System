@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { BarChartCard } from "@/components/charts/bar-chart-card";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { RangeFilter } from "@/components/dashboard/range-filter";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -11,7 +14,7 @@ import { listClients } from "@/modules/clients";
 import { listEmployees } from "@/modules/employees";
 import { projectsOverview } from "@/modules/projects";
 import { getTeamWork } from "@/modules/teams";
-import { getDashboard } from "@/modules/reports";
+import { getDashboard, RANGE_PRESETS, type RangePreset } from "@/modules/reports";
 
 export const metadata = { title: "Dashboard" };
 
@@ -56,12 +59,52 @@ async function setupSteps(actor: Awaited<ReturnType<typeof requireActor>>): Prom
   ];
 }
 
-export default async function DashboardPage() {
+const STATUS_COLOR: Record<string, string> = { Pending: "#8a97a0", "In Progress": "#2563a8", "In Review": "#b7791f", Completed: "#167c50" };
+const PRIORITY_COLOR: Record<string, string> = { High: "#c0392b", Medium: "#b7791f", Low: "#2563a8" };
+
+type Money = { currency: string; amount: string };
+
+function MoneyLines({ rows }: { rows: Money[] }) {
+  if (rows.length === 0) return <span className="text-muted">—</span>;
+  return (
+    <>
+      {rows.map((r) => (
+        <span key={r.currency} className="block">
+          {r.currency} {r.amount}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function FinStat({ label, basis, rows }: { label: string; basis: string; rows: Money[] }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-[18px] py-4">
+      <p className="m-0 text-[13px] text-muted">{label}</p>
+      <p className="m-0 text-xl font-semibold tabular-nums text-foreground">
+        <MoneyLines rows={rows} />
+      </p>
+      <p className="m-0 text-xs text-muted">{basis}</p>
+    </div>
+  );
+}
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ preset?: string; from?: string; to?: string }> }) {
   const actor = await requireActor();
+  const sp = await searchParams;
+  const preset: RangePreset = (RANGE_PRESETS as readonly string[]).includes(sp.preset ?? "") ? (sp.preset as RangePreset) : "month";
 
   let dash;
+  let rangeError: string | undefined;
   try {
-    dash = await getDashboard(actor, { preset: "month" });
+    try {
+      dash = await getDashboard(actor, { preset, from: sp.from, to: sp.to });
+    } catch (e) {
+      if (e instanceof DomainError && e.code === "VALIDATION") {
+        rangeError = e.message;
+        dash = await getDashboard(actor, { preset: "month" });
+      } else throw e;
+    }
   } catch (e) {
     if (e instanceof DomainError && e.code === "FORBIDDEN") {
       return <ErrorState title="No dashboard available" message="Your role does not include a dashboard. Ask an administrator for access." />;
@@ -79,9 +122,15 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
-        <p className="mt-1 text-muted">{SUBTITLE[dash.audience]}</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
+          <p className="mt-1 text-muted">{SUBTITLE[dash.audience]}</p>
+          <p className="mt-1 text-xs text-muted">
+            Period: {dash.range.from} to {dash.range.to}. Counts are as of {dash.range.today} unless marked &ldquo;period total&rdquo;.
+          </p>
+        </div>
+        <RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={rangeError} />
       </div>
 
       {steps.length > 0 && steps.some((x) => !x.done) ? (
@@ -111,11 +160,54 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <section aria-label="Key numbers" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section aria-label="Key numbers" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Open tasks" value={c.openTasks} icon="tasks" href={tasksHref} />
+        <KpiCard label="In progress" value={c.inProgressTasks} icon="pending" href={tasksHref} />
         <KpiCard label="Overdue" value={c.overdueTasks} icon="overdue" tone={c.overdueTasks > 0 ? "danger" : "neutral"} href={overdueHref} />
+        <KpiCard label="Due in next 7 days" value={c.dueNext7Days} icon="tasks" href={tasksHref} />
+        <KpiCard label="Completed" value={c.completedTasks} basis="period total" tone="success" icon="completed" href={tasksHref} />
         <KpiCard label="Active projects" value={c.activeProjects} icon="projects" tone="success" href="/projects" />
+        {c.activeEmployees !== null ? <KpiCard label="Active employees" value={c.activeEmployees} icon="employees" href="/employees" /> : null}
+        {c.activeClients !== null ? <KpiCard label="Active clients" value={c.activeClients} icon="clients" href="/clients" /> : null}
       </section>
+
+      {dash.finance ? (
+        <section aria-label="Finance snapshot" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="m-0 text-base font-semibold text-foreground">Finance snapshot</h2>
+            <Link href="/finance" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">
+              Open finance
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FinStat label="Invoiced" basis={dash.finance.labels.invoiceTotals} rows={dash.finance.periodTotals.invoicesByIssueDate} />
+            <FinStat label="Received" basis={dash.finance.labels.confirmedReceipts} rows={dash.finance.periodTotals.confirmedReceiptsByPaymentDate} />
+            <FinStat label="Expenses" basis={dash.finance.labels.expenses} rows={dash.finance.periodTotals.expensesByExpenseDate} />
+            <FinStat label="Outstanding receivables" basis={dash.finance.labels.outstandingReceivables} rows={dash.finance.pointInTime.outstandingReceivables} />
+          </div>
+          {dash.finance.periodTotals.cashMovementByPaymentDate.length > 0 ? (
+            <p className="m-0 text-sm text-muted">
+              Net cash movement ({dash.finance.labels.cashMovement}):{" "}
+              {dash.finance.periodTotals.cashMovementByPaymentDate.map((m) => `${m.currency} ${m.netCashMovement}`).join(" · ")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <BarChartCard
+          title="Tasks by status"
+          caption="Point in time, all non-archived tasks in your scope"
+          valueLabel="Tasks"
+          data={dash.taskStatus.map((x) => ({ label: x.status, value: x.count, color: STATUS_COLOR[x.status] }))}
+        />
+        <BarChartCard
+          title="Open tasks by priority"
+          caption="Point in time"
+          valueLabel="Open tasks"
+          data={dash.taskPriority.map((x) => ({ label: x.priority, value: x.count, color: PRIORITY_COLOR[x.priority] }))}
+        />
+      </div>
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="min-w-0 flex-[2_1_520px]">
@@ -184,6 +276,42 @@ export default async function DashboardPage() {
             )}
           </Card>
         </div>
+      </div>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {dash.workload ? (
+          <Card title="Employee workload" action={{ href: "/employees", label: "Employees" }}>
+            {dash.workload.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-muted">No one has open tasks assigned.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted">
+                      <th scope="col" className="px-5 py-2.5 font-medium">Employee</th>
+                      <th scope="col" className="px-3 py-2.5 text-right font-medium">Open</th>
+                      <th scope="col" className="py-2.5 pl-3 pr-5 text-right font-medium">Overdue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dash.workload.map((w) => (
+                      <tr key={w.employeeId} className="border-t border-border">
+                        <td className="px-5 py-2.5">
+                          <Link href={`/employees/${w.employeeId}`} className="font-medium text-foreground hover:text-primary-ink">
+                            {w.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{w.open}</td>
+                        <td className={w.overdue > 0 ? "py-2.5 pl-3 pr-5 text-right tabular-nums text-danger" : "py-2.5 pl-3 pr-5 text-right tabular-nums"}>{w.overdue}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        ) : null}
+        <ActivityFeed items={dash.activity} />
       </div>
     </div>
   );

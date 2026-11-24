@@ -18,7 +18,7 @@ export type QuickTaskActions = {
   create: (input: QuickTaskForm) => Promise<QuickTaskResult>;
 };
 
-const PRIORITIES = ["Low", "Medium", "High"] as const;
+const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 
 type Form = QuickTaskForm;
 const EMPTY: Form = { title: "", projectId: "", assigneeId: "", dueDate: "", priority: "Medium" };

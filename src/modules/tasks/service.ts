@@ -59,6 +59,7 @@ async function resolveRefs(
 export async function createTask(actor: Actor, input: CreateTaskInput): Promise<TaskDTO> {
   requirePermission(actor, "tasks.create");
   const data = createTaskSchema.parse(input);
+  if ((data.assigneeIds ?? []).length > 0) requirePermission(actor, "tasks.assign");
 
   const { dto, assigned } = await withTransaction(async (tx) => {
     const refs = await resolveRefs(tx, actor.companyId, data.projectId, data.clientId);

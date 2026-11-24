@@ -12,7 +12,7 @@ export {
 } from "./expenses/categories";
 export { canAccessExpenseAttachment } from "./expenses/file-access";
 export { expenseAttachmentService } from "./expenses/storage-binding";
-export { createExpense, updateExpense, type ExpenseDTO } from "./expenses/service";
+export { archiveExpense, createExpense, updateExpense, type ExpenseDTO } from "./expenses/service";
 export {
   getExpenseBalance,
   getExpenseDetail,
@@ -32,6 +32,7 @@ export {
   type IssuedInvoiceDTO,
   type CancelledInvoiceDTO,
 } from "./invoices/service";
+export { voidPendingReceipt } from "./payments/service";
 export { getInvoicePdfData, InvoicePdfDocument, type InvoicePdfData } from "./invoices/pdf";
 export { listInvoiceClients, listInvoices, getInvoiceDetail } from "./invoices/queries";
 export type { InvoiceDetailDTO, InvoiceListDTO, InvoiceListRow } from "./invoices/queries";
@@ -61,6 +62,7 @@ export {
   type ProjectFinanceSummary,
   type ProjectFinanceCurrencySummary,
 } from "./reports/project-finance";
+export { getProjectFinanceOverview, type ProjectFinanceOverview, type ProjectFinanceRow } from "./reports/projects-overview";
 export { getCashMovementReport, type CashMovementReport, type CashMovementRow } from "./reports/cash-movement";
 export { calculateProjectCashNet, combineCashMovementRows } from "./reports/cash-movement-math";
 export { getReceivablesReport, type ReceivablesReport, type ReceivableRow } from "./reports/receivables";

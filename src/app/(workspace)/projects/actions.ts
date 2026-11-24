@@ -5,9 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireActor } from "@/lib/auth/require-actor";
 import { toActionResult } from "@/lib/errors";
+import { flashed } from "@/lib/flash";
 import {
   addClientItem,
   addMember,
+  changeOwner,
+  deleteMilestone,
+  setMemberRole,
+  updateProject,
   addProjectComment,
   assignProjectToTeam,
   unassignProjectFromTeam,
@@ -52,28 +57,28 @@ export async function changeStatusAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = uuid.parse(fd.get("id"));
   const to = z.enum(["Planning", "Active", "On Hold", "Completed", "Cancelled", "Archived"]).parse(fd.get("to"));
-  await toActionResult(() => changeProjectStatus(actor, id, to));
+  await flashed(() => changeProjectStatus(actor, id, to));
   revalidatePath(`/projects/${id}`);
 }
 
 export async function addMemberAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = uuid.parse(fd.get("id"));
-  await toActionResult(() => addMember(actor, id, uuid.parse(fd.get("employeeId"))));
+  await flashed(() => addMember(actor, id, uuid.parse(fd.get("employeeId")), fd.get("role") === "viewer" ? "viewer" : "member"));
   revalidatePath(`/projects/${id}`);
 }
 
 export async function removeMemberAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = uuid.parse(fd.get("id"));
-  await toActionResult(() => removeMember(actor, id, uuid.parse(fd.get("employeeId"))));
+  await flashed(() => removeMember(actor, id, uuid.parse(fd.get("employeeId"))));
   revalidatePath(`/projects/${id}`);
 }
 
 export async function addMilestoneAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = uuid.parse(fd.get("id"));
-  await toActionResult(() => createMilestone(actor, id, { name: str(fd.get("name")), dueDate: nullable(fd.get("dueDate")) }));
+  await flashed(() => createMilestone(actor, id, { name: str(fd.get("name")), dueDate: nullable(fd.get("dueDate")) }));
   revalidatePath(`/projects/${id}`);
 }
 
@@ -81,7 +86,7 @@ export async function milestoneStatusAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const id = uuid.parse(fd.get("id"));
   const status = z.enum(["Pending", "In Progress", "Completed"]).parse(fd.get("status"));
-  await toActionResult(() => updateMilestone(actor, id, uuid.parse(fd.get("milestoneId")), { status }));
+  await flashed(() => updateMilestone(actor, id, uuid.parse(fd.get("milestoneId")), { status }));
   revalidatePath(`/projects/${id}`);
 }
 
@@ -101,7 +106,7 @@ export async function unassignProjectTeamAction(fd: FormData): Promise<void> {
   if (!r.ok) redirect(`/projects/${id}?error=${encodeURIComponent(r.error.message)}`);
 }
 
-export type SetupInput = { name: string; clientId: string; dueDate: string; description: string; teamId: string };
+export type SetupInput = { name: string; clientId: string; dueDate: string; description: string; teamId: string; startDate?: string; budgetAmount?: string; ownerEmployeeId?: string };
 export type SetupResult =
   | { ok: true; id: string; teamLabel: string; people: string[]; teamError?: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
@@ -114,7 +119,8 @@ export async function createProjectSetupAction(input: SetupInput): Promise<Setup
   const actor = await requireActor();
   if (!input.name.trim()) return { ok: false, error: "Enter a project name.", fieldErrors: { name: ["Enter a project name."] } };
   if (!input.teamId) return { ok: false, error: "Choose the team this project is assigned to." };
-  if (!actor.employeeId) return { ok: false, error: "Your account has no employee record, so it cannot own a project." };
+  const ownerEmployeeId = input.ownerEmployeeId?.trim() || actor.employeeId;
+  if (!ownerEmployeeId) return { ok: false, error: "Choose the project owner. Your account has no employee record, so it cannot own a project." };
 
   const cards = await listTeamCards(actor, "projects.members.manage");
   const team = cards.find((t) => t.id === input.teamId);
@@ -127,10 +133,10 @@ export async function createProjectSetupAction(input: SetupInput): Promise<Setup
       description: input.description.trim() || null,
       type: clientId ? "Client" : "Internal",
       clientId,
-      ownerEmployeeId: actor.employeeId!,
-      startDate: null,
+      ownerEmployeeId,
+      startDate: input.startDate?.trim() || null,
       dueDate: input.dueDate.trim() || null,
-      budgetAmount: null,
+      budgetAmount: input.budgetAmount?.trim() || null,
     }),
   );
   if (!r.ok) return { ok: false, error: r.error.message, fieldErrors: r.error.fieldErrors };
@@ -165,7 +171,7 @@ export async function uploadProjectDocumentAction(fd: FormData): Promise<UploadR
 export async function removeProjectDocumentAction(fd: FormData): Promise<void> {
   const actor = await requireActor();
   const projectId = uuid.parse(fd.get("projectId"));
-  await toActionResult(() => removeProjectDocument(actor, projectId, uuid.parse(fd.get("documentId"))));
+  await flashed(() => removeProjectDocument(actor, projectId, uuid.parse(fd.get("documentId"))));
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/documents");
 }
@@ -273,4 +279,61 @@ export async function toggleClientItemAction(fd: FormData): Promise<void> {
   const r = await toActionResult(() => setClientItemReceived(actor, projectId, uuid.parse(fd.get("itemId")), fd.get("to") === "received"));
   revalidatePath(`/projects/${projectId}`);
   redirect(back(projectId, "client", r.ok ? undefined : r.error.message));
+}
+
+export type EditProjectState = { error?: string; fieldErrors?: Record<string, string[]>; saved?: boolean };
+
+/** Edit page: name, description, dates and budget. */
+export async function updateProjectAction(_prev: EditProjectState, fd: FormData): Promise<EditProjectState> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await toActionResult(() =>
+    updateProject(actor, id, {
+      name: str(fd.get("name")),
+      description: nullable(fd.get("description")),
+      startDate: nullable(fd.get("startDate")),
+      dueDate: nullable(fd.get("dueDate")),
+      budgetAmount: nullable(fd.get("budgetAmount")),
+    }),
+  );
+  if (!r.ok) return { error: r.error.message, fieldErrors: r.error.fieldErrors };
+  revalidatePath(`/projects/${id}`);
+  revalidatePath("/projects");
+  return { saved: true };
+}
+
+export async function changeOwnerAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const r = await flashed(() => changeOwner(actor, id, uuid.parse(fd.get("employeeId"))), "Project owner changed.");
+  revalidatePath(`/projects/${id}`);
+  revalidatePath("/projects");
+  if (r.ok) redirect(`/projects/${id}`);
+  redirect(`/projects/${id}/edit`);
+}
+
+export async function setMemberRoleAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const role = z.enum(["member", "viewer"]).parse(fd.get("role"));
+  await flashed(() => setMemberRole(actor, id, uuid.parse(fd.get("employeeId")), role));
+  revalidatePath(`/projects/${id}`);
+}
+
+export async function editMilestoneAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  const status = z.enum(["Pending", "In Progress", "Completed"]).parse(fd.get("status"));
+  await flashed(
+    () => updateMilestone(actor, id, uuid.parse(fd.get("milestoneId")), { name: str(fd.get("name")), dueDate: nullable(fd.get("dueDate")), status }),
+    "Milestone saved.",
+  );
+  revalidatePath(`/projects/${id}`);
+}
+
+export async function deleteMilestoneAction(fd: FormData): Promise<void> {
+  const actor = await requireActor();
+  const id = uuid.parse(fd.get("id"));
+  await flashed(() => deleteMilestone(actor, id, uuid.parse(fd.get("milestoneId"))), "Milestone deleted.");
+  revalidatePath(`/projects/${id}`);
 }

@@ -165,6 +165,36 @@ export async function revokeInvitation(actor: Actor, invitationId: string): Prom
   });
 }
 
+export type PendingInvitationDTO = { id: string; email: string; roleName: string; employeeId: string | null; expiresAt: Date; createdAt: Date; expired: boolean };
+
+/** Invitations that are neither accepted nor revoked. Expired ones are listed (flagged) so they can be resent. */
+export async function listPendingInvitations(actor: Actor, filter: { employeeId?: string } = {}): Promise<PendingInvitationDTO[]> {
+  requirePermission(actor, "users.invite");
+  const rows = await db
+    .select({
+      id: invitations.id,
+      email: invitations.email,
+      roleName: roles.name,
+      employeeId: invitations.employeeId,
+      expiresAt: invitations.expiresAt,
+      createdAt: invitations.createdAt,
+    })
+    .from(invitations)
+    .innerJoin(roles, and(eq(roles.id, invitations.roleId), eq(roles.companyId, invitations.companyId)))
+    .where(
+      and(
+        eq(invitations.companyId, actor.companyId),
+        isNull(invitations.usedAt),
+        isNull(invitations.revokedAt),
+        filter.employeeId ? eq(invitations.employeeId, filter.employeeId) : undefined,
+      ),
+    )
+    .orderBy(sql`${invitations.createdAt} DESC`)
+    .limit(100);
+  const now = Date.now();
+  return rows.map((r) => ({ ...r, expired: r.expiresAt.getTime() <= now }));
+}
+
 /** Public: shown on the accept-invite page. Null when unknown, used, revoked or expired. */
 export async function getInvitationPreview(
   token: string,

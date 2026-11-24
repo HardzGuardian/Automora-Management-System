@@ -102,7 +102,7 @@ Performance baselines at 10k tasks are in [docs/09-query-performance.md](docs/09
 
 ## UI, dashboards, reports, operations
 
-- **Design system:** tokens in `src/app/globals.css` (Automora green `#167C50`, light theme, Inter). Shared components in `src/components/`; a dev-only gallery lives at `/dev/ui`. Status is always shown with an icon and text, never colour alone.
+- **Design system:** tokens in `src/app/globals.css` (Automora green `#167C50`, light theme, Inter). Shared components live in `src/components/`. Status is always shown with an icon and text, never colour alone.
 - **Dashboards** (`modules/reports/dashboard.ts`): company, operational and personal views chosen by permission. Every figure reuses the task-list scope and the single overdue rule, and says whether it is a period total or point in time. Reconciliation tests assert the dashboard equals the lists (AC-12).
 - **Reports and exports:** task register, employee workload, project status, client summary, plus finance reports. Exports (CSV/XLSX/PDF) use the report's own query, filters and column allowlist, are formula-injection safe, require `reports.export` and are audited.
 - **Notifications and reminders:** in-app notifications with idempotent delivery; `GET /api/cron/reminders` (Bearer `CRON_SECRET`) creates due-soon/overdue task, project and invoice reminders without duplicates.
@@ -114,3 +114,20 @@ Performance baselines at 10k tasks are in [docs/09-query-performance.md](docs/09
 ## Status
 
 All three developers' scopes are implemented on the `integration/shubhangi-part` branch (Sagar's foundation + Chintan's finance + Shubhangi's UI layer). Known gaps are listed in [docs/progress.md](docs/progress.md) and the runbook (no staging deployment, Dockerfile not built locally, S3 driver not run against a real bucket). Integration notes: [docs/10-integration-sagar-chintan.md](docs/10-integration-sagar-chintan.md).
+
+## MCP server (AI assistant access)
+`mcp/server.ts` is a stdio [Model Context Protocol](https://modelcontextprotocol.io) server. It calls the same service layer as the web app, acting as ONE Automora user, so that user's roles, record scope and finance restrictions apply to everything an assistant asks for.
+
+```bash
+AUTOMORA_MCP_USER_EMAIL=admin@company.com pnpm mcp          # read-only (default)
+AUTOMORA_MCP_WRITE=true AUTOMORA_MCP_USER_EMAIL=... pnpm mcp  # also create_task, change_task_status, add_task_comment
+AUTOMORA_MCP_USER_EMAIL=... pnpm mcp:smoke                  # starts it and calls a few tools
+```
+Read tools: `whoami`, `list_tasks`, `get_task`, `list_projects`, `get_project`, `list_clients`, `get_client`, `list_employees`, `get_employee_workload`, `dashboard_summary`, `list_invoices`, `get_invoice`, `finance_snapshot`, `project_finance`, `run_report`.
+
+Register it in an MCP client (for example Claude Code `.mcp.json`):
+```json
+{ "mcpServers": { "automora": { "command": "pnpm", "args": ["mcp"], "cwd": "/path/to/Automora-Management-System",
+  "env": { "AUTOMORA_MCP_USER_EMAIL": "manager@company.com", "DATABASE_URL": "postgres://...", "BETTER_AUTH_SECRET": "...", "BETTER_AUTH_URL": "http://localhost:3000", "APP_URL": "http://localhost:3000" } } } }
+```
+Use a dedicated, least-privilege user for assistants (a Manager or Employee role), never the Super Admin. Writes go through the normal services, so they are audited like any other change. PDF rendering is stubbed out in this process (`mcp/react-pdf-stub.ts`).

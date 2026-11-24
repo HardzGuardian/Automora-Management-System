@@ -5,7 +5,8 @@ import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
-import { buttonClass } from "@/components/ui/styles";
+import { Pager } from "@/components/ui/pager";
+import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { cn } from "@/lib/cn";
 import { todayInTz } from "@/lib/dates";
@@ -47,29 +48,35 @@ function sortRows(rows: ProjectOverviewRow[], key: SortKey): ProjectOverviewRow[
 
 const LABEL: Record<string, string> = { Pending: "Pending", "In Progress": "In progress", "In Review": "In review", Completed: "Completed" };
 
-export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string; project?: string; error?: string }> }) {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ status?: string; sort?: string; project?: string; error?: string; q?: string; page?: string }> }) {
   const actor = await requireActor();
   const sp = await searchParams;
-  const [all, archived] = await Promise.all([projectsOverview(actor), projectsOverview(actor, { archived: true })]);
+  const q = sp.q?.trim().slice(0, 100) || undefined;
+  const [all, archived] = await Promise.all([projectsOverview(actor, { search: q }), projectsOverview(actor, { archived: true, search: q })]);
   const current = PILLS.find((p) => p.label === sp.status) ?? PILLS[0];
   const sort = SORTS.find((s) => s.key === sp.sort)?.key ?? "name";
   const pool = current.status === "Archived" ? archived : current.status ? all.filter((r) => r.status === current.status) : all;
 
   // Every project shows the tasks that belong to it (and its team). People who cannot read every task see only theirs.
   const personal = !can(actor, "tasks.read.all");
-  const taskList = await listTasks(actor, { view: personal ? "mine" : "all", pageSize: 100, sort: "due" });
-  const tasksByProject = new Map<string, TaskDTO[]>();
-  for (const t of taskList.rows) if (t.projectId) tasksByProject.set(t.projectId, [...(tasksByProject.get(t.projectId) ?? []), t]);
   const today = todayInTz(actor.timezone);
 
   // The project picker lists active projects that still have a task with a due date. The chosen one narrows the tab.
-  const hasDueTask = (id: string) => (tasksByProject.get(id) ?? []).some((t) => t.status !== "Completed" && t.dueDate !== null);
-  const pickable = all.filter((r) => r.status === "Active" && hasDueTask(r.id));
+  const pickable = all.filter((r) => r.status === "Active" && r.openTasks > 0);
   const chosen = pool.find((r) => r.id === sp.project) ?? all.find((r) => r.id === sp.project);
   const picker = chosen && !pickable.some((r) => r.id === chosen.id) ? [...pickable, chosen] : pickable;
-  const rows = sortRows(chosen ? [chosen] : pool, sort);
-  const keep = { ...(sp.status ? { status: sp.status } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(chosen ? { project: chosen.id } : {}) };
+  const sorted = sortRows(chosen ? [chosen] : pool, sort);
+  const PAGE_SIZE = 10;
+  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1));
+  const rows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const keep = { ...(sp.status ? { status: sp.status } : {}), ...(sp.sort ? { sort: sp.sort } : {}), ...(chosen ? { project: chosen.id } : {}), ...(q ? { q } : {}), ...(page > 1 ? { page: String(page) } : {}) };
   const returnTo = `/projects${Object.keys(keep).length ? `?${new URLSearchParams(keep).toString()}` : ""}`;
+  const pageHref = (n: number) => `/projects?${new URLSearchParams({ ...keep, page: String(n) }).toString()}`;
+
+  // Tasks only for the projects on this page (each project shows its own tasks).
+  const taskLists = await Promise.all(rows.map((r) => listTasks(actor, { view: personal ? "mine" : "all", projectId: r.id, pageSize: 100, sort: "due" })));
+  const tasksByProject = new Map<string, TaskDTO[]>(rows.map((r, i) => [r.id, taskLists[i].rows]));
 
   return (
     <div className="flex flex-col gap-5">
@@ -100,6 +107,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         />
         <AutoForm className="flex flex-wrap items-center gap-2" label="Choose project and sort">
           {sp.status ? <input type="hidden" name="status" value={sp.status} /> : null}
+          {q ? <input type="hidden" name="q" value={q} /> : null}
           <label htmlFor="project-pick" className="sr-only">Show project</label>
           <select id="project-pick" name="project" defaultValue={chosen?.id ?? ""} className="h-10 max-w-[14rem] rounded-lg border border-field bg-surface px-2.5 text-foreground">
             <option value="">All projects</option>
@@ -115,6 +123,15 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </select>
         </AutoForm>
       </div>
+
+      <form method="get" aria-label="Search projects" className="flex flex-wrap items-center gap-2">
+        {sp.status ? <input type="hidden" name="status" value={sp.status} /> : null}
+        {sp.sort ? <input type="hidden" name="sort" value={sp.sort} /> : null}
+        <label htmlFor="project-search" className="sr-only">Search projects</label>
+        <input id="project-search" name="q" defaultValue={q ?? ""} placeholder="Search by name or code" className={`${inputClass} max-w-xs`} />
+        <button type="submit" className={buttonClass("secondary")}>Search</button>
+        {q ? <Link href="/projects" className={buttonClass("secondary")}>Clear</Link> : null}
+      </form>
 
       <section aria-label="Projects" className="overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
@@ -238,6 +255,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </ul>
         )}
       </section>
+      <Pager page={page} pages={pages} prevHref={page > 1 ? pageHref(page - 1) : undefined} nextHref={page < pages ? pageHref(page + 1) : undefined} />
     </div>
   );
 }

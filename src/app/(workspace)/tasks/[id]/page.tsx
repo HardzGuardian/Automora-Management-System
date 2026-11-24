@@ -31,7 +31,7 @@ import { Alert } from "@/components/ui/alert";
 import { toTimeline } from "../_components/activity";
 import { CommentForm, UploadForm } from "../_components/collab-forms";
 import { deleteCommentAction, removeAttachmentAction } from "../collab-actions";
-import { archiveTaskAction, assignAction, changeStatusFormAction, logHoursAction, restoreTaskAction } from "../actions";
+import { addAssigneeAction, archiveTaskAction, changeStatusFormAction, removeAssigneeAction, logHoursAction, restoreTaskAction } from "../actions";
 
 const compact = "min-h-8 px-2.5 text-xs";
 
@@ -159,16 +159,34 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
             </SectionCard>
           ) : null}
 
-          <SectionCard title="Assigned to">
+          <SectionCard title="Assigned to" count={task.assignees.length}>
             {task.assignees.length === 0 ? (
-              <p className="text-sm text-muted">Nobody is assigned yet. Every task has one person.</p>
+              <p className="text-sm text-muted">Nobody is assigned yet.</p>
             ) : (
-              <p className="text-sm font-medium">{task.assignees.map((a) => a.fullName).join(", ")}</p>
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {task.assignees.map((a) => (
+                  <li key={a.employeeId} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium">
+                      {a.fullName}
+                      {a.viaTeamId ? <span className="ml-2 text-xs font-normal text-muted">via team</span> : null}
+                    </span>
+                    {canAssign && !a.viaTeamId ? (
+                      <form action={removeAssigneeAction}>
+                        <input type="hidden" name="id" value={id} />
+                        <input type="hidden" name="employeeId" value={a.employeeId} />
+                        <button type="submit" className={`${buttonClass("secondary")} ${compact}`} aria-label={`Remove ${a.fullName}`}>
+                          Remove
+                        </button>
+                      </form>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
             )}
             {candidates.length > 0 ? (
-              <form action={assignAction} className="flex flex-wrap gap-2 border-t border-border pt-3">
+              <form action={addAssigneeAction} className="flex flex-wrap gap-2 border-t border-border pt-3">
                 <input type="hidden" name="id" value={id} />
-                <select name="employeeId" aria-label="Person to assign" required className={`${inputClass} sm:max-w-xs`}>
+                <select name="employeeId" aria-label="Person to add" required className={`${inputClass} sm:max-w-xs`}>
                   {candidates.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.fullName}
@@ -176,7 +194,7 @@ export default async function TaskDetailPage({ params, searchParams }: { params:
                   ))}
                 </select>
                 <button type="submit" className={buttonClass("secondary")}>
-                  {task.assignees.length === 0 ? "Assign" : "Reassign"}
+                  Add person
                 </button>
               </form>
             ) : null}

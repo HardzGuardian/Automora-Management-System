@@ -15,6 +15,7 @@ type Props = {
   workEmail: string;
   phone: string | null;
   designation: string | null;
+  department: string | null;
   joiningDate: string | null;
 };
 
@@ -22,6 +23,7 @@ const FIELDS = [
   { name: "fullName", label: "Full name", type: "text", required: true },
   { name: "workEmail", label: "Work email", type: "email", required: true },
   { name: "designation", label: "Designation", type: "text", required: false },
+  { name: "department", label: "Department", type: "text", required: false },
   { name: "phone", label: "Phone", type: "tel", required: false },
   { name: "joiningDate", label: "Joining date", type: "date", required: false },
 ] as const;

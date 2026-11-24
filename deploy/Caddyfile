@@ -1,0 +1,27 @@
+# HTTPS reverse proxy for Automora. Certificates are obtained and renewed automatically (Let's Encrypt).
+# APP_DOMAIN and ACME_EMAIL come from .env.production (see docker-compose.prod.yml).
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# The app sets its own HSTS and CSP headers; the proxy only hides what it should not advertise.
+	header -Server
+
+	# Cron endpoints are called from the scheduler container on the internal network only.
+	@cron path /api/cron/*
+	respond @cron 404
+
+	reverse_proxy app:3000 {
+		health_uri /api/health
+		health_interval 30s
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

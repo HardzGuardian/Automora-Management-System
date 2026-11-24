@@ -24,7 +24,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string }> }) {
+export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; status?: string; department?: string; sort?: string; dir?: string }> }) {
   const actor = await requireActor();
   if (!can(actor, "employees.read")) {
     return <p className="rounded-lg border border-border bg-surface p-5 text-muted">You do not have access to the employee directory.</p>;
@@ -32,10 +32,13 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const page = parsePage(sp.page);
   const status = STATUSES.find((s) => s === sp.status);
+  const department = sp.department?.trim().slice(0, 100) || undefined;
+  const sort = (["name", "code", "joined"] as const).find((s) => s === sp.sort) ?? "name";
+  const dir = sp.dir === "desc" ? "desc" : "asc";
   const [{ rows, total }, ...counts] = await Promise.all([
-    listEmployees(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, sort: "name", dir: "asc" }),
-    listEmployees(actor, { pageSize: 1, search: sp.q }),
-    ...STATUSES.map((s) => listEmployees(actor, { pageSize: 1, search: sp.q, status: s })),
+    listEmployees(actor, { page, pageSize: PAGE_SIZE, search: sp.q, status, department, sort, dir }),
+    listEmployees(actor, { pageSize: 1, search: sp.q, department }),
+    ...STATUSES.map((s) => listEmployees(actor, { pageSize: 1, search: sp.q, status: s, department })),
   ]);
   const work = await employeeTeamsAndWork(actor, rows.map((e) => e.id));
   const canEdit = can(actor, "employees.update");
@@ -45,6 +48,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     if (sp.q) qs.set("q", sp.q);
     const st = "status" in patch ? patch.status : status;
     if (st) qs.set("status", st);
+    if (department) qs.set("department", department);
+    if (sort !== "name") qs.set("sort", sort);
+    if (dir === "desc") qs.set("dir", dir);
     if (patch.page && patch.page > 1) qs.set("page", String(patch.page));
     const s = qs.toString();
     return s ? `/employees?${s}` : "/employees";
@@ -68,6 +74,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center gap-2.5">
         <form role="search" aria-label="Employee search" className="relative max-w-[360px] min-w-60 flex-1">
           {status ? <input type="hidden" name="status" value={status} /> : null}
+          {department ? <input type="hidden" name="department" value={department} /> : null}
+          {sort !== "name" ? <input type="hidden" name="sort" value={sort} /> : null}
+          {dir === "desc" ? <input type="hidden" name="dir" value={dir} /> : null}
           <label htmlFor="emp-q" className="sr-only">Search employees</label>
           <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
           <input
@@ -78,6 +87,23 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             placeholder="Search name, email or code"
             className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
           />
+        </form>
+        <form method="get" aria-label="Department and sort" className="flex flex-wrap items-center gap-2">
+          {sp.q ? <input type="hidden" name="q" value={sp.q} /> : null}
+          {status ? <input type="hidden" name="status" value={status} /> : null}
+          <label htmlFor="emp-dept" className="sr-only">Department</label>
+          <input id="emp-dept" name="department" defaultValue={department ?? ""} placeholder="Department" className="h-10 w-40 rounded-lg border border-field bg-surface px-3 text-foreground placeholder:text-muted" />
+          <label htmlFor="emp-sort" className="sr-only">Sort by</label>
+          <select id="emp-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+            <option value="name">Name</option>
+            <option value="code">Employee code</option>
+            <option value="joined">Joining date</option>
+          </select>
+          <select name="dir" aria-label="Sort direction" defaultValue={dir} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+          <button type="submit" className={buttonClass("secondary")}>Apply</button>
         </form>
         <FilterPills
           label="Filter by status"

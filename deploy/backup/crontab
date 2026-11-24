@@ -1,0 +1,2 @@
+# Nightly backup at 01:15 UTC: dump, verify, encrypt, copy off-site (if BACKUP_S3_URI is set), prune old files.
+15 1 * * * /usr/bin/env bash /usr/local/bin/backup.sh /backups >> /proc/1/fd/1 2>&1

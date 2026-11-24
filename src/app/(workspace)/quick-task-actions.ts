@@ -22,7 +22,7 @@ export async function loadQuickTaskOptions(): Promise<{ ok: true; options: Quick
 
 export async function createQuickTaskAction(input: QuickTaskInput): Promise<QuickTaskResult> {
   const actor = await requireActor();
-  const priority = z.enum(["Low", "Medium", "High"]).catch("Medium").parse(input.priority);
+  const priority = z.enum(["Low", "Medium", "High", "Critical"]).catch("Medium").parse(input.priority);
   // A task has one owner and cannot be due in the past. The project is optional: no project means an individual task.
   const missing: Record<string, string[]> = {};
   if (!input.title.trim()) missing.title = ["Enter a task title."];
