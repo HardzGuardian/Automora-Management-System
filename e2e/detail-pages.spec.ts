@@ -25,15 +25,38 @@ test("employee page has all six views: Overview, Assigned, Completed, Overdue, P
   await expect(page.getByRole("region", { name: /Work/ }).first()).toBeVisible();
 });
 
-test("client page lists its tasks, invoices and receipts", async ({ page }) => {
+test("client page shows the client's projects first; a project opens its unpaid charges, invoices and tasks", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/clients");
   await page.getByText("Northwind Traders").first().click(); // opens the client's row
   await page.getByRole("listitem").filter({ hasText: "Northwind Traders" }).getByRole("link", { name: "Client details and notes" }).click();
   await page.waitForURL(/\/clients\/[0-9a-f-]{36}$/);
-  for (const title of ["Projects", "Tasks", "Invoices", "Receipts", "Notes"]) {
+
+  // The client page itself: projects (and the client's own notes), not the project-level lists.
+  for (const title of ["Projects", "Notes"]) {
     await expect(page.getByRole("heading", { name: new RegExp(`^${title}`) }).first()).toBeVisible();
   }
+  for (const title of ["Tasks", "Invoices", "Receipts", "Unpaid charges"]) {
+    await expect(page.getByRole("heading", { name: new RegExp(`^${title}`) })).toHaveCount(0);
+  }
+
+  // Clicking a project opens a pop-up with that project's own details.
+  await page.getByRole("link", { name: /Northwind Website/ }).click();
+  const popup = page.getByRole("dialog", { name: "Create" });
+  await expect(popup).toBeVisible();
+  for (const title of ["Unpaid charges", "Invoices", "Tasks"]) {
+    await expect(popup.getByRole("heading", { name: new RegExp(`^${title}`) })).toBeVisible();
+  }
+  await expect(popup.getByText("Design homepage")).toBeVisible(); // a task of this project
+});
+
+test("a project is only shown under its own client", async ({ page }) => {
+  await login(page, ADMIN);
+  await page.goto("/projects");
+  await page.getByRole("link", { name: "Open project details" }).first().click();
+  const projectId = page.url().match(/\/projects\/([0-9a-f-]{36})/)?.[1] ?? "";
+  const res = await page.goto(`/clients/00000000-0000-4000-8000-000000000000/projects/${projectId}`);
+  expect(res?.status()).toBe(404);
 });
 
 test("project page lists its invoices, receipts and expenses", async ({ page }) => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Pager } from "@/components/ui/pager";
-import { buttonClass } from "@/components/ui/styles";
+import { buttonClass, linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
@@ -105,9 +105,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                           ))}
                         </ul>
                       )}
-                      <Link href={`/clients/${c.id}`} className={buttonClass("secondary", "mt-3")}>
-                        Client details and notes
-                      </Link>
+                      <p className="mb-0 mt-3 text-sm">
+                        <Link href={`/clients/${c.id}`} className={linkClass}>
+                          Client details and notes
+                        </Link>
+                      </p>
                     </div>
                   </details>
                 </li>

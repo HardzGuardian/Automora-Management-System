@@ -1,6 +1,7 @@
 "use server";
 
 import { getActor } from "@/lib/auth/actor";
+import { DomainError } from "@/lib/errors";
 import {
   cancelInvoice,
   createInvoiceDraft,
@@ -24,9 +25,12 @@ export async function createInvoiceAction(
 ): Promise<FinanceActionResult<{ id: string }>> {
   try {
     const actor = await getActor();
+    // A new invoice always belongs to one of the client's projects, so it shows up under that project.
+    const projectId = text(formData, "projectId");
+    if (!projectId) throw new DomainError("VALIDATION", "Choose the project this invoice is for.");
     const invoice = await createInvoiceDraft(actor, {
       clientId: text(formData, "clientId"),
-      projectId: text(formData, "projectId") || null,
+      projectId,
       dueDate: text(formData, "dueDate") || null,
       idempotencyKey: text(formData, "idempotencyKey"),
       items: [{

@@ -20,6 +20,7 @@ import { bulkTasksAction } from "./actions";
 import { SelectAll } from "./_components/select-all";
 import { TaskBoard, type BoardCard } from "./_components/task-board";
 import { TaskCalendar } from "./_components/task-calendar";
+import { TaskSearch } from "@/components/ui/task-search";
 
 export const metadata = { title: "Tasks" };
 
@@ -142,7 +143,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Tasks</h1>
           <p className="mt-1 text-muted">{personal ? "Your tasks across all projects." : "Every task, including project tasks. Filter, plan on the calendar, or update many at once."}</p>
         </div>
-        {can(actor, "tasks.create") ? (
+        {can(actor, "tasks.create") || can(actor, "tasks.create.in_project") ? (
           <Link href="/tasks/new" className={buttonClass("primary")}>
             <Icon name="plus" size={16} /> New task
           </Link>
@@ -157,7 +158,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
         ))}
         <label className="flex flex-col gap-1 text-xs text-muted">
           Search
-          <input name="q" defaultValue={sp.q ?? ""} placeholder="Title or code" className={inputClass} />
+          <TaskSearch name="q" defaultValue={sp.q ?? ""} view={personal ? "mine" : "all"} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted">
           Priority

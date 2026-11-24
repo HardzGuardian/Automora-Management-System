@@ -37,6 +37,7 @@ export const PERMISSION_GROUPS = {
     "projects.milestones.manage",
     "tasks.read.all",
     "tasks.create",
+    "tasks.create.in_project",
     "tasks.update",
     "tasks.assign",
     "tasks.archive",

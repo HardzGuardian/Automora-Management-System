@@ -58,13 +58,14 @@ describe("system role defaults", () => {
     expect(m).toContain("employees.read");
   });
 
-  it("Employee has exactly the five employee-level keys", () => {
+  it("Employee has exactly the six employee-level keys (including creating tasks in their own projects)", () => {
     expect([...SYSTEM_ROLES.Employee].sort()).toEqual(
       [
         "dashboard.personal.read",
         "reports.personal.read",
         "tasks.attach",
         "tasks.comment",
+        "tasks.create.in_project",
         "tasks.status.update.own",
       ].sort(),
     );

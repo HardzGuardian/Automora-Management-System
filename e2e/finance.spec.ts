@@ -5,6 +5,8 @@ test.describe.configure({ mode: "serial" });
 
 async function pickClient(page: Page): Promise<void> {
   await page.locator("select[name=clientId]").selectOption({ index: 1 });
+  // A new invoice must belong to one of that client's projects.
+  await page.locator("select[name=projectId]").selectOption({ index: 1 });
 }
 
 test("invoice → issue → pending receipt → confirm: the balance falls and the dashboard follows", async ({ page }) => {

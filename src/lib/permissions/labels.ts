@@ -38,6 +38,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   "projects.milestones.manage": "Manage project milestones",
   "tasks.read.all": "View all tasks",
   "tasks.create": "Create tasks",
+  "tasks.create.in_project": "Create tasks in projects they are on",
   "tasks.update": "Edit tasks",
   "tasks.assign": "Assign tasks",
   "tasks.archive": "Archive tasks",

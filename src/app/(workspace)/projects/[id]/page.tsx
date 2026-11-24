@@ -134,6 +134,9 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
   const client = project.clientId && can(actor, "clients.read") ? await getClient(actor, project.clientId).catch(() => null) : null;
 
   const canAssign = can(actor, "tasks.assign") && can(actor, "tasks.create");
+  // Employees on this project may add tasks too (to themselves or a teammate) when they hold tasks.create.in_project.
+  const onThisProject = members.some((m) => m.employeeId === actor.employeeId && m.membershipRole !== "viewer");
+  const canAddTask = canAssign || (can(actor, "tasks.create.in_project") && onThisProject);
   const canManageMembers = can(actor, "projects.members.manage");
   const canMilestones = can(actor, "projects.milestones.manage");
   const canDocs = can(actor, "projects.update");
@@ -144,7 +147,9 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
   const owner = members.find((m) => m.membershipRole === "owner");
 
   // People who cannot read every task see only their own tasks in the list; progress still counts the whole project.
-  const taskRows = can(actor, "tasks.read.all") ? projectTasks.rows : projectTasks.rows.filter((t) => t.assignees.some((a) => a.employeeId === actor.employeeId));
+  const taskRows = can(actor, "tasks.read.all")
+    ? projectTasks.rows
+    : projectTasks.rows.filter((t) => t.createdBy === actor.userId || t.assignees.some((a) => a.employeeId === actor.employeeId));
   const isOverdue = (t: (typeof taskRows)[number]) => t.status !== "Completed" && t.dueDate !== null && t.dueDate < today;
   const overdueCount = taskRows.filter(isOverdue).length;
   const openByPerson = new Map<string, number>();
@@ -181,6 +186,8 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
   const holdTarget = project.status === "Active" && nextStatuses.includes("On Hold") ? "On Hold" : project.status === "On Hold" && nextStatuses.includes("Active") ? "Active" : null;
   const menuStatuses = nextStatuses.filter((s) => !CONSEQUENCE[s]);
   const memberOptions = members.map((m) => ({ value: m.employeeId, label: m.fullName }));
+  // Who a new task can be given to: admins pick anyone on the project; employees only owners and members (not viewers).
+  const addTaskPeople = canAssign ? memberOptions : members.filter((m) => m.membershipRole !== "viewer").map((m) => ({ value: m.employeeId, label: m.fullName }));
   const tabHref = (t: Tab) => `/projects/${id}?tab=${t}`;
 
   return (
@@ -328,15 +335,15 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
 
           {tab === "tasks" ? (
             <>
-              {canAssign ? (
+              {canAddTask ? (
                 <form action={addProjectTaskAction} className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-4">
                   <input type="hidden" name="projectId" value={id} />
                   <label htmlFor="nt-title" className="sr-only">New task title</label>
                   <input id="nt-title" name="title" placeholder="Add a task to this project" className="min-h-11 min-w-[220px] flex-1 rounded-lg border border-field bg-surface px-3 text-foreground placeholder:text-muted" maxLength={200} />
                   <label htmlFor="nt-who" className="sr-only">Assign new task to</label>
-                  <select id="nt-who" name="assigneeId" defaultValue="" className="min-h-11 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+                  <select id="nt-who" name="assigneeId" defaultValue={canAssign ? "" : (actor.employeeId ?? "")} className="min-h-11 rounded-lg border border-field bg-surface px-2.5 text-foreground">
                     <option value="">Assign to</option>
-                    {memberOptions.map((o) => (
+                    {addTaskPeople.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>

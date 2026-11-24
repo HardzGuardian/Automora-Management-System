@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Field, fieldAria } from "@/components/ui/field";
 import { buttonClass, inputClass } from "@/components/ui/styles";
@@ -17,7 +17,12 @@ export function NewTaskForm({
   people,
   defaultPriority,
   defaultProjectId,
+  memberMode = false,
+  projectPeople,
 }: {
+  /** Employee mode: a project is required, there is no client, and the people list follows the chosen project. */
+  memberMode?: boolean;
+  projectPeople?: Record<string, Option[]>;
   projects: Option[];
   clients: Option[];
   people: (Option & { openTasks: number })[] | null;
@@ -25,6 +30,8 @@ export function NewTaskForm({
   defaultProjectId?: string;
 }) {
   const [state, action, pending] = useActionState(createTaskAction, initial);
+  const [project, setProject] = useState(defaultProjectId ?? (memberMode ? (projects[0]?.id ?? "") : ""));
+  const teammates = memberMode ? (projectPeople?.[project] ?? []) : [];
   const err = (k: string) => state.fieldErrors?.[k]?.[0];
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -36,9 +43,9 @@ export function NewTaskForm({
         <textarea id="nt-desc" name="description" rows={4} className={inputClass} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="nt-project" label="Project" hint="Leave empty for an individual task.">
-          <select id="nt-project" name="projectId" defaultValue={defaultProjectId ?? ""} className={inputClass}>
-            <option value="">No project</option>
+        <Field id="nt-project" label="Project" required={memberMode} hint={memberMode ? undefined : "Leave empty for an individual task."}>
+          <select id="nt-project" name="projectId" value={project} onChange={(e) => setProject(e.target.value)} required={memberMode} className={inputClass}>
+            {memberMode ? null : <option value="">No project</option>}
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -46,6 +53,7 @@ export function NewTaskForm({
             ))}
           </select>
         </Field>
+        {memberMode ? null : (
         <Field id="nt-client" label="Client" hint="Used for tasks without a project." error={err("clientId")}>
           <select id="nt-client" name="clientId" className={inputClass}>
             <option value="">No client</option>
@@ -56,6 +64,7 @@ export function NewTaskForm({
             ))}
           </select>
         </Field>
+        )}
         <Field id="nt-priority" label="Priority">
           <select id="nt-priority" name="priority" defaultValue={defaultPriority} className={inputClass}>
             <option>Low</option>
@@ -74,6 +83,20 @@ export function NewTaskForm({
           <input id="nt-due" name="dueDate" type="date" className={inputClass} {...fieldAria("nt-due", { error: err("dueDate") })} />
         </Field>
       </div>
+      {memberMode ? (
+        <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
+          <legend className="mb-1 p-0 text-sm font-medium">Assign to</legend>
+          <div className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-border bg-surface p-2 sm:grid-cols-2">
+            {teammates.map((p) => (
+              <label key={`${project}-${p.id}`} className="flex min-h-9 items-center gap-2 rounded px-2 text-sm hover:bg-background">
+                <input type="checkbox" name="assigneeIds" value={p.id} className="size-4" />
+                <span>{p.name}</span>
+              </label>
+            ))}
+          </div>
+          <p className="m-0 text-xs text-muted">Leave everyone unticked to keep the task for yourself.</p>
+        </fieldset>
+      ) : null}
       {people ? (
         <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
           <legend className="mb-1 p-0 text-sm font-medium">Assign to</legend>

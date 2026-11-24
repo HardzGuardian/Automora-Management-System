@@ -14,10 +14,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
 import { getClient, listClientNotes } from "@/modules/clients";
-import { getClientFinanceSummary, type ClientFinanceSummary } from "@/modules/finance";
 import { listProjects } from "@/modules/projects";
-import { LinkedRecords } from "../../_components/linked-records";
-import { loadLinkedFinance, loadLinkedTasks } from "../../_components/linked-data";
 import { addNoteAction, archiveClientAction, deleteNoteAction, editNoteAction } from "../actions";
 import { ClientForm } from "../client-form";
 
@@ -35,21 +32,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     if (e instanceof DomainError && (e.code === "NOT_FOUND" || e.code === "FORBIDDEN")) notFound();
     throw e;
   }
-  // Finance data comes only through @/modules/finance and only for users with finance access.
-  let finance: ClientFinanceSummary | null = null;
-  let financeUnavailable = false;
-  if (can(actor, "finance.invoices.read")) {
-    try {
-      finance = await getClientFinanceSummary(actor, id);
-    } catch {
-      financeUnavailable = true; // never let a finance problem break the client page
-    }
-  }
-  const [notes, projects, tasks, linked] = await Promise.all([
+  // The client page lists projects only; each project's unpaid charges, invoices and tasks open in a pop-up.
+  const [notes, projects] = await Promise.all([
     listClientNotes(actor, id),
     listProjects(actor, { clientId: id, includeArchived: true, pageSize: 100 }),
-    loadLinkedTasks(actor, { clientId: id }),
-    loadLinkedFinance(actor, { clientId: id }),
   ]);
   const canUpdate = can(actor, "clients.update");
   const tz = actor.timezone;
@@ -92,54 +78,23 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
           <SectionCard title="Projects" count={projects.total}>
             {projects.rows.length === 0 ? (
-              <p className="text-sm text-muted">No projects visible to you.</p>
+              <p className="text-sm text-muted">No projects visible to you. Create a project for this client to start tracking its tasks and invoices.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-border text-sm">
                 {projects.rows.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                    <Link href={`/projects/${p.id}`} className={linkClass}>
+                    <Link href={`/clients/${id}/projects/${p.id}`} className={linkClass}>
                       {p.projectCode} {p.name}
                     </Link>
-                    <StatusBadge status={p.status} />
+                    <span className="flex items-center gap-3">
+                      <span className="text-xs text-muted">{p.dueDate ? `Due ${p.dueDate}` : "No due date"}</span>
+                      <StatusBadge status={p.status} />
+                    </span>
                   </li>
                 ))}
               </ul>
             )}
           </SectionCard>
-
-          {can(actor, "finance.invoices.read") ? (
-            <section aria-label="Finance" className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
-              <h2 className="m-0 text-base font-semibold">Finance</h2>
-              {financeUnavailable ? (
-                <p className="text-sm text-muted">Finance data is unavailable right now.</p>
-              ) : finance && finance.outstandingByCurrency.length > 0 ? (
-                <ul className="flex flex-col divide-y divide-border text-sm">
-                  {finance.outstandingByCurrency.map((o) => (
-                    <li key={o.currency} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                      <span className="text-muted">Outstanding receivables</span>
-                      <span className="font-medium tabular-nums">
-                        {o.currency} {o.amount}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted">No outstanding invoices.</p>
-              )}
-            </section>
-          ) : null}
-
-          <LinkedRecords title="Tasks" rows={tasks.rows} total={tasks.total} empty="No tasks linked to this client." />
-          {linked.invoices ? (
-            <LinkedRecords
-              title="Invoices"
-              rows={linked.invoices.rows}
-              total={linked.invoices.total}
-              empty="No invoices yet."
-              viewAllHref={`/invoices?clientId=${id}`}
-            />
-          ) : null}
-          {linked.receipts ? <LinkedRecords title="Receipts" rows={linked.receipts.rows} total={linked.receipts.total} empty="No receipts yet." /> : null}
 
           <SectionCard title="Notes" count={notes.length}>
             {notes.length === 0 ? (

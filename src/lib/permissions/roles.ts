@@ -12,6 +12,7 @@ export const SYSTEM_ROLES: Readonly<Record<"Super Admin" | "Manager" | "Employee
       "dashboard.personal.read",
     ],
     Employee: [
+      "tasks.create.in_project",
       "tasks.status.update.own",
       "tasks.comment",
       "tasks.attach",

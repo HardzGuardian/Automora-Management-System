@@ -174,3 +174,62 @@ describe("getTask / archiveTask", () => {
     await expect(archiveTask(w.manager, t.id)).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });
+
+describe("createTask by an employee (tasks.create.in_project)", () => {
+  const KEYS = ["tasks.status.update.own", "tasks.comment", "tasks.create.in_project"] as const;
+
+  it("creates a task in their own project, assigned to themselves by default, and the creator is not notified", async () => {
+    const w = await workWorld();
+    const e = await w.employee([...KEYS]);
+    const p = await w.project({ members: [e.employeeId] });
+    const events: NotifyEvent[] = [];
+    setNotifier(async (ev) => void events.push(ev));
+    const t = await createTask(e.actor, { title: "Forgotten task", projectId: p.id });
+    expect(t.projectId).toBe(p.id);
+    expect(t.assignees.map((a) => a.employeeId)).toEqual([e.employeeId]);
+    expect(events).toEqual([]);
+  });
+
+  it("can give the task to a teammate on the same project, who is notified", async () => {
+    const w = await workWorld();
+    const e = await w.employee([...KEYS]);
+    const mate = await w.employee();
+    const p = await w.project({ members: [e.employeeId, mate.employeeId] });
+    const events: NotifyEvent[] = [];
+    setNotifier(async (ev) => void events.push(ev));
+    const t = await createTask(e.actor, { title: "For a teammate", projectId: p.id, assigneeIds: [mate.employeeId] });
+    expect(t.assignees.map((a) => a.employeeId)).toEqual([mate.employeeId]);
+    expect(events.map((x) => x.type)).toEqual(["task.assigned"]);
+    expect(events[0].userIds).toEqual([mate.userId]);
+  });
+
+  it("refuses assigning to someone who is not on the project", async () => {
+    const w = await workWorld();
+    const e = await w.employee([...KEYS]);
+    const outsider = await w.employee();
+    const p = await w.project({ members: [e.employeeId] });
+    await expect(createTask(e.actor, { title: "x", projectId: p.id, assigneeIds: [outsider.employeeId] })).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
+  it("needs a project, and only a project they are on", async () => {
+    const w = await workWorld();
+    const e = await w.employee([...KEYS]);
+    const other = await w.project({ members: [] });
+    await expect(createTask(e.actor, { title: "no project" })).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(createTask(e.actor, { title: "not mine", projectId: other.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("still needs the permission, and viewers cannot create", async () => {
+    const w = await workWorld();
+    const plain = await w.employee(["tasks.comment"]);
+    const p = await w.project({ members: [plain.employeeId] });
+    await expect(createTask(plain.actor, { title: "x", projectId: p.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const viewer = await w.employee([...KEYS]);
+    const p2 = await w.project({ members: [] });
+    const { db: database } = await import("@/db");
+    const { projectMembers } = await import("@/db/schema");
+    await database.insert(projectMembers).values({ projectId: p2.id, companyId: w.company.id, employeeId: viewer.employeeId, membershipRole: "viewer" });
+    await expect(createTask(viewer.actor, { title: "x", projectId: p2.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});

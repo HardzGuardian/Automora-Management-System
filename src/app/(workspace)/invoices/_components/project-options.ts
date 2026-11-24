@@ -2,7 +2,7 @@ import "server-only";
 import type { Actor } from "@/lib/auth/actor";
 import { listProjects } from "@/modules/projects";
 
-export type ProjectOption = { id: string; label: string };
+export type ProjectOption = { id: string; label: string; clientId?: string | null };
 
 /**
  * Projects the actor may see, as select options. `currentId` is always kept in the list so saving a form
@@ -12,7 +12,7 @@ export async function loadProjectOptions(actor: Actor, currentId?: string | null
   let options: ProjectOption[] = [];
   try {
     const { rows } = await listProjects(actor, { page: 1, pageSize: 100 });
-    options = rows.map((p) => ({ id: p.id, label: `${p.projectCode} · ${p.name}` }));
+    options = rows.map((p) => ({ id: p.id, label: `${p.projectCode} · ${p.name}`, clientId: p.clientId }));
   } catch {
     options = [];
   }

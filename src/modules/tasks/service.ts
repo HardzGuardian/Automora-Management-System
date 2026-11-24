@@ -1,7 +1,7 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, withTransaction, type Tx } from "@/db";
-import { clients, projects, taskAssignees, tasks } from "@/db/schema";
+import { clients, projectMembers, projects, taskAssignees, tasks } from "@/db/schema";
 import type { Actor } from "@/lib/auth/actor";
 import { nextCode } from "@/lib/codes";
 import { DomainError } from "@/lib/errors";
@@ -56,13 +56,43 @@ async function resolveRefs(
   return { projectId: null, clientId: clientId ?? null };
 }
 
+/**
+ * The "create tasks in projects they are on" rule for people without tasks.create (employees): the task must
+ * sit in a project where they are an owner or member, and may only be given to people on that same project.
+ * With nobody chosen it is assigned to the creator. Returns the assignee ids to use.
+ */
+async function memberTaskAssignees(tx: Tx, actor: Actor, projectId: string | null | undefined, chosen: string[]): Promise<string[]> {
+  if (!projectId) throw new DomainError("VALIDATION", "Choose the project this task belongs to");
+  if (!actor.employeeId) throw new DomainError("FORBIDDEN", "Only people with an employee profile can create tasks");
+  const people = await tx
+    .select({ employeeId: projectMembers.employeeId })
+    .from(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.companyId, actor.companyId),
+        inArray(projectMembers.membershipRole, ["owner", "member"]),
+      ),
+    );
+  const onProject = new Set(people.map((p) => p.employeeId));
+  if (!onProject.has(actor.employeeId)) throw new DomainError("FORBIDDEN", "You can only create tasks in projects you are on");
+  const ids = chosen.length > 0 ? [...new Set(chosen)] : [actor.employeeId];
+  if (ids.some((id) => !onProject.has(id))) {
+    throw new DomainError("VALIDATION", "You can only give a task to people who are on this project");
+  }
+  return ids;
+}
+
 export async function createTask(actor: Actor, input: CreateTaskInput): Promise<TaskDTO> {
-  requirePermission(actor, "tasks.create");
+  const full = can(actor, "tasks.create");
+  if (!full) requirePermission(actor, "tasks.create.in_project");
   const data = createTaskSchema.parse(input);
-  if ((data.assigneeIds ?? []).length > 0) requirePermission(actor, "tasks.assign");
+  if (full && (data.assigneeIds ?? []).length > 0) requirePermission(actor, "tasks.assign");
 
   const { dto, assigned } = await withTransaction(async (tx) => {
-    const refs = await resolveRefs(tx, actor.companyId, data.projectId, data.clientId);
+    const assigneeIds = full ? (data.assigneeIds ?? []) : await memberTaskAssignees(tx, actor, data.projectId, data.assigneeIds ?? []);
+    // The client always comes from the project for employee-created tasks.
+    const refs = await resolveRefs(tx, actor.companyId, data.projectId, full ? data.clientId : undefined);
     const [row] = await tx
       .insert(tasks)
       .values({
@@ -81,11 +111,12 @@ export async function createTask(actor: Actor, input: CreateTaskInput): Promise<
       })
       .returning();
     await logTaskActivity(tx, actor, row.id, "created", undefined, { title: row.title, taskCode: row.taskCode });
-    const assigned = await addAssignees(tx, actor, row.id, data.assigneeIds ?? []);
+    const assigned = await addAssignees(tx, actor, row.id, assigneeIds);
     return { dto: await loadTaskDTO(tx, actor, row.id), assigned };
   });
 
-  await notifyAssigned(dto.id, dto.title, assigned); // after commit; never throws
+  // Nobody needs a notification for assigning a task to themselves.
+  await notifyAssigned(dto.id, dto.title, full ? assigned : assigned.filter((a) => a.employeeId !== actor.employeeId)); // after commit; never throws
   return dto;
 }
 

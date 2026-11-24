@@ -17,6 +17,8 @@ type ClientOption = { id: string; name: string };
 export function NewInvoiceForm({ clients, projects, defaultDueDate }: { clients: ClientOption[]; projects: ProjectChoice[]; defaultDueDate: string }) {
   const router = useRouter();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [clientId, setClientId] = useState("");
+  const clientProjects = projects.filter((p) => p.clientId === clientId);
   const [state, action, pending] = useActionState<FinanceActionResult<{ id: string }> | null, FormData>(createInvoiceAction, null);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function NewInvoiceForm({ clients, projects, defaultDueDate }: { clients:
       <div className={`${cardClass} flex flex-col gap-4`}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="clientId" label="Client" required>
-            <select id="clientId" name="clientId" required defaultValue="" className={inputClass}>
+            <select id="clientId" name="clientId" required value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClass}>
               <option value="" disabled>
                 Select a client
               </option>
@@ -42,6 +44,21 @@ export function NewInvoiceForm({ clients, projects, defaultDueDate }: { clients:
               ))}
             </select>
           </Field>
+          <div className="sm:col-span-2">
+            <ProjectSelect
+              key={clientId}
+              id="projectId"
+              projects={clientProjects}
+              required
+              hint={
+                !clientId
+                  ? "Choose the client first, then the project this invoice is for."
+                  : clientProjects.length === 0
+                    ? "This client has no projects yet. Create a project for them first."
+                    : "The invoice shows under this project on the client page."
+              }
+            />
+          </div>
           <Field id="dueDate" label="Due date" hint="Filled from your payment terms setting. Today or later.">
             <input id="dueDate" name="dueDate" type="date" defaultValue={defaultDueDate} min={new Date().toLocaleDateString("en-CA")} aria-describedby="dueDate-hint" className={inputClass} />
           </Field>
@@ -66,7 +83,6 @@ export function NewInvoiceForm({ clients, projects, defaultDueDate }: { clients:
         </div>
 
         <MoreOptions>
-          <ProjectSelect id="projectId" projects={projects} />
           <Field id="discount" label="Discount" hint="Amount taken off this line.">
             <input id="discount" name="discount" type="number" min="0" step="0.01" defaultValue="0" aria-describedby="discount-hint" className={inputClass} />
           </Field>
