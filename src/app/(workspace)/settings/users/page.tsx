@@ -8,6 +8,7 @@ import { listPendingInvitations, listRoles, listUsers } from "@/modules/auth";
 import { addRoleAction, inviteUserAction, reactivateUserAction, removeRoleAction, suspendUserAction } from "./actions";
 import { PendingInvitations } from "./pending-invitations";
 import { parsePage } from "@/lib/pagination";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Users" };
 
@@ -72,7 +73,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <label className="sr-only" htmlFor="user-search">
           Search users
         </label>
-        <input id="user-search" name="q" defaultValue={q} placeholder="Search by name or email" maxLength={100} className={inputClass} />
+        <LiveSearch id="user-search" defaultValue={q} placeholder="Search by name or email" maxLength={100} className={inputClass} />
         <button type="submit" className={buttonClass("secondary")}>
           Search
         </button>

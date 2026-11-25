@@ -6,6 +6,7 @@ import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listEmptyDepartments, listTeamOverview } from "@/modules/teams";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Teams" };
 
@@ -23,7 +24,7 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
       <ControlPanel
         search={
           <form role="search" aria-label="Team search" className="flex flex-wrap items-center gap-2">
-            <input name="q" type="search" defaultValue={search} placeholder="Search teams by name" aria-label="Search teams" className={`${inputClass} max-w-sm flex-1`} />
+            <LiveSearch defaultValue={search} placeholder="Search teams by name" label="Search teams" className={`${inputClass} max-w-sm flex-1`} />
             <button type="submit" className={buttonClass("secondary")}>Search</button>
             {search ? <Link href="/teams" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">Clear</Link> : null}
           </form>
@@ -49,9 +50,9 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
 
       {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
 
-      <section aria-label="Teams" className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section aria-label="Teams">
         {teams.length === 0 && emptyDepartments.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-muted">
+          <p className="rounded-2xl border border-border bg-surface px-6 py-10 text-center text-sm text-muted">
             {search
               ? `No team matches “${search}”.`
               : manage
@@ -59,9 +60,9 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
                 : "You are not on a team yet. Your admin can add you to one."}
           </p>
         ) : (
-          <ul className="m-0 list-none p-0">
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {emptyDepartments.map((d) => (
-              <li key={d.id} className="border-t border-border first:border-t-0">
+              <li key={d.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] transition-shadow hover:shadow-[var(--elev-2)]">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-[18px]">
                   <span className="min-w-0">
                     <span className="block font-semibold text-foreground">{d.name}</span>
@@ -76,7 +77,7 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
               </li>
             ))}
             {teams.map((t) => (
-              <li key={t.id} className="border-t border-border first:border-t-0">
+              <li key={t.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] transition-shadow hover:shadow-[var(--elev-2)]">
                 <details open={search ? true : undefined} className="group">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-[18px]">
                     <span className="min-w-0">

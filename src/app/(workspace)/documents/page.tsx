@@ -4,6 +4,7 @@ import { Icon } from "@/components/ui/icons";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DOC_KINDS, listDocuments, type DocKind } from "@/modules/documents";
 import { projectsOverview } from "@/modules/projects";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Documents" };
 
@@ -36,14 +37,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
             <div className="relative w-full">
               <label htmlFor="doc-q" className="sr-only">Search documents</label>
               <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
-              <input
-                id="doc-q"
-                name="q"
-                type="search"
-                defaultValue={sp.q}
-                placeholder="Search by file name"
-                className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
-              />
+              <LiveSearch id="doc-q" defaultValue={sp.q} placeholder="Search by file name" className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted" />
             </div>
             <label htmlFor="doc-project" className="sr-only">Filter by project</label>
             <select id="doc-project" name="project" defaultValue={projectId ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">

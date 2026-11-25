@@ -3,7 +3,7 @@ import { ADMIN, expectNoPageOverflow, login } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
-test("shell (Odoo style): module menu in the top bar, breadcrumbs on the page, bell and account kept out of the menu", async ({ page }) => {
+test("shell: sidebar by area, page title with breadcrumbs, bell and account kept out of the menu", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/tasks");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("heading", { name: "Tasks" })).toBeVisible();
@@ -12,8 +12,10 @@ test("shell (Odoo style): module menu in the top bar, breadcrumbs on the page, b
   await expect(menu.getByRole("link", { name: "Notifications" })).toHaveCount(0);
   await expect(page.getByRole("banner").getByRole("link", { name: /Notifications/ })).toBeVisible();
 
-  // A module's dropdown lists its pages.
-  await menu.getByRole("button", { name: "Finance menu" }).click();
+  // The current module lists its own pages underneath it; other modules stay collapsed.
+  await expect(menu.getByRole("link", { name: "My tasks" })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Invoices" })).toHaveCount(0);
+  await menu.getByRole("link", { name: "Finance", exact: true }).click();
   await menu.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL(/\/finance\?tab=invoices/);
 });

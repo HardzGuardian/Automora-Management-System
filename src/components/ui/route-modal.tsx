@@ -22,7 +22,7 @@ export function RouteModal({ children }: { children: ReactNode }) {
       onClick={(e) => {
         if (e.target === ref.current) ref.current?.close(); // a click on the backdrop closes it
       }}
-      className="m-auto max-h-[92dvh] w-[min(52rem,94vw)] overflow-y-auto rounded-2xl border border-border bg-surface p-0 text-body shadow-[var(--elev-3)] backdrop:bg-black/40 [&_[data-back]]:hidden [&_[data-control-panel]]:m-0 [&_[data-control-panel]]:mb-4 [&_[data-control-panel]]:border-0 [&_[data-control-panel]]:bg-transparent [&_[data-control-panel]]:p-0 [&_[data-control-panel]]:pr-10 [&_[data-control-panel]_li:not([aria-current])]:hidden [&_[data-control-panel]_h1]:text-2xl [&_[data-sheet]]:max-w-none [&_[data-sheet]]:border-0 [&_[data-sheet]]:p-0 [&_[data-sheet]]:shadow-none"
+      className="m-auto max-h-[92dvh] w-[min(52rem,94vw)] overflow-y-auto rounded-2xl border border-border bg-surface p-0 text-body shadow-[var(--elev-3)] backdrop:bg-black/40 [&_[data-back]]:hidden [&_[data-control-panel]]:m-0 [&_[data-control-panel]]:mb-4 [&_[data-control-panel]]:border-0 [&_[data-control-panel]]:bg-transparent [&_[data-control-panel]]:p-0 [&_[data-control-panel]]:pr-10 [&_[data-control-panel]_li:not([aria-current])]:hidden [&_[data-control-panel]_h1]:text-2xl [&_[data-area-chip]]:hidden [&_[data-sheet]]:max-w-none [&_[data-sheet]]:border-0 [&_[data-sheet]]:p-0 [&_[data-sheet]]:shadow-none"
     >
       <div className="relative p-6 sm:p-8">
         <button

@@ -8,6 +8,7 @@ import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
 import { projectsOverview, type ProjectOverviewRow } from "@/modules/projects";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Clients" };
 
@@ -41,14 +42,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <form role="search" className="relative w-full">
             <label htmlFor="cl-q" className="sr-only">Search clients</label>
             <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
-            <input
-              id="cl-q"
-              name="q"
-              type="search"
-              defaultValue={sp.q}
-              placeholder="Search clients"
-              className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
-            />
+            <LiveSearch id="cl-q" defaultValue={sp.q} placeholder="Search clients" className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted" />
           </form>
         }
         crumbs={[{ label: "Clients" }]}
@@ -69,16 +63,16 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         {sp.archived === "1" ? "Hide archived clients" : "Show archived clients"}
       </Link>
 
-      <section aria-label="Clients" className="rounded-lg border border-border bg-surface">
+      <section aria-label="Clients">
         {clients.length === 0 ? (
-          <p className="px-5 py-10 text-center text-muted">{sp.q ? "No clients match this search." : "No clients yet."}</p>
+          <p className="rounded-2xl border border-border bg-surface px-6 py-10 text-center text-sm text-muted">{sp.q ? "No clients match this search." : "No clients yet."}</p>
         ) : (
-          <ul className="m-0 list-none p-0">
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {clients.map((c, i) => {
               const list = byClient.get(c.id) ?? [];
               const status = clientStatus(list, c.status, c.archived);
               return (
-                <li key={c.id} className="border-t border-border first:border-t-0">
+                <li key={c.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] transition-shadow hover:shadow-[var(--elev-2)]">
                   <details open={i === 0 && clients.length > 1 ? true : undefined} className="group">
                     <summary className="flex min-h-[68px] cursor-pointer list-none flex-wrap items-center gap-3.5 px-5 py-4">
                       <span aria-hidden="true" className="inline-flex size-10 flex-none items-center justify-center rounded-lg bg-primary-soft font-bold text-primary-ink">

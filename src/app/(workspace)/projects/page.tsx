@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
 import { CompactPager, ControlPanel } from "@/components/ui/odoo";
-import { FacetSearch, hrefWith } from "@/components/ui/facet-search";
+import { FacetSearch } from "@/components/ui/facet-search";
 import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { cn } from "@/lib/cn";
@@ -96,7 +96,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             placeholder="Search projects by name or code..."
             value={q ?? ""}
             keep={{ status: sp.status, sort: sp.sort }}
-            facets={q ? [{ label: "Search", value: q, removeHref: hrefWith("/projects", { status: sp.status, sort: sp.sort }) }] : []}
           />
         }
         filters={
@@ -134,17 +133,20 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
       {sp.error ? <p role="alert" className="m-0 rounded-lg bg-danger-soft px-4 py-3 font-medium text-danger">{sp.error.slice(0, 300)}</p> : null}
 
-      <section aria-label="Projects" className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section aria-label="Projects">
         {rows.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-muted">{all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}</p>
+          <p className="rounded-2xl border border-border bg-surface px-6 py-10 text-center text-sm text-muted">{all.length === 0 ? "No projects yet." : `No ${current.label.toLowerCase()} projects.`}</p>
         ) : (
-          <ul className="m-0 list-none p-0">
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {rows.map((r, i) => {
               const tasks = tasksByProject.get(r.id) ?? [];
               return (
-                <li key={r.id} className="border-t border-border first:border-t-0">
+                <li key={r.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] transition-shadow hover:shadow-[var(--elev-2)]">
                   <details open={i === 0 || chosen ? true : undefined} className="group">
-                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.4fr)_auto_auto_auto] items-start gap-x-4 gap-y-1 px-6 py-[18px] max-md:grid-cols-[minmax(0,1fr)_auto]">
+                    <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.4fr)_auto_auto_auto] items-center gap-x-4 gap-y-1 px-5 py-4 max-md:grid-cols-[auto_minmax(0,1fr)_auto]">
+                      <span aria-hidden="true" className="inline-flex size-10 items-center justify-center rounded-xl bg-[var(--tone-blue-soft)] text-[var(--tone-blue)]">
+                        <Icon name="projects" size={19} />
+                      </span>
                       <span className="min-w-0">
                         <span className="font-semibold text-foreground">{r.name}</span>
                         {r.clientName ? <span className="mt-0.5 block text-xs text-muted">{r.clientName}</span> : null}
@@ -170,7 +172,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                       <Icon name="chevronDown" size={18} strokeWidth={2.2} className="mt-0.5 text-body transition-transform group-open:rotate-180" />
                     </summary>
 
-                    <div className="border-t border-border bg-background px-6 py-4">
+                    <div className="border-t border-border bg-background px-5 py-4">
                       <p className="m-0 mb-3 text-sm">
                         <Link href={`/projects/${r.id}`} className="font-medium text-primary-ink hover:text-primary-hover">Open project details</Link>
                       </p>

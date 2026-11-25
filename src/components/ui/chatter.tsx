@@ -58,7 +58,7 @@ export function Chatter({
   }
 
   return (
-    <section aria-label={title} className={cn("rounded-xl border border-border bg-surface", className)}>
+    <section aria-label={title} className={cn("rounded-2xl border border-border bg-surface shadow-[var(--elev-1)]", className)}>
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Icon name="comment" size={17} className="text-primary" />
         <h2 className="m-0 text-sm font-semibold text-foreground">{title}</h2>

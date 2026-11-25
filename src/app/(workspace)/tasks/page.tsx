@@ -21,7 +21,7 @@ import { bulkTasksAction } from "./actions";
 import { SelectAll } from "./_components/select-all";
 import { TaskBoard, type BoardCard } from "./_components/task-board";
 import { TaskCalendar } from "./_components/task-calendar";
-import { TaskSearch } from "@/components/ui/task-search";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Tasks" };
 
@@ -165,7 +165,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                 <input key={k} type="hidden" name={k} value={sp[k]} />
               ))}
             <SearchBox facets={facets}>
-              <TaskSearch name="q" defaultValue={sp.q ?? ""} view={personal ? "mine" : "all"} placeholder="Search tasks by title or code..." />
+              <LiveSearch defaultValue={sp.q ?? ""} placeholder="Search tasks by title or code..." label="Search tasks" className="w-full text-sm text-foreground placeholder:text-muted" />
             </SearchBox>
           </form>
         }
@@ -312,9 +312,9 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           }))}
         />
       ) : (
-        <>
+        <div className="group/list flex flex-col gap-4">
           {canBulk && rows.length > 0 && show !== "archived" ? (
-            <form id="bulk-form" action={bulkTasksAction} aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+            <form id="bulk-form" action={bulkTasksAction} aria-label="Bulk actions" className="hidden flex-wrap items-center gap-2 rounded-2xl border border-primary/30 bg-primary-soft px-4 py-3 text-sm group-has-[input[name=taskId]:checked]/list:flex">
               <input type="hidden" name="returnTo" value={returnTo} />
               <span className="font-medium">With ticked tasks:</span>
               <select name="op" aria-label="Bulk action" defaultValue="status" className="h-9 rounded-md border border-field bg-surface px-2">
@@ -465,7 +465,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {list.total === 0 ? "" : `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + rows.length} of ${list.total}`}
             </p>
           </div>
-        </>
+        </div>
       )}
       {layout !== "list" && list.total > rows.length ? <p className="text-xs text-muted">Showing the first {rows.length} of {list.total}. Narrow the filters to see the rest.</p> : null}
     </div>

@@ -2,7 +2,7 @@
 
 /* Design tokens (from the "Automora redesign" canvas; blueprint §9). Everyone uses these via Tailwind utilities (bg-primary, text-muted...). Light theme only in V1. */
 :root {
-  --background: #f7f8f7;
+  --background: #f3f5f4;
   --surface: #ffffff;
   --foreground: #121a16;
   --body: #34413a;
@@ -27,6 +27,19 @@
   --danger: #b42318;
   --danger-soft: #fdeceb;
   --radius: 0.625rem;
+  /* One soft accent per area, used for icon chips in the sidebar and page headers. Meaning always comes from the text too. */
+  --tone-green: #167c50;
+  --tone-green-soft: #e3f3ea;
+  --tone-blue: #2563a8;
+  --tone-blue-soft: #e5eefa;
+  --tone-amber: #96600a;
+  --tone-amber-soft: #fcf0d8;
+  --tone-teal: #0f766e;
+  --tone-teal-soft: #dff2ef;
+  --tone-rose: #b13a55;
+  --tone-rose-soft: #fbe7ec;
+  --tone-slate: #4b5a6b;
+  --tone-slate-soft: #e9edf1;
 }
 
 @theme inline {
@@ -132,3 +145,7 @@ dialog[open] { animation: dialog-in 160ms ease-out; }
 dialog[open]::backdrop { animation: backdrop-in 160ms ease-out; }
 #main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), #main textarea { padding-right: 0.75rem; }
 #main select { padding-right: 2rem; }
+
+/* Calm row highlight so the eye can follow a row across a wide table. */
+#main tbody tr:hover > td, #main tbody tr:hover > th { background-color: color-mix(in srgb, var(--primary) 4%, transparent); }
+#main thead th { letter-spacing: 0.01em; }

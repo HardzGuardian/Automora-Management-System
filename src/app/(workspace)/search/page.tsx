@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { buttonClass, inputClass, linkClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { globalSearch, type SearchHit } from "@/modules/search";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Search" };
 
@@ -35,14 +36,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="flex flex-col gap-4">
       <PageHeader title="Search" description="Find tasks, projects, documents, clients and employees you have access to." />
       <form role="search" aria-label="Search the workspace" className="flex flex-wrap gap-2">
-        <input
-          name="q"
-          type="search"
-          defaultValue={q}
-          placeholder="Search projects, tasks, documents"
-          aria-label="Search"
-          className={`${inputClass} max-w-md flex-1`}
-        />
+        <LiveSearch defaultValue={q} placeholder="Search projects, tasks, documents" label="Search" className={`${inputClass} max-w-md flex-1`} />
         <button type="submit" className={buttonClass("secondary")}>
           Search
         </button>

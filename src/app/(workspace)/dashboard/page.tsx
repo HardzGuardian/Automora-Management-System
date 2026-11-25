@@ -1,9 +1,10 @@
 import { ControlPanel } from "@/components/ui/odoo";
+import { HeroStat, StripStat } from "@/components/dashboard/hero-stat";
+import { getSession } from "@/lib/auth/session";
 import Link from "next/link";
 import { BarChartCard } from "@/components/charts/bar-chart-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { RangeFilter } from "@/components/dashboard/range-filter";
-import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ErrorState } from "@/components/ui/states";
@@ -27,9 +28,9 @@ const SUBTITLE = {
 
 function Card({ title, action, children }: { title: string; action?: { href: string; label: string }; children: React.ReactNode }) {
   return (
-    <section aria-label={title} className="min-w-0 rounded-lg border border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="m-0 text-base font-semibold text-foreground">{title}</h2>
+    <section aria-label={title} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)]">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+        <h2 className="m-0 text-[15px] font-semibold text-foreground">{title}</h2>
         {action ? (
           <Link href={action.href} className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">
             {action.label}
@@ -80,7 +81,7 @@ function MoneyLines({ rows }: { rows: Money[] }) {
 
 function FinStat({ label, basis, rows }: { label: string; basis: string; rows: Money[] }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-[18px] py-4">
+    <div className="flex flex-col gap-1 px-5 py-4">
       <p className="m-0 text-[13px] text-muted">{label}</p>
       <p className="m-0 text-xl font-semibold tabular-nums text-foreground">
         <MoneyLines rows={rows} />
@@ -113,6 +114,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     throw e;
   }
   const steps = await setupSteps(actor);
+  const session = await getSession();
+  const first = (session?.user.name ?? "").trim().split(" ")[0];
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: actor.timezone }).format(new Date()));
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const c = dash.counts;
   const personal = dash.audience === "personal";
   const tasksHref = personal ? "/tasks?show=mine" : "/tasks";
@@ -127,10 +132,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         crumbs={[{ label: "Dashboard" }]}
         description={
           <>
-            {SUBTITLE[dash.audience]} Period: {dash.range.from} to {dash.range.to}. Counts are as of {dash.range.today} unless marked &ldquo;period total&rdquo;.
+            {greeting}
+            {first ? `, ${first}` : ""}. {SUBTITLE[dash.audience]} Period: {dash.range.from} to {dash.range.to}. Counts are as of {dash.range.today} unless marked &ldquo;period total&rdquo;.
           </>
         }
-        filters={<RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={rangeError} />}
+        aside={<RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={rangeError} />}
       />
 
       {steps.length > 0 && steps.some((x) => !x.done) ? (
@@ -160,54 +166,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </section>
       ) : null}
 
-      <section aria-label="Key numbers" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Open tasks" value={c.openTasks} icon="tasks" href={tasksHref} />
-        <KpiCard label="In progress" value={c.inProgressTasks} icon="pending" href={tasksHref} />
-        <KpiCard label="Overdue" value={c.overdueTasks} icon="overdue" tone={c.overdueTasks > 0 ? "danger" : "neutral"} href={overdueHref} />
-        <KpiCard label="Due in next 7 days" value={c.dueNext7Days} icon="tasks" href={tasksHref} />
-        <KpiCard label="Completed" value={c.completedTasks} basis="period total" tone="success" icon="completed" href={tasksHref} />
-        <KpiCard label="Active projects" value={c.activeProjects} icon="projects" tone="success" href="/projects" />
-        {c.activeEmployees !== null ? <KpiCard label="Active employees" value={c.activeEmployees} icon="employees" href="/employees" /> : null}
-        {c.activeClients !== null ? <KpiCard label="Active clients" value={c.activeClients} icon="clients" href="/clients" /> : null}
+      <section aria-label="Key numbers" className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <HeroStat
+            label="Overdue"
+            value={c.overdueTasks}
+            icon="overdue"
+            tone="danger"
+            href={overdueHref}
+            hint={c.overdueTasks > 0 ? "Past their due date. Open the list to catch up." : "Nothing is late. Nice work."}
+          />
+          <HeroStat label="Due in next 7 days" value={c.dueNext7Days} icon="pending" tone="warning" href={tasksHref} hint="Coming up this week." />
+          <HeroStat label="Open tasks" value={c.openTasks} icon="tasks" tone="info" href={tasksHref} hint={`${c.inProgressTasks} in progress right now.`} />
+        </div>
+        <div className="flex flex-wrap divide-x divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] max-md:divide-x-0 max-md:divide-y">
+          <StripStat label="In progress" value={c.inProgressTasks} href={tasksHref} />
+          <StripStat label="Completed" value={c.completedTasks} note="period total" href={tasksHref} />
+          <StripStat label="Active projects" value={c.activeProjects} href="/projects" />
+          {c.activeEmployees !== null ? <StripStat label="Active employees" value={c.activeEmployees} href="/employees" /> : null}
+          {c.activeClients !== null ? <StripStat label="Active clients" value={c.activeClients} href="/clients" /> : null}
+        </div>
       </section>
-
-      {dash.finance ? (
-        <section aria-label="Finance snapshot" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="m-0 text-base font-semibold text-foreground">Finance snapshot</h2>
-            <Link href="/finance" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">
-              Open finance
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <FinStat label="Invoiced" basis={dash.finance.labels.invoiceTotals} rows={dash.finance.periodTotals.invoicesByIssueDate} />
-            <FinStat label="Received" basis={dash.finance.labels.confirmedReceipts} rows={dash.finance.periodTotals.confirmedReceiptsByPaymentDate} />
-            <FinStat label="Expenses" basis={dash.finance.labels.expenses} rows={dash.finance.periodTotals.expensesByExpenseDate} />
-            <FinStat label="Outstanding receivables" basis={dash.finance.labels.outstandingReceivables} rows={dash.finance.pointInTime.outstandingReceivables} />
-          </div>
-          {dash.finance.periodTotals.cashMovementByPaymentDate.length > 0 ? (
-            <p className="m-0 text-sm text-muted">
-              Net cash movement ({dash.finance.labels.cashMovement}):{" "}
-              {dash.finance.periodTotals.cashMovementByPaymentDate.map((m) => `${m.currency} ${m.netCashMovement}`).join(" · ")}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <BarChartCard
-          title="Tasks by status"
-          caption="Point in time, all non-archived tasks in your scope"
-          valueLabel="Tasks"
-          data={dash.taskStatus.map((x) => ({ label: x.status, value: x.count, color: STATUS_COLOR[x.status] }))}
-        />
-        <BarChartCard
-          title="Open tasks by priority"
-          caption="Point in time"
-          valueLabel="Open tasks"
-          data={dash.taskPriority.map((x) => ({ label: x.priority, value: x.count, color: PRIORITY_COLOR[x.priority] }))}
-        />
-      </div>
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="min-w-0 flex-[2_1_520px]">
@@ -276,6 +255,44 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             )}
           </Card>
         </div>
+      </div>
+
+      {dash.finance ? (
+        <section aria-label="Finance snapshot" className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)]">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+            <h2 className="m-0 text-[15px] font-semibold text-foreground">Finance snapshot</h2>
+            <Link href="/finance" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">
+              Open finance
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
+            <FinStat label="Invoiced" basis={dash.finance.labels.invoiceTotals} rows={dash.finance.periodTotals.invoicesByIssueDate} />
+            <FinStat label="Received" basis={dash.finance.labels.confirmedReceipts} rows={dash.finance.periodTotals.confirmedReceiptsByPaymentDate} />
+            <FinStat label="Expenses" basis={dash.finance.labels.expenses} rows={dash.finance.periodTotals.expensesByExpenseDate} />
+            <FinStat label="Outstanding receivables" basis={dash.finance.labels.outstandingReceivables} rows={dash.finance.pointInTime.outstandingReceivables} />
+          </div>
+          {dash.finance.periodTotals.cashMovementByPaymentDate.length > 0 ? (
+            <p className="m-0 border-t border-border bg-background px-5 py-2.5 text-[13px] text-muted">
+              Net cash movement ({dash.finance.labels.cashMovement}):{" "}
+              {dash.finance.periodTotals.cashMovementByPaymentDate.map((m) => `${m.currency} ${m.netCashMovement}`).join(" · ")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <BarChartCard
+          title="Tasks by status"
+          caption="Point in time, all non-archived tasks in your scope"
+          valueLabel="Tasks"
+          data={dash.taskStatus.map((x) => ({ label: x.status, value: x.count, color: STATUS_COLOR[x.status] }))}
+        />
+        <BarChartCard
+          title="Open tasks by priority"
+          caption="Point in time"
+          valueLabel="Open tasks"
+          data={dash.taskPriority.map((x) => ({ label: x.priority, value: x.count, color: PRIORITY_COLOR[x.priority] }))}
+        />
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">

@@ -22,8 +22,8 @@ export function activityVerb(action: string): string {
 
 export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   return (
-    <section aria-label="Recent activity" className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
-      <h2 className="text-base font-semibold">Recent activity</h2>
+    <section aria-label="Recent activity" className="flex flex-col gap-1 rounded-2xl border border-border bg-surface px-5 py-4 shadow-[var(--elev-1)]">
+      <h2 className="m-0 text-[15px] font-semibold">Recent activity</h2>
       {items.length === 0 ? (
         <p className="py-4 text-sm text-muted">Nothing has happened yet.</p>
       ) : (

@@ -15,29 +15,28 @@ export type Crumb = { label: string; href?: string };
 
 export function Breadcrumbs({ crumbs, heading = true }: { crumbs: Crumb[]; heading?: boolean }) {
   const last = crumbs[crumbs.length - 1];
+  const parents = crumbs.length > 1;
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">
-      <ol className="m-0 flex list-none flex-wrap items-center gap-x-1.5 gap-y-0.5 p-0 text-[1.15rem] leading-7">
+      <ol className="m-0 flex list-none flex-wrap items-center gap-x-1.5 gap-y-0.5 p-0">
         {crumbs.slice(0, -1).map((c) => (
-          <li key={`${c.label}-${c.href ?? ""}`} className="flex items-center gap-1.5">
+          <li key={`${c.label}-${c.href ?? ""}`} className="flex items-center gap-1.5 text-[13px]">
             {c.href ? (
-              <Link href={c.href} className="font-medium text-primary-ink hover:underline">
+              <Link href={c.href} className="font-medium text-muted hover:text-primary-ink hover:underline">
                 {c.label}
               </Link>
             ) : (
               <span className="text-muted">{c.label}</span>
             )}
-            <span aria-hidden="true" className="text-muted">
-              /
-            </span>
+            <Icon name="chevronRight" size={12} strokeWidth={2.4} className="text-muted/70" />
           </li>
         ))}
         {last ? (
-          <li className="min-w-0" aria-current="page">
+          <li className={cn("min-w-0", parents && "basis-full")} aria-current="page">
             {heading ? (
-              <h1 className="m-0 truncate text-[1.15rem] font-semibold leading-7 tracking-tight text-foreground">{last.label}</h1>
+              <h1 className="m-0 truncate text-[1.6rem] font-semibold leading-8 tracking-tight text-foreground">{last.label}</h1>
             ) : (
-              <span className="truncate font-semibold text-foreground">{last.label}</span>
+              <span className="truncate text-[15px] font-semibold text-foreground">{last.label}</span>
             )}
           </li>
         ) : null}
@@ -45,6 +44,28 @@ export function Breadcrumbs({ crumbs, heading = true }: { crumbs: Crumb[]; headi
     </nav>
   );
 }
+
+/** The accent chip beside a page title, chosen from the area the page belongs to. */
+const AREA: Record<string, { icon: IconName; chip: string }> = {
+  Dashboard: { icon: "dashboard", chip: "bg-[var(--tone-green-soft)] text-[var(--tone-green)]" },
+  Projects: { icon: "projects", chip: "bg-[var(--tone-blue-soft)] text-[var(--tone-blue)]" },
+  Tasks: { icon: "tasks", chip: "bg-[var(--tone-green-soft)] text-[var(--tone-green)]" },
+  "My tasks": { icon: "tasks", chip: "bg-[var(--tone-green-soft)] text-[var(--tone-green)]" },
+  Documents: { icon: "documents", chip: "bg-[var(--tone-slate-soft)] text-[var(--tone-slate)]" },
+  Clients: { icon: "clients", chip: "bg-[var(--tone-amber-soft)] text-[var(--tone-amber)]" },
+  Employees: { icon: "employees", chip: "bg-[var(--tone-teal-soft)] text-[var(--tone-teal)]" },
+  Teams: { icon: "team", chip: "bg-[var(--tone-rose-soft)] text-[var(--tone-rose)]" },
+  Team: { icon: "team", chip: "bg-[var(--tone-rose-soft)] text-[var(--tone-rose)]" },
+  Finance: { icon: "finance", chip: "bg-[var(--tone-amber-soft)] text-[var(--tone-amber)]" },
+  Invoices: { icon: "finance", chip: "bg-[var(--tone-amber-soft)] text-[var(--tone-amber)]" },
+  Expenses: { icon: "finance", chip: "bg-[var(--tone-amber-soft)] text-[var(--tone-amber)]" },
+  Payments: { icon: "finance", chip: "bg-[var(--tone-amber-soft)] text-[var(--tone-amber)]" },
+  Reports: { icon: "reports", chip: "bg-[var(--tone-blue-soft)] text-[var(--tone-blue)]" },
+  Notifications: { icon: "bell", chip: "bg-[var(--tone-slate-soft)] text-[var(--tone-slate)]" },
+  "My account": { icon: "user", chip: "bg-[var(--tone-slate-soft)] text-[var(--tone-slate)]" },
+  Settings: { icon: "settings", chip: "bg-[var(--tone-slate-soft)] text-[var(--tone-slate)]" },
+  Search: { icon: "search", chip: "bg-[var(--tone-slate-soft)] text-[var(--tone-slate)]" },
+};
 
 export type ViewItem = { key: string; label: string; icon: IconName; href: string; active: boolean };
 
@@ -115,8 +136,11 @@ export function ControlPanel({
   pager,
   views,
   description,
+  aside,
 }: {
   crumbs: Crumb[];
+  /** Right side of the title row, for a control that belongs to the whole page (like a period picker). */
+  aside?: ReactNode;
   /** false on record pages, where the record's name in the sheet is the heading. */
   heading?: boolean;
   actions?: ReactNode;
@@ -127,17 +151,26 @@ export function ControlPanel({
   description?: ReactNode;
 }) {
   const row2 = actions || filters || pager || views;
+  const area = AREA[crumbs[0]?.label ?? ""];
   return (
-    <section data-control-panel aria-label="Control panel" className="-mx-3 -mt-4 mb-1 border-b border-border bg-surface px-3 pb-2.5 pt-3 sm:-mx-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <div className="min-w-0 flex-1">
-          <Breadcrumbs crumbs={crumbs} heading={heading} />
-          {description ? <p className="m-0 mt-0.5 max-w-3xl text-[13px] text-muted">{description}</p> : null}
+    <section data-control-panel aria-label="Control panel" className="mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-[1_1_280px] items-center gap-3.5">
+          {area ? (
+            <span aria-hidden="true" data-area-chip className={cn("inline-flex size-11 flex-none items-center justify-center rounded-xl", area.chip)}>
+              <Icon name={area.icon} size={22} />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <Breadcrumbs crumbs={crumbs} heading={heading} />
+            {description ? <p className="m-0 mt-0.5 max-w-3xl text-[13.5px] text-muted">{description}</p> : null}
+          </div>
         </div>
-        {search ? <div className="w-full md:w-[min(480px,46%)]">{search}</div> : null}
+        {search ? <div className="w-full md:w-[min(440px,42%)]">{search}</div> : null}
+        {aside ? <div className="flex flex-wrap items-center gap-2.5 max-sm:w-full sm:ml-auto">{aside}</div> : null}
       </div>
       {row2 ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2.5">
             {filters}
@@ -198,11 +231,11 @@ export function FormView({
 }) {
   return (
     <>
-      <ControlPanel crumbs={crumbs} heading={false} actions={toolbar} />
-      <div className={cn("grid gap-5", chatter ? "xl:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]" : undefined)}>
+      <ControlPanel crumbs={crumbs} heading={false} aside={toolbar} />
+      <div className={cn("grid gap-5", chatter ? "2xl:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]" : undefined)}>
         <div className="min-w-0">
           {actions || statusbar ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-xl border border-b-0 border-border bg-surface px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-2xl border border-b-0 border-border bg-surface px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">{actions}</div>
               {statusbar ? <div className="ml-auto">{statusbar}</div> : null}
             </div>
@@ -213,7 +246,7 @@ export function FormView({
               "border border-border bg-surface px-4 py-5 shadow-[var(--elev-1)] sm:px-8 sm:py-7",
               // Cards inside the sheet become Odoo's flat groups: a title over a thin rule, no second card.
               "[&_[data-section-card]]:mt-2 [&_[data-section-card]]:rounded-none [&_[data-section-card]]:border-0 [&_[data-section-card]]:border-t [&_[data-section-card]]:px-0 [&_[data-section-card]]:pb-0 [&_[data-section-card]]:pt-4 [&_[data-section-card]]:shadow-none",
-              actions || statusbar ? "rounded-b-xl" : "rounded-xl",
+              actions || statusbar ? "rounded-b-2xl" : "rounded-2xl",
             )}
           >
             {children}
@@ -247,7 +280,7 @@ export type SmartItem = { icon: IconName; value: ReactNode; label: string; href?
 export function SmartButtons({ items }: { items: SmartItem[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="flex flex-wrap justify-start gap-0 overflow-hidden rounded-lg border border-border lg:justify-end">
+    <div className="flex flex-wrap justify-start gap-0 overflow-hidden rounded-xl border border-border bg-background/60 lg:justify-end">
       {items.map((s) => {
         const inner = (
           <>

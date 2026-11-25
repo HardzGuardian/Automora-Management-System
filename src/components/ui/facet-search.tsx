@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "./icons";
+import { LiveSearch } from "./live-search";
 
 export type Facet = { label: string; value: string; removeHref: string };
 
@@ -18,7 +19,7 @@ export function SearchBox({ facets = [], children }: { facets?: Facet[]; childre
           </Link>
         </span>
       ))}
-      <div className="min-w-[140px] flex-1 [&_input]:min-h-8 [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-1 [&_input]:shadow-none [&_input]:outline-none [&_input:focus]:outline-none">
+      <div className="min-w-[140px] flex-1 [&_input]:min-h-8 [&_input]:border-0! [&_input]:bg-transparent! [&_input]:px-1 [&_input]:shadow-none! [&_input]:outline-none! [&_input:focus]:border-0! [&_input:focus]:outline-none!">
         {children}
       </div>
     </div>
@@ -49,7 +50,7 @@ export function FacetSearch({
     <form method="get" role="search" aria-label={label}>
       {Object.entries(keep).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
       <SearchBox facets={facets}>
-        <input name={param} type="search" defaultValue={value} placeholder={placeholder} aria-label={label} className="w-full text-sm text-foreground placeholder:text-muted" />
+        <LiveSearch name={param} defaultValue={value} placeholder={placeholder} label={label} className="w-full text-sm text-foreground placeholder:text-muted" />
       </SearchBox>
       <button type="submit" className="sr-only">
         Search

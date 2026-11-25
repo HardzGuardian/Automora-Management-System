@@ -10,6 +10,7 @@ import { parsePage } from "@/lib/pagination";
 import { can } from "@/lib/permissions";
 import { listEmployees } from "@/modules/employees";
 import { employeeTeamsAndWork } from "@/modules/teams";
+import { LiveSearch } from "@/components/ui/live-search";
 
 export const metadata = { title: "Employees" };
 
@@ -68,14 +69,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
             {dir === "desc" ? <input type="hidden" name="dir" value={dir} /> : null}
             <label htmlFor="emp-q" className="sr-only">Search employees</label>
             <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
-            <input
-              id="emp-q"
-              name="q"
-              type="search"
-              defaultValue={sp.q}
-              placeholder="Search name, email or code"
-              className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
-            />
+            <LiveSearch id="emp-q" defaultValue={sp.q} placeholder="Search name, email or code" className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted" />
           </form>
         }
         crumbs={[{ label: "Employees" }]}
@@ -119,16 +113,16 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         />
       </div>
 
-      <section aria-label="Employees" className="overflow-hidden rounded-lg border border-border bg-surface">
+      <section aria-label="Employees">
         {rows.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-muted">{sp.q || status ? "No employees match." : "No employees yet."}</p>
+          <p className="rounded-2xl border border-border bg-surface px-6 py-10 text-center text-sm text-muted">{sp.q || status ? "No employees match." : "No employees yet."}</p>
         ) : (
-          <ul className="m-0 list-none p-0">
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {rows.map((e) => {
               const w = work.get(e.id) ?? { teams: [], openTasks: 0, totalTasks: 0 };
               const teamLine = w.teams.length === 0 ? "No team yet" : w.teams.map((t) => t.team + (t.role === "lead" ? " (lead)" : "")).join(", ");
               return (
-                <li key={e.id} className="flex items-start gap-2 border-t border-border pr-4 first:border-t-0">
+                <li key={e.id} className="flex items-start gap-2 pr-4 overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--elev-1)] transition-shadow hover:shadow-[var(--elev-2)]">
                   <details className="group min-w-0 flex-1">
                     <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1.6fr)_auto_auto_auto] items-start gap-x-4 gap-y-1 py-[18px] pl-6 max-md:grid-cols-[minmax(0,1fr)_auto_auto]">
                       <span className="min-w-0">

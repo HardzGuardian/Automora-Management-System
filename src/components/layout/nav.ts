@@ -10,68 +10,80 @@ export type NavItem = {
   anyOf?: readonly string[];
   /** Other path prefixes that also count as "being in" this section (e.g. Finance spans several lists). */
   match?: readonly string[];
-  /** Odoo-style menu: the module's own pages, shown in a dropdown from the top bar. */
+  /** The module's own pages, listed under it in the sidebar while you are inside the module. */
   children?: readonly NavItem[];
+  /** Soft accent for the icon chip. */
+  tone?: Tone;
+  /** Sidebar section heading this item sits under. */
+  group?: "Workspace" | "People" | "Money";
 };
 
+export type Tone = "green" | "blue" | "amber" | "teal" | "rose" | "slate";
+
 export const NAV: readonly NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard", tone: "green", group: "Workspace" },
   {
     href: "/projects",
     label: "Projects",
     icon: "projects",
+    tone: "blue",
+    group: "Workspace",
     children: [
       { href: "/projects", label: "All projects", icon: "projects" },
-      { href: "/projects/new", label: "New project", icon: "plus", anyOf: ["projects.create"] },
     ],
   },
   {
     href: "/tasks",
     label: "Tasks",
     icon: "tasks",
+    tone: "green",
+    group: "Workspace",
     match: ["/my-tasks"],
     children: [
       { href: "/tasks", label: "All tasks", icon: "tasks", anyOf: ["tasks.read.all"] },
       { href: "/tasks?show=mine", label: "My tasks", icon: "tasks" },
       { href: "/tasks?show=overdue", label: "Overdue", icon: "overdue" },
-      { href: "/tasks/new", label: "New task", icon: "plus", anyOf: ["tasks.create", "tasks.create.in_project"] },
     ],
   },
-  { href: "/documents", label: "Documents", icon: "documents" },
+  { href: "/documents", label: "Documents", icon: "documents", tone: "slate", group: "Workspace" },
   {
     href: "/clients",
     label: "Clients",
     icon: "clients",
+    tone: "amber",
+    group: "People",
     anyOf: ["clients.read"],
     children: [
       { href: "/clients", label: "All clients", icon: "clients" },
-      { href: "/clients/new", label: "New client", icon: "plus", anyOf: ["clients.create"] },
     ],
   },
   {
     href: "/employees",
     label: "Employees",
     icon: "employees",
+    tone: "teal",
+    group: "People",
     anyOf: ["employees.read"],
     children: [
       { href: "/employees", label: "All employees", icon: "employees" },
-      { href: "/employees/new", label: "New employee", icon: "plus", anyOf: ["employees.create"] },
     ],
   },
   {
     href: "/teams",
     label: "Team",
     icon: "team",
+    tone: "rose",
+    group: "People",
     children: [
       { href: "/teams", label: "Teams", icon: "team" },
-      { href: "/teams/new", label: "New team", icon: "plus", anyOf: ["teams.manage"] },
-      { href: "/teams/departments/new", label: "New department", icon: "plus", anyOf: ["teams.manage"] },
     ],
   },
   {
     href: "/finance",
     label: "Finance",
     icon: "finance",
+    tone: "amber",
+    group: "Money",
     anyOf: ["finance.invoices.read", "finance.payments.read", "finance.expenses.read", "finance.reports.read", "reports.all.read", "reports.limited.read", "reports.personal.read"],
     match: ["/invoices", "/payments", "/expenses", "/finance-reports", "/reports"],
     children: [
@@ -89,6 +101,7 @@ export const SETTINGS_ITEM: NavItem = {
   href: "/settings",
   label: "Settings",
   icon: "settings",
+  tone: "slate",
   anyOf: ["settings.read", "roles.read", "users.read", "audit.read"],
 };
 
