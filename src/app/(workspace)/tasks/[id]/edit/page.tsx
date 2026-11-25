@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -22,11 +22,9 @@ export default async function EditTaskPage({ params }: { params: Promise<{ id: s
   }
   const allowed = can(actor, "tasks.update") && !task.archived;
   return (
-    <div className="flex max-w-[800px] flex-col gap-5">
-      <div>
-        <BackLink href={`/tasks/${id}`}>{task.taskCode}</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Edit task</h1>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: task.taskCode, href: `/tasks/${id}` }, { label: "Edit task" }]} />
+      <div data-sheet className={`${sheetClass} max-w-[800px] flex flex-col gap-5`}>
       {allowed ? (
         <EditTaskForm
           id={id}
@@ -41,6 +39,7 @@ export default async function EditTaskPage({ params }: { params: Promise<{ id: s
       ) : (
         <p role="alert" className="rounded-lg bg-warning-soft px-5 py-4 font-medium text-warning">You cannot edit this task.</p>
       )}
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import Link from "next/link";
 import { BarChartCard } from "@/components/charts/bar-chart-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
@@ -121,17 +122,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const dueSoon = [...dash.overdue.map((t) => ({ ...t, late: true })), ...dash.upcoming.map((t) => ({ ...t, late: false }))].slice(0, 5);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-muted">{SUBTITLE[dash.audience]}</p>
-          <p className="mt-1 text-xs text-muted">
-            Period: {dash.range.from} to {dash.range.to}. Counts are as of {dash.range.today} unless marked &ldquo;period total&rdquo;.
-          </p>
-        </div>
-        <RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={rangeError} />
-      </div>
+    <div className="flex flex-col gap-5">
+      <ControlPanel
+        crumbs={[{ label: "Dashboard" }]}
+        description={
+          <>
+            {SUBTITLE[dash.audience]} Period: {dash.range.from} to {dash.range.to}. Counts are as of {dash.range.today} unless marked &ldquo;period total&rdquo;.
+          </>
+        }
+        filters={<RangeFilter preset={dash.range.preset} from={dash.range.from} to={dash.range.to} error={rangeError} />}
+      />
 
       {steps.length > 0 && steps.some((x) => !x.done) ? (
         <section aria-label="Get started" className="rounded-lg border border-border bg-surface">

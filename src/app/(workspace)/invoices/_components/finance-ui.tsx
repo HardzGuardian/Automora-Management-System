@@ -35,7 +35,7 @@ export function DetailHeader({ title, badge, facts }: { title: string; badge: Re
 /** Section card: `h2` plus an optional right-aligned action. */
 export function Section({ title, action, description, children, className }: { title: string; action?: ReactNode; description?: string; children: ReactNode; className?: string }) {
   return (
-    <section className={cn(cardClass, "flex flex-col gap-3", className)}>
+    <section data-section-card className={cn(cardClass, "flex flex-col gap-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-base font-semibold">{title}</h2>
         {action}

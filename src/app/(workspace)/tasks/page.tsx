@@ -3,7 +3,8 @@ import { Alert } from "@/components/ui/alert";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
-import { Pager } from "@/components/ui/pager";
+import { ControlPanel, CompactPager, ViewSwitcher } from "@/components/ui/odoo";
+import { SearchBox } from "@/components/ui/facet-search";
 import { Priority } from "@/components/ui/priority";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
@@ -134,137 +135,157 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const whoText = (t: TaskDTO) => (t.assignees.length === 0 ? "—" : t.assignees.map((a) => a.fullName).join(", "));
   const filtersActive = Boolean(sp.q || priority || assigneeId || projectId || from || to || sp.kind);
 
-  const hiddenKeep = (["show", "layout", "sort", "month"] as const).filter((k) => sp[k]);
+  // Active filters as Odoo facet chips; each chip removes just its own filter.
+  const facetDefs: { label: string; value: string; key: keyof SP }[] = [];
+  if (priority) facetDefs.push({ label: "Priority", value: priority, key: "priority" });
+  if (assigneeId) facetDefs.push({ label: "Assignee", value: personOptions.find((p) => p.value === assigneeId)?.label ?? "", key: "assignee" });
+  if (projectId) facetDefs.push({ label: "Project", value: projectName.get(projectId) ?? "", key: "project" });
+  if (sp.kind === "individual") facetDefs.push({ label: "Type", value: "Individual", key: "kind" });
+  if (from) facetDefs.push({ label: "Due from", value: from, key: "from" });
+  if (to) facetDefs.push({ label: "Due to", value: to, key: "to" });
+  const facets = facetDefs.map((f) => ({ label: f.label, value: f.value, removeHref: href(sp, { [f.key]: undefined, page: undefined }) }));
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Tasks</h1>
-          <p className="mt-1 text-muted">{personal ? "Your tasks across all projects." : "Every task, including project tasks. Filter, plan on the calendar, or update many at once."}</p>
-        </div>
-        {can(actor, "tasks.create") || can(actor, "tasks.create.in_project") ? (
-          <Link href="/tasks/new" className={buttonClass("primary")}>
-            <Icon name="plus" size={16} /> New task
-          </Link>
-        ) : null}
-      </div>
-
-      {sp.error ? <Alert tone="error">{sp.error.slice(0, 300)}</Alert> : null}
-
-      <form method="get" aria-label="Task filters" className="grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
-        {hiddenKeep.map((k) => (
-          <input key={k} type="hidden" name={k} value={sp[k]} />
-        ))}
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Search
-          <TaskSearch name="q" defaultValue={sp.q ?? ""} view={personal ? "mine" : "all"} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Priority
-          <select name="priority" defaultValue={priority ?? ""} className={inputClass}>
-            <option value="">Any</option>
-            <option>Critical</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        </label>
-        {personOptions.length > 0 && !personal ? (
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Assignee
-            <select name="assignee" defaultValue={assigneeId ?? ""} className={inputClass}>
-              <option value="">Anyone</option>
-              {personOptions.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Project
-          <select name="project" defaultValue={projectId ?? ""} className={inputClass}>
-            <option value="">Any project</option>
-            {projectRows.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Type
-          <select name="kind" defaultValue={sp.kind === "individual" ? "individual" : ""} className={inputClass}>
-            <option value="">Project and individual</option>
-            <option value="individual">Individual only (no project)</option>
-          </select>
-        </label>
-        {layout !== "calendar" ? (
-          <>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              Due from
-              <input type="date" name="from" defaultValue={from ?? ""} className={inputClass} />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              Due to
-              <input type="date" name="to" defaultValue={to ?? ""} className={inputClass} />
-            </label>
-          </>
-        ) : null}
-        <div className="flex items-end gap-2">
-          <button type="submit" className={buttonClass("primary")}>
-            Apply filters
-          </button>
-          {filtersActive ? (
-            <Link href={href({ show: sp.show, layout: sp.layout }, {})} className={buttonClass("secondary")}>
-              Clear
+    <div className="flex flex-col gap-4">
+      <ControlPanel
+        crumbs={[{ label: personal ? "My tasks" : "Tasks" }]}
+        description={personal ? "Your tasks across all projects." : undefined}
+        actions={
+          can(actor, "tasks.create") || can(actor, "tasks.create.in_project") ? (
+            <Link href="/tasks/new" className={buttonClass("primary", "min-h-9 px-3.5")}>
+              New<span className="sr-only"> task</span>
             </Link>
-          ) : null}
-        </div>
-      </form>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterPills
-            label="Filter tasks"
-            pills={SHOWS.filter((s) => (personal ? s.key === "mine" || s.key === "overdue" : s.key !== "archived" || can(actor, "tasks.archive"))).map((s) => ({ label: s.label, href: href(sp, { show: s.key, page: undefined }), count: counts[s.key], active: show === s.key }))}
-          />
-          {layout !== "calendar" ? (
-            <form method="get" aria-label="Sort tasks" className="flex items-center gap-2">
-              {(["show", "layout", "q", "priority", "assignee", "project", "kind", "from", "to"] as const).filter((k) => sp[k]).map((k) => (
+          ) : null
+        }
+        search={
+          <form method="get" role="search" aria-label="Search tasks">
+            {(["show", "layout", "sort", "month", "priority", "assignee", "project", "kind", "from", "to"] as const)
+              .filter((k) => sp[k])
+              .map((k) => (
                 <input key={k} type="hidden" name={k} value={sp[k]} />
               ))}
-              <label htmlFor="task-sort" className="text-sm text-muted">
-                Sort by
-              </label>
-              <select id="task-sort" name="sort" defaultValue={sort.key} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
-                {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className={buttonClass("secondary")}>
-                Sort
-              </button>
-            </form>
-          ) : null}
-        </div>
-        <nav aria-label="Layout" className="inline-flex overflow-hidden rounded-lg border border-field bg-surface">
-          {LAYOUTS.map((l) => (
-            <Link
-              key={l.key}
-              href={href(sp, { layout: l.key, page: undefined })}
-              aria-current={l.key === layout ? "true" : undefined}
-              className={cn("inline-flex h-10 items-center px-4 font-medium", l.key === layout ? "bg-primary-soft text-primary-ink" : "bg-surface text-foreground hover:bg-primary-soft")}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+            <SearchBox facets={facets}>
+              <TaskSearch name="q" defaultValue={sp.q ?? ""} view={personal ? "mine" : "all"} placeholder="Search tasks by title or code..." />
+            </SearchBox>
+          </form>
+        }
+        filters={
+          <>
+            <FilterPills
+              label="Filter tasks"
+              pills={SHOWS.filter((s) => (personal ? s.key === "mine" || s.key === "overdue" : s.key !== "archived" || can(actor, "tasks.archive"))).map((s) => ({ label: s.label, href: href(sp, { show: s.key, page: undefined }), count: counts[s.key], active: show === s.key }))}
+            />
+            <details className="group relative">
+              <summary className={cn(buttonClass("secondary", "min-h-8 cursor-pointer list-none gap-1.5 px-3 text-[13px]"), facets.length > 0 && "border-primary/40 text-primary-ink")}>
+                <Icon name="filter" size={15} />
+                Filters{facets.length > 0 ? ` (${facets.length})` : ""}
+                <Icon name="chevronDown" size={14} className="transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="absolute right-0 z-20 mt-1.5 w-[min(560px,92vw)] rounded-xl border border-border bg-surface p-4 shadow-[var(--elev-3)]">
+                <form method="get" aria-label="Task filters" className="grid gap-3 sm:grid-cols-2">
+                  {(["show", "layout", "month", "q"] as const)
+                    .filter((k) => sp[k])
+                    .map((k) => (
+                      <input key={k} type="hidden" name={k} value={sp[k]} />
+                    ))}
+                  <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                    Priority
+                    <select name="priority" defaultValue={priority ?? ""} className={inputClass}>
+                      <option value="">Any</option>
+                      <option>Critical</option>
+                      <option>High</option>
+                      <option>Medium</option>
+                      <option>Low</option>
+                    </select>
+                  </label>
+                  {personOptions.length > 0 && !personal ? (
+                    <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                      Assignee
+                      <select name="assignee" defaultValue={assigneeId ?? ""} className={inputClass}>
+                        <option value="">Anyone</option>
+                        {personOptions.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                    Project
+                    <select name="project" defaultValue={projectId ?? ""} className={inputClass}>
+                      <option value="">Any project</option>
+                      {projectRows.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                    Type
+                    <select name="kind" defaultValue={sp.kind === "individual" ? "individual" : ""} className={inputClass}>
+                      <option value="">Project and individual</option>
+                      <option value="individual">Individual only (no project)</option>
+                    </select>
+                  </label>
+                  {layout !== "calendar" ? (
+                    <>
+                      <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                        Due from
+                        <input type="date" name="from" defaultValue={from ?? ""} className={inputClass} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+                        Due to
+                        <input type="date" name="to" defaultValue={to ?? ""} className={inputClass} />
+                      </label>
+                      <label htmlFor="task-sort" className="flex flex-col gap-1 text-xs font-medium text-muted">
+                        Sort by
+                        <select id="task-sort" name="sort" defaultValue={sort.key} className={inputClass}>
+                          {SORTS.map((s) => (
+                            <option key={s.key} value={s.key}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+                  <div className="flex items-end gap-2 sm:col-span-2">
+                    <button type="submit" className={buttonClass("primary", "min-h-9")}>
+                      Apply filters
+                    </button>
+                    {filtersActive ? (
+                      <Link href={href({ show: sp.show, layout: sp.layout }, {})} className={buttonClass("ghost", "min-h-9")}>
+                        Clear all
+                      </Link>
+                    ) : null}
+                  </div>
+                </form>
+              </div>
+            </details>
+          </>
+        }
+        pager={
+          layout === "list" && pages > 1 ? (
+            <CompactPager
+              from={(page - 1) * PAGE_SIZE + 1}
+              to={Math.min(page * PAGE_SIZE, list.total)}
+              total={list.total}
+              prevHref={page > 1 ? href(sp, { page: String(page - 1) }) : undefined}
+              nextHref={page < pages ? href(sp, { page: String(page + 1) }) : undefined}
+            />
+          ) : null
+        }
+        views={
+          <ViewSwitcher
+            label="Layout"
+            items={LAYOUTS.map((l) => ({ key: l.key, label: l.label, icon: l.key === "board" ? "kanban" : l.key === "calendar" ? "calendar" : "list", href: href(sp, { layout: l.key, page: undefined }), active: l.key === layout }))}
+          />
+        }
+      />
+
+      {sp.error ? <Alert tone="error">{sp.error.slice(0, 300)}</Alert> : null}
 
       {layout === "calendar" ? (
         <TaskCalendar
@@ -443,7 +464,6 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             <p className="m-0 text-xs text-muted">
               {list.total === 0 ? "" : `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + rows.length} of ${list.total}`}
             </p>
-            <Pager page={page} pages={pages} prevHref={page > 1 ? href(sp, { page: String(page - 1) }) : undefined} nextHref={page < pages ? href(sp, { page: String(page + 1) }) : undefined} />
           </div>
         </>
       )}

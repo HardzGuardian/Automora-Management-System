@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Alert } from "@/components/ui/alert";
-import { BackLink } from "@/components/ui/back-link";
+import { FormView, SheetTitle, SmartButtons } from "@/components/ui/odoo";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
-import { DetailHeader } from "@/components/ui/detail-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass, inputClass, linkClass } from "@/components/ui/styles";
@@ -43,26 +42,36 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
       : [];
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <BackLink href="/teams">Teams</BackLink>
-        {manage ? (
-          <Link href={`/teams/${id}/edit`} className={buttonClass("secondary")}>
+    <FormView
+      crumbs={[{ label: "Teams", href: "/teams" }, { label: team.name }]}
+      toolbar={
+        manage ? (
+          <Link href={`/teams/${id}/edit`} className={buttonClass("secondary", "min-h-9")}>
             Edit team
           </Link>
-        ) : null}
-      </div>
-      {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
-      <DetailHeader
-        title={team.name}
+        ) : null
+      }
+    >
+      {error ? (
+        <div className="mb-4">
+          <Alert tone="error">{error.slice(0, 300)}</Alert>
+        </div>
+      ) : null}
+      <SheetTitle
         code={team.departmentName}
+        title={team.name}
         badges={team.archived ? <StatusBadge status="Archived" /> : null}
-        facts={[
-          <span key="m">{team.members.length} {team.members.length === 1 ? "member" : "members"}</span>,
-          <Link key="w" href={`/teams?team=${id}`} className={buttonClass("secondary", "min-h-8 px-3 py-1")}>View team workload</Link>,
-        ]}
+        smart={
+          <SmartButtons
+            items={[
+              { icon: "team", value: team.members.length, label: team.members.length === 1 ? "Member" : "Members" },
+              { icon: "tasks", value: team.tasks.length, label: "Tasks" },
+              { icon: "projects", value: team.projects.length, label: "Projects" },
+              { icon: "reports", value: "View", label: "Team workload", href: `/teams?team=${id}` },
+            ]}
+          />
+        }
       />
-
       <div className="grid gap-5">
         <div className="flex min-w-0 flex-col gap-5">
           <SectionCard title="Members" count={team.members.length}>
@@ -185,6 +194,6 @@ export default async function TeamPage({ params, searchParams }: { params: Promi
         </div>
 
       </div>
-    </div>
+    </FormView>
   );
 }

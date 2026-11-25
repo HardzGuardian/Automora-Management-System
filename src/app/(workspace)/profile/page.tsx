@@ -1,3 +1,5 @@
+import { ControlPanel } from "@/components/ui/odoo";
+import { Icon } from "@/components/ui/icons";
 import { signOutAction } from "@/app/(auth)/login/actions";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { formatDateTime } from "@/components/ui/format";
@@ -34,18 +36,20 @@ export default async function ProfilePage() {
   const name = session?.user.name ?? me?.fullName ?? "You";
 
   return (
-    <div className="flex max-w-[760px] flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">My account</h1>
-          <p className="mt-1 text-muted">Your details and password.</p>
-        </div>
-        <form action={signOutAction}>
-          <button type="submit" className="inline-flex min-h-11 items-center rounded-lg border border-field bg-surface px-4 font-medium text-foreground hover:bg-primary-soft">
-            Sign out
-          </button>
-        </form>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel
+        crumbs={[{ label: "My account" }]}
+        description="Your details and password."
+        actions={
+          <form action={signOutAction}>
+            <button type="submit" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-field bg-surface px-3.5 text-sm font-medium text-foreground hover:bg-background">
+              <Icon name="logout" size={16} />
+              Sign out
+            </button>
+          </form>
+        }
+      />
+      <div className="flex max-w-[760px] flex-col gap-5">
 
       <Card title="Profile">
         <div className="flex flex-wrap items-center gap-5 p-5">
@@ -104,6 +108,7 @@ export default async function ProfilePage() {
           ))}
         </ul>
       </Card>
+      </div>
     </div>
   );
 }

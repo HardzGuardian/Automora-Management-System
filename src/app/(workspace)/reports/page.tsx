@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import { requireActor } from "@/lib/auth/require-actor";
 import { ReportsPanel, type ReportsSearch } from "../finance/reports-panel";
 
@@ -9,10 +10,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Reports</h1>
-        <p className="mt-1 text-muted">Work, people, projects and clients. Filter a report, read it here, or export it.</p>
-      </div>
+      <ControlPanel
+        crumbs={[{ label: "Reports" }]}
+        description={<>Work, people, projects and clients. Filter a report, read it here, or export it.</>}
+      />
       <ReportsPanel actor={actor} sp={sp} basePath="/reports" fixed={{}} />
     </div>
   );

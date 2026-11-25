@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
@@ -27,12 +27,12 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
     );
     const mine = withPeople.filter((x) => x.people.some((m) => m.employeeId === actor.employeeId));
     return (
-      <div className="flex max-w-[800px] flex-col gap-5">
-        <div>
-          <BackLink href="/tasks">Tasks</BackLink>
-          <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">New task</h1>
-          <p className="mt-1 text-muted">Add a task to a project you are on. Give it to yourself or to someone else on that project.</p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <ControlPanel
+          crumbs={[{ label: "Tasks", href: "/tasks" }, { label: "New task" }]}
+          description="Add a task to a project you are on. Give it to yourself or to someone else on that project."
+        />
+        <div data-sheet className={`${sheetClass} flex max-w-[800px] flex-col gap-5`}>
         {mine.length === 0 ? (
           <p className="text-sm text-muted">You are not on any project yet, so there is nowhere to add a task.</p>
         ) : (
@@ -46,6 +46,7 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
             defaultProjectId={mine.some((x) => x.p.id === sp.project) ? sp.project : undefined}
           />
         )}
+        </div>
       </div>
     );
   }
@@ -59,12 +60,11 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Prom
   const people = canAssign ? (options?.people.map((p) => ({ id: p.id, name: p.name, openTasks: p.openTasks })) ?? (await listEmployees(actor, { pageSize: 100, status: "Active" }).then((r) => r.rows.map((e) => ({ id: e.id, name: e.fullName, openTasks: 0 }))).catch(() => []))) : null;
 
   return (
-    <div className="flex max-w-[800px] flex-col gap-5">
-      <div>
-        <BackLink href="/tasks">Tasks</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">New task</h1>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: "Tasks", href: "/tasks" }, { label: "New task" }]} />
+      <div data-sheet className={`${sheetClass} max-w-[800px]`}>
+        <NewTaskForm projects={projects} clients={clients} people={people} defaultPriority={defaults.taskPriority} defaultProjectId={sp.project} />
       </div>
-      <NewTaskForm projects={projects} clients={clients} people={people} defaultPriority={defaults.taskPriority} defaultProjectId={sp.project} />
     </div>
   );
 }

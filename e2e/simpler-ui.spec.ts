@@ -3,14 +3,19 @@ import { ADMIN, expectNoPageOverflow, login } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
-test("shell: no breadcrumb bar, and the sidebar has no copies of the bell or account menu", async ({ page }) => {
+test("shell (Odoo style): module menu in the top bar, breadcrumbs on the page, bell and account kept out of the menu", async ({ page }) => {
   await login(page, ADMIN);
   await page.goto("/tasks");
-  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
-  const sidebar = page.getByRole("navigation", { name: "Main" });
-  await expect(sidebar.getByRole("link", { name: "My account" })).toHaveCount(0);
-  await expect(sidebar.getByRole("link", { name: "Notifications" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("heading", { name: "Tasks" })).toBeVisible();
+  const menu = page.getByRole("navigation", { name: "Main" });
+  await expect(menu.getByRole("link", { name: "My account" })).toHaveCount(0);
+  await expect(menu.getByRole("link", { name: "Notifications" })).toHaveCount(0);
   await expect(page.getByRole("banner").getByRole("link", { name: /Notifications/ })).toBeVisible();
+
+  // A module's dropdown lists its pages.
+  await menu.getByRole("button", { name: "Finance menu" }).click();
+  await menu.getByRole("link", { name: "Invoices" }).click();
+  await expect(page).toHaveURL(/\/finance\?tab=invoices/);
 });
 
 test("tasks: filter pills carry counts, Overdue narrows the list, All brings it back", async ({ page }) => {

@@ -30,6 +30,16 @@ export const PATHS = {
   comment: "M4 5h16v11H9l-5 4z",
   warning: "M12 3l10 18H2z M12 10v5 M12 18v.01",
   upload: "M12 16V4 M7 9l5-5 5 5 M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3",
+  // Odoo-style shell and control panel
+  apps: "M4 4h4v4H4z M10 4h4v4h-4z M16 4h4v4h-4z M4 10h4v4H4z M10 10h4v4h-4z M16 10h4v4h-4z M4 16h4v4H4z M10 16h4v4h-4z M16 16h4v4h-4z",
+  list: "M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01",
+  kanban: "M3 4h5v16H3z M10 4h5v10h-5z M17 4h4v7h-4z",
+  calendar: "M3 6h18v15H3z M3 10h18 M8 3v5 M16 3v5",
+  filter: "M3 5h18l-7 8v6l-4 2v-8z",
+  groupBy: "M12 3l9 5-9 5-9-5z M3 13l9 5 9-5",
+  chevronRight: "M9 6l6 6-6 6",
+  logout: "M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4 M10 17l-5-5 5-5 M5 12h11",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
   // status
   inProgress: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 3v18",
   pending: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 8v4l3 2",

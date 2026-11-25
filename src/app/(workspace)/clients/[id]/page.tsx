@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { BackLink } from "@/components/ui/back-link";
+import { Chatter, type ChatterEntry } from "@/components/ui/chatter";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
-import { DetailHeader } from "@/components/ui/detail-header";
-import { DetailsList } from "@/components/ui/details-list";
+import { FieldGrid, FormView, SheetTitle, SmartButtons, StatusBar } from "@/components/ui/odoo";
 import { Field } from "@/components/ui/field";
 import { formatDateTime } from "@/components/ui/format";
 import { SectionCard } from "@/components/ui/section-card";
@@ -40,23 +39,42 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const canUpdate = can(actor, "clients.update");
   const tz = actor.timezone;
 
-  return (
-    <div className="flex flex-col gap-5">
-      <BackLink href="/clients">Clients</BackLink>
-      <DetailHeader
-        title={client.name}
-        code={client.clientCode}
-        badges={<StatusBadge status={client.archived ? "Archived" : client.status} />}
-        facts={[client.contactPerson ?? "No contact person", client.email ?? "No email", client.serviceType ?? "No service type"]}
-      />
+  const noteEntries: ChatterEntry[] = notes.map((n) => ({
+    id: n.id,
+    author: "Note",
+    at: n.createdAt,
+    kind: "message",
+    body: n.note,
+    actions: canUpdate ? (
+      <details>
+        <summary className="cursor-pointer text-xs font-medium text-primary-ink">Edit or delete</summary>
+        <form action={editNoteAction} className="mt-2 flex flex-col gap-2">
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="noteId" value={n.id} />
+          <textarea name="note" required rows={3} defaultValue={n.note} aria-label="Note text" className={inputClass} />
+          <div className="flex items-center gap-3">
+            <button type="submit" className={buttonClass("secondary", "min-h-8 px-3 text-xs")}>
+              Save note
+            </button>
+            <button type="submit" formAction={deleteNoteAction} formNoValidate className="text-xs font-medium text-danger hover:underline">
+              Delete note
+            </button>
+          </div>
+        </form>
+      </details>
+    ) : undefined,
+  }));
 
-      {can(actor, "clients.archive") ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {client.archived ? (
+  return (
+    <FormView
+      crumbs={[{ label: "Clients", href: "/clients" }, { label: client.name }]}
+      actions={
+        can(actor, "clients.archive") ? (
+          client.archived ? (
             <form action={archiveClientAction}>
               <input type="hidden" name="id" value={id} />
               <input type="hidden" name="undo" value="1" />
-              <button type="submit" className={buttonClass("secondary")}>
+              <button type="submit" className={buttonClass("secondary", "min-h-9")}>
                 Unarchive
               </button>
             </form>
@@ -64,101 +82,97 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <ConfirmForm
               action={archiveClientAction}
               label="Archive"
+              triggerClassName="min-h-9"
               title={`Archive ${client.name}?`}
               description="The client is hidden from the default client list and cannot be chosen for new projects. Existing projects and invoices are kept. You can unarchive it later."
               confirmLabel="Archive client"
             >
               <input type="hidden" name="id" value={id} />
             </ConfirmForm>
-          )}
-        </div>
-      ) : null}
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
-          <SectionCard title="Projects" count={projects.total}>
-            {projects.rows.length === 0 ? (
-              <p className="text-sm text-muted">No projects visible to you. Create a project for this client to start tracking its tasks and invoices.</p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-border text-sm">
-                {projects.rows.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                    <Link href={`/clients/${id}/projects/${p.id}`} className={linkClass}>
-                      {p.projectCode} {p.name}
-                    </Link>
-                    <span className="flex items-center gap-3">
-                      <span className="text-xs text-muted">{p.dueDate ? `Due ${p.dueDate}` : "No due date"}</span>
-                      <StatusBadge status={p.status} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Notes" count={notes.length}>
-            {notes.length === 0 ? (
-              <p className="text-sm text-muted">No notes yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-3 text-sm">
-                {notes.map((n) => (
-                  <li key={n.id} className="rounded-md bg-background p-3">
-                    <p className="whitespace-pre-wrap">{n.note}</p>
-                    <p className="mt-2 text-xs text-muted">{formatDateTime(n.createdAt, tz)}</p>
-                    {canUpdate ? (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs font-medium text-primary-ink">Edit or delete</summary>
-                        <form action={editNoteAction} className="mt-2 flex flex-col gap-2">
-                          <input type="hidden" name="id" value={id} />
-                          <input type="hidden" name="noteId" value={n.id} />
-                          <textarea name="note" required rows={3} defaultValue={n.note} aria-label="Note text" className={inputClass} />
-                          <div className="flex items-center gap-3">
-                            <button type="submit" className={buttonClass("secondary")}>Save note</button>
-                            <button type="submit" formAction={deleteNoteAction} formNoValidate className="text-xs font-medium text-danger hover:underline">Delete note</button>
-                          </div>
-                        </form>
-                      </details>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {canUpdate ? (
-              <form action={addNoteAction} className="flex w-full max-w-xl flex-col gap-3 border-t border-border pt-3">
+          )
+        ) : null
+      }
+      statusbar={
+        <StatusBar
+          label="Client status"
+          stages={["Active", "Inactive", "Archived"].map((s) => ({
+            key: s,
+            label: s,
+            state: (client.archived ? "Archived" : client.status) === s ? "current" : "todo",
+          }))}
+        />
+      }
+      chatter={
+        <Chatter
+          title="Notes"
+          entries={noteEntries}
+          timeZone={tz}
+          empty="No notes yet."
+          composer={
+            canUpdate ? (
+              <form action={addNoteAction} className="flex flex-col gap-2">
                 <input type="hidden" name="id" value={id} />
                 <Field id="note" label="Add a note" hint="Visible to everyone who can open this client.">
                   <textarea id="note" name="note" required rows={3} className={inputClass} aria-describedby="note-hint" />
                 </Field>
                 <div>
-                  <button type="submit" className={buttonClass("secondary")}>
+                  <button type="submit" className={buttonClass("primary", "min-h-9")}>
                     Add note
                   </button>
                 </div>
               </form>
-            ) : null}
-          </SectionCard>
+            ) : undefined
+          }
+        />
+      }
+    >
+      <SheetTitle
+        code={client.clientCode}
+        title={client.name}
+        smart={<SmartButtons items={[{ icon: "projects", value: projects.total, label: projects.total === 1 ? "Project" : "Projects" }]} />}
+      />
+      <FieldGrid
+        items={[
+          { label: "Contact", value: client.contactPerson },
+          { label: "Email", value: client.email ? <a href={`mailto:${client.email}`} className={linkClass}>{client.email}</a> : null },
+          { label: "Phone", value: client.phone },
+          { label: "Service", value: client.serviceType },
+          { label: "Address", value: client.address ? <span className="whitespace-pre-wrap">{client.address}</span> : null },
+          { label: "Created", value: formatDateTime(client.createdAt, tz) },
+        ]}
+      />
 
-          {canUpdate ? (
-            <SectionCard title="Edit client">
-              <ClientForm client={client} />
-            </SectionCard>
-          ) : null}
-        </div>
+      <SectionCard title="Projects" count={projects.total} className="mt-6">
+        {projects.rows.length === 0 ? (
+          <p className="text-sm text-muted">No projects visible to you. Create a project for this client to start tracking its tasks and invoices.</p>
+        ) : (
+          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
+            {projects.rows.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/clients/${id}/projects/${p.id}`}
+                  className="flex h-full flex-col gap-2 rounded-lg border border-border bg-surface p-3.5 transition-colors hover:border-primary/40 hover:bg-background"
+                >
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-foreground">{p.name}</span>
+                      <span className="block text-xs text-muted">{p.projectCode}</span>
+                    </span>
+                    <StatusBadge status={p.status} />
+                  </span>
+                  <span className="text-xs text-muted">{p.dueDate ? `Due ${p.dueDate}` : "No due date"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
 
-        <aside className="flex min-w-0 flex-col gap-5">
-          <DetailsList
-            items={[
-              { label: "Status", value: <StatusBadge status={client.archived ? "Archived" : client.status} /> },
-              { label: "Contact", value: client.contactPerson },
-              { label: "Email", value: client.email ? <a href={`mailto:${client.email}`} className={linkClass}>{client.email}</a> : null },
-              { label: "Phone", value: client.phone },
-              { label: "Address", value: client.address ? <span className="whitespace-pre-wrap">{client.address}</span> : null },
-              { label: "Service", value: client.serviceType },
-              { label: "Created", value: formatDateTime(client.createdAt, tz) },
-            ]}
-          />
-        </aside>
-      </div>
-    </div>
+      {canUpdate ? (
+        <SectionCard title="Edit client" className="mt-6">
+          <ClientForm client={client} />
+        </SectionCard>
+      ) : null}
+    </FormView>
   );
 }

@@ -1,11 +1,13 @@
-import { HistoryPanel } from "../../_components/history-panel";
+import { auditChatterEntries } from "../../_components/audit-chatter";
+import { Chatter } from "@/components/ui/chatter";
+import { FieldGrid, FormView, SheetTitle, StatusBar } from "@/components/ui/odoo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
 import { DomainError } from "@/lib/errors";
 import { getReceiptDetail } from "@/modules/finance";
-import { BackLink, DetailHeader, DetailList, Section, methodLabel, money, notSet } from "../../invoices/_components/finance-ui";
+import { methodLabel, money, notSet } from "../../invoices/_components/finance-ui";
 import { ReceiptActions } from "./_components/receipt-actions";
 import { isUuid } from "@/lib/pagination";
 
@@ -27,45 +29,49 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
   const canVoid = receipt.status === "pending" && (actor.permissions.has("finance.payments.record") || actor.permissions.has("finance.payments.reverse"));
   const invoiceName = receipt.invoiceNumber ?? receipt.invoiceId;
 
+  const historyEntries = await auditChatterEntries(actor, "payment", receipt.id);
+  const receiptStages = receipt.status === "reversed" ? ["pending", "confirmed", "reversed"] : ["pending", "confirmed"];
+  const receiptAt = receiptStages.indexOf(receipt.status);
+  const RECEIPT_LABEL: Record<string, string> = { pending: "Pending", confirmed: "Confirmed", reversed: "Reversed" };
+
   return (
-    <div className="flex flex-col gap-4">
-      <BackLink href="/payments">Receipts</BackLink>
-      <DetailHeader
-        title="Receipt"
-        badge={<StatusBadge status={receipt.status} />}
-        facts={
-          <>
-            {money(receipt.currency, receipt.amount)} · {receipt.paymentDate} ·{" "}
-            <Link href={`/invoices/${receipt.invoiceId}`} className="underline">
-              Invoice {invoiceName}
-            </Link>
-          </>
-        }
-      />
+    <FormView
+      crumbs={[{ label: "Payments", href: "/finance?tab=payments" }, { label: `Receipt ${receipt.paymentDate}` }]}
+      actions={canConfirm || canReverse || canVoid ? <ReceiptActions paymentId={receipt.id} canConfirm={canConfirm} canReverse={canReverse} canVoid={canVoid} /> : null}
+      statusbar={
+        <StatusBar
+          label="Receipt status"
+          stages={receiptStages.map((k, i) => ({ key: k, label: RECEIPT_LABEL[k] ?? k, state: i < receiptAt ? "done" : i === receiptAt ? "current" : "todo" }))}
+        />
+      }
+      chatter={historyEntries ? <Chatter entries={historyEntries} timeZone={actor.timezone} title="History" empty="No changes recorded yet." /> : undefined}
+    >
+      <SheetTitle code="Receipt" title={money(receipt.currency, receipt.amount)} badges={<StatusBadge status={receipt.status} />} />
       {receipt.status === "pending" ? (
-        <p className="text-sm text-muted">
+        <p className="-mt-3 mb-4 text-sm text-muted">
           {receipt.awaitingSecondPerson
             ? "Waiting for another person to confirm this receipt, because you recorded it. It does not reduce the invoice balance until then."
             : "This receipt is pending and does not reduce the invoice balance until it is confirmed."}
         </p>
       ) : null}
-      {receipt.status === "reversed" ? (
-        <p className="text-sm text-muted">This receipt was reversed and no longer counts toward the invoice balance.</p>
-      ) : null}
-      {canConfirm || canReverse || canVoid ? <ReceiptActions paymentId={receipt.id} canConfirm={canConfirm} canReverse={canReverse} canVoid={canVoid} /> : null}
-
-      <Section title="Details" className="max-w-2xl">
-        <DetailList
-          rows={[
-            ["Amount", money(receipt.currency, receipt.amount)],
-            ["Payment date", receipt.paymentDate],
-            ["Method", methodLabel(receipt.method)],
-            ["Reference", receipt.reference ?? notSet],
-            ["Notes", receipt.notes ?? notSet],
-          ]}
-        />
-      </Section>
-      <HistoryPanel actor={actor} entity="payment" entityId={receipt.id} />
-    </div>
+      {receipt.status === "reversed" ? <p className="-mt-3 mb-4 text-sm text-muted">This receipt was reversed and no longer counts toward the invoice balance.</p> : null}
+      <FieldGrid
+        items={[
+          {
+            label: "Invoice",
+            value: (
+              <Link href={`/invoices/${receipt.invoiceId}`} className="font-medium text-primary-ink underline">
+                {invoiceName}
+              </Link>
+            ),
+          },
+          { label: "Amount", value: money(receipt.currency, receipt.amount) },
+          { label: "Payment date", value: receipt.paymentDate },
+          { label: "Method", value: methodLabel(receipt.method) },
+          { label: "Reference", value: receipt.reference ?? notSet },
+          { label: "Notes", value: receipt.notes ?? notSet },
+        ]}
+      />
+    </FormView>
   );
 }

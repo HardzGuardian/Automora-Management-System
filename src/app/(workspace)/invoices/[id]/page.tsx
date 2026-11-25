@@ -1,4 +1,6 @@
-import { HistoryPanel } from "../../_components/history-panel";
+import { auditChatterEntries } from "../../_components/audit-chatter";
+import { Chatter } from "@/components/ui/chatter";
+import { FieldGrid, FormView, SheetTitle, SmartButtons, StatusBar } from "@/components/ui/odoo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -8,10 +10,6 @@ import { DomainError } from "@/lib/errors";
 import { getInvoiceDetail, listInvoiceClients, listReceipts } from "@/modules/finance";
 import type { InvoiceDetailDTO } from "@/modules/finance";
 import {
-  BackLink,
-  DetailHeader,
-  DetailList,
-  Figures,
   Section,
   TableShell,
   methodLabel,
@@ -53,40 +51,61 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const hasPdf = Boolean(invoice.invoiceNumber);
   const outstandingTone = invoice.status === "overdue" ? "danger" : invoice.status === "paid" ? "success" : "default";
 
+  const historyEntries = await auditChatterEntries(actor, "invoice", invoice.id);
+  const invoicePath = ["draft", "issued", "paid"];
+  const invoiceNow = invoice.status === "partially_paid" ? "issued" : invoice.status;
+  const invoiceStages = invoicePath.includes(invoiceNow) ? invoicePath : [...invoicePath.slice(0, 2), invoiceNow];
+  const invoiceAt = invoiceStages.indexOf(invoiceNow);
+  const STAGE_LABEL: Record<string, string> = { draft: "Draft", issued: invoice.status === "partially_paid" ? "Partially paid" : "Issued", paid: "Paid", overdue: "Overdue", cancelled: "Cancelled" };
+
   return (
-    <div className="flex flex-col gap-4">
-      <BackLink href="/invoices">Invoices</BackLink>
-      <DetailHeader
+    <FormView
+      crumbs={[{ label: "Invoices", href: "/finance?tab=invoices" }, { label: invoice.invoiceNumber ?? "Draft invoice" }]}
+      actions={
+        hasPdf || canIssue || canCancel ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {hasPdf ? (
+              <a href={`/api/invoices/${invoice.id}/pdf`} className={buttonClass("secondary", "min-h-9")}>
+                Download PDF
+              </a>
+            ) : null}
+            <InvoiceActions invoiceId={invoice.id} canIssue={canIssue} canCancel={canCancel} />
+          </div>
+        ) : null
+      }
+      statusbar={
+        <StatusBar
+          label="Invoice status"
+          stages={invoiceStages.map((k, i) => ({ key: k, label: STAGE_LABEL[k] ?? k, state: i < invoiceAt ? "done" : i === invoiceAt ? "current" : "todo" }))}
+        />
+      }
+      chatter={historyEntries ? <Chatter entries={historyEntries} timeZone={actor.timezone} title="History" empty="No changes recorded yet." /> : undefined}
+    >
+      <SheetTitle
+        code="Customer invoice"
         title={invoice.invoiceNumber ?? "Draft invoice"}
-        badge={<StatusBadge status={invoice.status} />}
-        facts={
-          <>
-            {invoice.clientName} · Due {invoice.dueDate ?? "not set"}
-          </>
+        badges={<StatusBadge status={invoice.status} />}
+        smart={
+          <SmartButtons
+            items={[
+              { icon: "issued", value: money(invoice.currency, invoice.total), label: "Total" },
+              { icon: "completed", value: money(invoice.currency, invoice.confirmedReceipts), label: "Received" },
+              { icon: "partial", value: money(invoice.currency, invoice.outstanding), label: "Outstanding", tone: outstandingTone === "danger" ? "danger" : undefined },
+            ]}
+          />
         }
       />
-      <Figures
+      {canIssue ? <p className="-mt-3 mb-4 text-xs text-muted">Issuing assigns the next invoice number and locks the lines.</p> : null}
+      <FieldGrid
         items={[
-          { label: "Total", value: money(invoice.currency, invoice.total) },
-          { label: "Received", value: money(invoice.currency, invoice.confirmedReceipts) },
-          { label: "Outstanding", value: money(invoice.currency, invoice.outstanding), tone: outstandingTone },
+          { label: "Client", value: invoice.clientName },
+          { label: "Project", value: projectLabel ?? notSet },
+          { label: "Issue date", value: invoice.issueDate ?? notSet },
+          { label: "Due date", value: invoice.dueDate ?? notSet },
+          { label: "Currency", value: invoice.currency },
         ]}
       />
-
-      {hasPdf || canIssue || canCancel ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {hasPdf ? (
-            <a href={`/api/invoices/${invoice.id}/pdf`} className={buttonClass("secondary")}>
-              Download PDF
-            </a>
-          ) : null}
-          <InvoiceActions invoiceId={invoice.id} canIssue={canIssue} canCancel={canCancel} />
-          {canIssue ? <p className="basis-full text-xs text-muted">Issuing assigns the next invoice number and locks the lines.</p> : null}
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+      <div className="mt-2 flex flex-col gap-4">
           <Section title="Line items">
             <TableShell caption="Invoice line items" minWidth="38rem">
               <thead className="text-muted">
@@ -179,23 +198,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               )}
             </Section>
           )}
-        </div>
-
-        <aside className="flex min-w-0 flex-col gap-4">
-          <Section title="Details">
-            <DetailList
-              rows={[
-                ["Client", invoice.clientName],
-                ["Project", projectLabel ?? notSet],
-                ["Issue date", invoice.issueDate ?? notSet],
-                ["Due date", invoice.dueDate ?? notSet],
-                ["Currency", invoice.currency],
-              ]}
-            />
-          </Section>
-          <HistoryPanel actor={actor} entity="invoice" entityId={invoice.id} />
-        </aside>
       </div>
-    </div>
+    </FormView>
   );
 }

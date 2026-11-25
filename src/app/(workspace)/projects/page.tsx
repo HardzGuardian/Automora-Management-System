@@ -5,8 +5,9 @@ import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusView, TONE_CLASS } from "@/components/ui/status";
-import { Pager } from "@/components/ui/pager";
-import { buttonClass, inputClass } from "@/components/ui/styles";
+import { CompactPager, ControlPanel } from "@/components/ui/odoo";
+import { FacetSearch, hrefWith } from "@/components/ui/facet-search";
+import { buttonClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { cn } from "@/lib/cn";
 import { todayInTz } from "@/lib/dates";
@@ -79,23 +80,27 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const tasksByProject = new Map<string, TaskDTO[]>(rows.map((r, i) => [r.id, taskLists[i].rows]));
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Projects</h1>
-          <p className="mt-1 text-muted">Each project is given to a team and holds its tasks. Open one to see them.</p>
-        </div>
-        {can(actor, "projects.create") ? (
-          <Link href="/projects/new" className={buttonClass("primary", "gap-2")}>
-            <Icon name="plus" size={18} strokeWidth={2.2} />
-            New project
-          </Link>
-        ) : null}
-      </div>
-
-      {sp.error ? <p role="alert" className="m-0 rounded-lg bg-danger-soft px-4 py-3 font-medium text-danger">{sp.error.slice(0, 300)}</p> : null}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-4">
+      <ControlPanel
+        crumbs={[{ label: "Projects" }]}
+        actions={
+          can(actor, "projects.create") ? (
+            <Link href="/projects/new" className={buttonClass("primary", "min-h-9 px-3.5")}>
+              New<span className="sr-only"> project</span>
+            </Link>
+          ) : null
+        }
+        search={
+          <FacetSearch
+            label="Search projects"
+            placeholder="Search projects by name or code..."
+            value={q ?? ""}
+            keep={{ status: sp.status, sort: sp.sort }}
+            facets={q ? [{ label: "Search", value: q, removeHref: hrefWith("/projects", { status: sp.status, sort: sp.sort }) }] : []}
+          />
+        }
+        filters={
+          <>
         <FilterPills
           label="Filter by status"
           pills={PILLS.map((p) => ({
@@ -122,16 +127,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             ))}
           </select>
         </AutoForm>
-      </div>
+          </>
+        }
+        pager={pages > 1 ? <CompactPager from={(page - 1) * PAGE_SIZE + 1} to={Math.min(page * PAGE_SIZE, sorted.length)} total={sorted.length} prevHref={page > 1 ? pageHref(page - 1) : undefined} nextHref={page < pages ? pageHref(page + 1) : undefined} /> : null}
+      />
 
-      <form method="get" aria-label="Search projects" className="flex flex-wrap items-center gap-2">
-        {sp.status ? <input type="hidden" name="status" value={sp.status} /> : null}
-        {sp.sort ? <input type="hidden" name="sort" value={sp.sort} /> : null}
-        <label htmlFor="project-search" className="sr-only">Search projects</label>
-        <input id="project-search" name="q" defaultValue={q ?? ""} placeholder="Search by name or code" className={`${inputClass} max-w-xs`} />
-        <button type="submit" className={buttonClass("secondary")}>Search</button>
-        {q ? <Link href="/projects" className={buttonClass("secondary")}>Clear</Link> : null}
-      </form>
+      {sp.error ? <p role="alert" className="m-0 rounded-lg bg-danger-soft px-4 py-3 font-medium text-danger">{sp.error.slice(0, 300)}</p> : null}
 
       <section aria-label="Projects" className="overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
@@ -255,7 +256,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </ul>
         )}
       </section>
-      <Pager page={page} pages={pages} prevHref={page > 1 ? pageHref(page - 1) : undefined} nextHref={page < pages ? pageHref(page + 1) : undefined} />
     </div>
   );
 }

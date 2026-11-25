@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -32,12 +32,9 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   const canSuspend = can(actor, "users.suspend");
   const showStatus = active ? canDeactivate || canSuspend : canDeactivate;
   return (
-    <div className="flex max-w-[720px] flex-col gap-5">
-      <div>
-        <BackLink href={`/employees/${id}`}>{e.fullName}</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Edit employee</h1>
-        <p className="mt-1 text-muted">{e.employeeCode}. Teams are changed from the Team tab.</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: e.fullName, href: `/employees/${id}` }, { label: "Edit employee" }]} description={<>{e.employeeCode}. Teams are changed from the Team tab.</>} />
+      <div data-sheet className={`${sheetClass} max-w-[720px] flex flex-col gap-5`}>
       <EditEmployeeForm id={id} fullName={e.fullName} workEmail={e.workEmail} phone={e.phone} designation={e.designation} department={e.department} joiningDate={e.joiningDate} />
       {showStatus ? (
         <section aria-label="Account status" className="flex flex-col gap-3 border-t border-border pt-4">
@@ -82,6 +79,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
           </div>
         </section>
       ) : null}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
@@ -21,12 +21,9 @@ export default async function NewTeamPage({ searchParams }: { searchParams?: Pro
   ]);
 
   return (
-    <div className="flex max-w-[640px] flex-col gap-5">
-      <div>
-        <BackLink href="/teams">Teams</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Add team</h1>
-        <p className="mt-1 text-muted">Name the team, choose its department, then pick who is on it and who leads it.</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: "Teams", href: "/teams" }, { label: "Add team" }]} description={<>Name the team, choose its department, then pick who is on it and who leads it.</>} />
+      <div data-sheet className={`${sheetClass} max-w-[640px] flex flex-col gap-5`}>
       {departments.length === 0 ? (
         <p className="m-0 text-sm text-muted">
           There is no department yet. <Link href="/teams/departments/new" className="font-medium text-primary-ink underline">Create a department</Link> first.
@@ -75,6 +72,7 @@ export default async function NewTeamPage({ searchParams }: { searchParams?: Pro
           </div>
         </form>
       )}
+      </div>
     </div>
   );
 }

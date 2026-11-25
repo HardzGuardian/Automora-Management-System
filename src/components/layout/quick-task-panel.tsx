@@ -78,9 +78,13 @@ export function QuickTaskButton({ actions }: { actions: QuickTaskActions }) {
 
   return (
     <>
-      <button type="button" onClick={open} className={cn(buttonClass("primary"), "gap-2")}>
-        <Icon name="plus" size={18} />
-        New task
+      <button
+        type="button"
+        onClick={open}
+        className={cn(buttonClass("secondary"), "min-h-9 gap-1.5 border-white/30 bg-white/10 px-2.5 text-white shadow-none hover:bg-white/20 hover:text-white")}
+      >
+        <Icon name="plus" size={16} />
+        <span className="sr-only 2xl:not-sr-only">New task</span>
       </button>
 
       <dialog

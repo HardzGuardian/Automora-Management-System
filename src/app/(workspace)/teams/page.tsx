@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icons";
@@ -19,12 +20,19 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Team</h1>
-          <p className="mt-1 text-muted">Open a team to see who is on it and how many tasks each person has.</p>
-        </div>
-        {manage ? (
+      <ControlPanel
+        search={
+          <form role="search" aria-label="Team search" className="flex flex-wrap items-center gap-2">
+            <input name="q" type="search" defaultValue={search} placeholder="Search teams by name" aria-label="Search teams" className={`${inputClass} max-w-sm flex-1`} />
+            <button type="submit" className={buttonClass("secondary")}>Search</button>
+            {search ? <Link href="/teams" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">Clear</Link> : null}
+          </form>
+        }
+        crumbs={[{ label: "Team" }]}
+        description={<>Open a team to see who is on it and how many tasks each person has.</>}
+        actions={
+          <>
+            {manage ? (
           <div className="ml-auto flex flex-wrap gap-2">
             <Link href="/teams/departments/new" className={buttonClass("secondary")}>
               Create department
@@ -35,15 +43,11 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
             </Link>
           </div>
         ) : null}
-      </div>
+          </>
+        }
+      />
 
       {error ? <Alert tone="error">{error.slice(0, 300)}</Alert> : null}
-
-      <form role="search" aria-label="Team search" className="flex flex-wrap items-center gap-2">
-        <input name="q" type="search" defaultValue={search} placeholder="Search teams by name" aria-label="Search teams" className={`${inputClass} max-w-sm flex-1`} />
-        <button type="submit" className={buttonClass("secondary")}>Search</button>
-        {search ? <Link href="/teams" className="text-[13px] font-medium text-primary-ink hover:text-primary-hover">Clear</Link> : null}
-      </form>
 
       <section aria-label="Teams" className="overflow-hidden rounded-lg border border-border bg-surface">
         {teams.length === 0 && emptyDepartments.length === 0 ? (

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass, cardClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -15,12 +15,9 @@ export default async function ExpenseCategoriesPage() {
   const categories = await listExpenseCategories(actor, true);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <div>
-        <BackLink href="/finance?tab=expenses">Expenses</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Expense categories</h1>
-        <p className="mt-1 text-muted">Categories group expenses in lists and reports. A category in use is switched off instead of deleted, so old expenses keep their category.</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: "Expenses", href: "/finance?tab=expenses" }, { label: "Expense categories" }]} description={<>Categories group expenses in lists and reports. A category in use is switched off instead of deleted, so old expenses keep their category.</>} />
+      <div data-sheet className={`${sheetClass} max-w-3xl flex flex-col gap-5`}>
 
       <section className={`${cardClass} flex flex-col gap-3`} aria-label="Add a category">
         <h2 className="m-0 text-base font-semibold">Add a category</h2>
@@ -63,6 +60,7 @@ export default async function ExpenseCategoriesPage() {
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }

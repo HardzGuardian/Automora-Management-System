@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -51,17 +52,19 @@ export default async function NotificationsPage({ searchParams }: { searchParams
 
   return (
     <div className="flex max-w-[860px] flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Notifications</h1>
-          <p className="mt-1 text-muted">{unread.total ? `${unread.total} unread` : "Nothing new"}</p>
-        </div>
-        <form action={markAllAction}>
+      <ControlPanel
+        crumbs={[{ label: "Notifications" }]}
+        description={<>{unread.total ? `${unread.total} unread` : "Nothing new"}</>}
+        actions={
+          <>
+            <form action={markAllAction}>
           <button type="submit" className="min-h-11 rounded-lg border border-field bg-surface px-4 font-medium text-foreground hover:bg-primary-soft">
             Mark all as read
           </button>
         </form>
-      </div>
+          </>
+        }
+      />
 
       <FilterPills
         label="Filter notifications"

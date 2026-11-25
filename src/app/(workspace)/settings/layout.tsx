@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -23,10 +24,10 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   ].filter(Boolean) as { href: string; label: string }[];
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
-        <p className="mt-1 text-muted">Company details, people and what each role can do.</p>
-      </div>
+      <ControlPanel
+        crumbs={[{ label: "Settings" }]}
+        description={<>Company details, people and what each role can do.</>}
+      />
       <div className="flex flex-wrap items-start gap-6">
         <SettingsTabs tabs={tabs} />
         <div className="min-w-0 flex-[1_1_520px]">{children}</div>

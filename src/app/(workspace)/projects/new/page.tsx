@@ -1,4 +1,4 @@
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
 import { listClients } from "@/modules/clients";
@@ -20,12 +20,9 @@ export default async function NewProjectPage() {
   const owners = allowed && can(actor, "employees.read") ? (await listEmployees(actor, { pageSize: 100, status: "Active" }).catch(() => ({ rows: [] }))).rows.map((e) => ({ id: e.id, name: e.fullName })) : [];
 
   return (
-    <div className="flex max-w-[800px] flex-col gap-5">
-      <div>
-        <BackLink href="/projects">Projects</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">New project</h1>
-        <p className="mt-1 text-muted">Add the details, attach reference documents, then choose the team that will do the work.</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: "Projects", href: "/projects" }, { label: "New project" }]} description={<>Add the details, attach reference documents, then choose the team that will do the work.</>} />
+      <div data-sheet className={`${sheetClass} max-w-[800px] flex flex-col gap-5`}>
       {allowed ? (
         <NewProjectForm clients={clients.rows.map((c) => ({ id: c.id, name: c.name }))} teams={teams} owners={owners} defaultOwnerId={actor.employeeId ?? ""} />
       ) : (
@@ -33,6 +30,7 @@ export default async function NewProjectPage() {
           Only admins can create projects and upload documents. Ask an admin to set this project up.
         </div>
       )}
+      </div>
     </div>
   );
 }

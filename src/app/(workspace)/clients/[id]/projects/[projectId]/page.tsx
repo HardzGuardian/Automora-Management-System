@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { BackLink } from "@/components/ui/back-link";
-import { DetailHeader } from "@/components/ui/detail-header";
+import { FieldGrid, FormView, SheetTitle, SmartButtons } from "@/components/ui/odoo";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { buttonClass, linkClass } from "@/components/ui/styles";
@@ -72,14 +71,32 @@ export default async function ClientProjectPage({ params }: { params: Promise<{ 
   const unpaidTotals = totalsByCurrency(unpaid);
 
   return (
-    <div className="flex flex-col gap-5">
-      <BackLink href={`/clients/${id}`}>{client.name}</BackLink>
-      <DetailHeader
-        title={project.name}
+    <FormView crumbs={[{ label: "Clients", href: "/clients" }, { label: client.name, href: `/clients/${id}` }, { label: project.name }]}>
+      <SheetTitle
         code={project.projectCode}
+        title={project.name}
         badges={<StatusBadge status={project.archived ? "Archived" : project.status} />}
-        facts={[client.name, project.dueDate ? `Due ${project.dueDate}` : "No due date"]}
+        smart={
+          <SmartButtons
+            items={[
+              ...(invoices
+                ? [
+                    { icon: "partial" as const, value: unpaidTotals.length > 0 ? unpaidTotals.map((t) => money(t.currency, t.amount)).join(" + ") : "0", label: "Unpaid", tone: unpaid.length > 0 ? ("danger" as const) : undefined },
+                    { icon: "issued" as const, value: invoices.length, label: "Invoices" },
+                  ]
+                : []),
+              { icon: "tasks", value: tasks.total, label: "Tasks", href: `/projects/${projectId}` },
+            ]}
+          />
+        }
       />
+      <FieldGrid
+        items={[
+          { label: "Client", value: client.name },
+          { label: "Due date", value: project.dueDate },
+        ]}
+      />
+      <div className="mt-2 flex flex-col gap-5">
 
       {canSeeFinance ? (
         financeUnavailable || invoices === null ? (
@@ -201,6 +218,7 @@ export default async function ClientProjectPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </SectionCard>
-    </div>
+      </div>
+    </FormView>
   );
 }

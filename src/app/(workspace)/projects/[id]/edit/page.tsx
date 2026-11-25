@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { SectionCard } from "@/components/ui/section-card";
 import { inputClass } from "@/components/ui/styles";
@@ -35,11 +35,9 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const candidates = people.filter((e) => e.id !== project.ownerEmployeeId);
 
   return (
-    <div className="flex max-w-[800px] flex-col gap-5">
-      <div>
-        <BackLink href={`/projects/${id}`}>{project.projectCode}</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Edit project</h1>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: project.projectCode, href: `/projects/${id}` }, { label: "Edit project" }]} />
+      <div data-sheet className={`${sheetClass} max-w-[800px] flex flex-col gap-5`}>
       {canEdit ? (
         <EditProjectForm
           id={id}
@@ -65,6 +63,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           )}
         </SectionCard>
       ) : null}
+      </div>
     </div>
   );
 }

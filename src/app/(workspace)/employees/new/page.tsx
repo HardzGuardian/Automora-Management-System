@@ -1,5 +1,4 @@
 import { Alert } from "@/components/ui/alert";
-import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireActor } from "@/lib/auth/require-actor";
 import { can } from "@/lib/permissions";
@@ -12,16 +11,14 @@ export default async function NewEmployeePage() {
   if (!can(actor, "employees.create")) {
     return (
       <div className="flex flex-col gap-4">
-        <BackLink href="/employees">Employees</BackLink>
-      <PageHeader title="New employee" />
+      <PageHeader crumbs={[{ label: "Employees", href: "/employees" }]} title="New employee" />
         <Alert tone="warning">You do not have permission to create employees.</Alert>
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-4">
-      <BackLink href="/employees">Employees</BackLink>
-      <PageHeader title="New employee" description="Creating an employee does not give them access. Invite them from their page." />
+      <PageHeader crumbs={[{ label: "Employees", href: "/employees" }]} title="New employee" description="Creating an employee does not give them access. Invite them from their page." />
       <EmployeeForm />
     </div>
   );

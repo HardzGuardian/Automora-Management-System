@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -35,31 +36,35 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Clients</h1>
-          <p className="mt-1 text-muted">The companies you build projects for. Open a client to see its projects.</p>
-        </div>
-        {can(actor, "clients.create") ? (
+      <ControlPanel
+        search={
+          <form role="search" className="relative w-full">
+            <label htmlFor="cl-q" className="sr-only">Search clients</label>
+            <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
+            <input
+              id="cl-q"
+              name="q"
+              type="search"
+              defaultValue={sp.q}
+              placeholder="Search clients"
+              className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
+            />
+          </form>
+        }
+        crumbs={[{ label: "Clients" }]}
+        description={<>The companies you build projects for. Open a client to see its projects.</>}
+        actions={
+          <>
+            {can(actor, "clients.create") ? (
           <Link href="/clients/new" className={buttonClass("primary", "gap-2")}>
             <Icon name="plus" size={18} strokeWidth={2.2} />
             New client
           </Link>
         ) : null}
-      </div>
+          </>
+        }
+      />
 
-      <form role="search" className="relative max-w-[360px]">
-        <label htmlFor="cl-q" className="sr-only">Search clients</label>
-        <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
-        <input
-          id="cl-q"
-          name="q"
-          type="search"
-          defaultValue={sp.q}
-          placeholder="Search clients"
-          className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
-        />
-      </form>
       <Link href={sp.archived === "1" ? "/clients" : "/clients?archived=1"} className="w-fit text-[13px] font-medium text-primary-ink hover:text-primary-hover">
         {sp.archived === "1" ? "Hide archived clients" : "Show archived clients"}
       </Link>

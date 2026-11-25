@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Alert } from "@/components/ui/alert";
-import { BackLink } from "@/components/ui/back-link";
+import { ControlPanel, sheetClass } from "@/components/ui/odoo";
 import { buttonClass, inputClass } from "@/components/ui/styles";
 import { requireActor } from "@/lib/auth/require-actor";
 import { DomainError } from "@/lib/errors";
@@ -23,11 +23,9 @@ export default async function EditTeamPage({ params }: { params: Promise<{ id: s
     throw e;
   }
   return (
-    <div className="flex max-w-[520px] flex-col gap-5">
-      <div>
-        <BackLink href={`/teams/${id}`}>{team.name}</BackLink>
-        <h1 className="mb-0 mt-1.5 text-2xl font-semibold tracking-tight text-foreground">Edit team</h1>
-      </div>
+    <div className="flex flex-col gap-4">
+      <ControlPanel crumbs={[{ label: team.name, href: `/teams/${id}` }, { label: "Edit team" }]} />
+      <div data-sheet className={`${sheetClass} max-w-[520px] flex flex-col gap-5`}>
       {can(actor, "teams.manage") && !team.archived ? (
         <form action={updateTeamAction} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={id} />
@@ -42,6 +40,7 @@ export default async function EditTeamPage({ params }: { params: Promise<{ id: s
       ) : (
         <Alert tone="error">You cannot edit this team.</Alert>
       )}
+      </div>
     </div>
   );
 }

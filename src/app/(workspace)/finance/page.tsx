@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import Link from "next/link";
 import { AutoForm } from "@/components/ui/auto-form";
 import { FilterPills } from "@/components/ui/filter-pills";
@@ -68,10 +69,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   if (reportsOn && (sp.tab === "reports" || tabs.length === 0)) {
     return (
       <div className="flex flex-col gap-5">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">{tabs.length > 0 ? "Finance and reports" : "Reports"}</h1>
-          <p className="mt-1 text-muted">Pick a report, choose a period, then export it.</p>
-        </div>
+        <ControlPanel crumbs={[{ label: tabs.length > 0 ? "Finance" : "Reports", href: tabs.length > 0 ? "/finance" : undefined }, ...(tabs.length > 0 ? [{ label: "Reports" }] : [])]} description="Pick a report, choose a period, then export it." />
         {tabs.length > 0 ? (
           <FilterPills
             label="Finance sections"
@@ -166,26 +164,26 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Finance and reports</h1>
-          <p className="mt-1 text-muted">Invoices, payments, expenses and the reports built from them.</p>
-        </div>
+      <ControlPanel
+        crumbs={[{ label: "Finance" }, { label: TAB_LABEL[tab] }]}
+        description="Invoices, payments, expenses and the reports built from them."
+        actions={
         <div className="flex flex-wrap gap-2">
-          {can(actor, "finance.reports.read") ? (
-            <Link href="/finance-reports" className={buttonClass("secondary")}>Finance reports</Link>
-          ) : null}
-          {can(actor, "finance.categories.manage") ? (
-            <Link href="/expenses/categories" className={buttonClass("secondary")}>Expense categories</Link>
-          ) : null}
           {primary ? (
             <Link href={primary.href} className={buttonClass("primary", "gap-2")}>
               <Icon name="plus" size={18} strokeWidth={2.2} />
               {primary.label}
             </Link>
           ) : null}
+          {can(actor, "finance.reports.read") ? (
+            <Link href="/finance-reports" className={buttonClass("secondary")}>Finance reports</Link>
+          ) : null}
+          {can(actor, "finance.categories.manage") ? (
+            <Link href="/expenses/categories" className={buttonClass("secondary")}>Expense categories</Link>
+          ) : null}
         </div>
-      </div>
+        }
+      />
 
       <section aria-label="Finance summary" className="grid grid-cols-2 rounded-lg border border-border bg-surface lg:grid-cols-4">
         {stats.map((k, i) => (

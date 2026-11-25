@@ -1,6 +1,8 @@
 import { ConfirmForm } from "@/components/ui/confirm-dialog";
 import { archiveExpenseAction } from "../category-actions";
-import { HistoryPanel } from "../../_components/history-panel";
+import { auditChatterEntries } from "../../_components/audit-chatter";
+import { Chatter } from "@/components/ui/chatter";
+import { FieldGrid, FormView, SheetTitle, SmartButtons, StatusBar } from "@/components/ui/odoo";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getActor } from "@/lib/auth/actor";
@@ -12,10 +14,6 @@ import {
   listExpensePayments,
 } from "@/modules/finance";
 import {
-  BackLink,
-  DetailHeader,
-  DetailList,
-  Figures,
   Section,
   TableShell,
   methodLabel,
@@ -60,28 +58,47 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
   const canReverse = actor.permissions.has("finance.expenses.reverse");
   const hasActions = payments.some((p) => (p.status === "pending" && canPay) || (p.status === "confirmed" && canReverse));
 
+  const historyEntries = await auditChatterEntries(actor, "expense", expense.id);
+  const expenseStages = ["unpaid", "partially_paid", "paid"];
+  const expenseAt = expenseStages.indexOf(expense.status);
+  const EXPENSE_LABEL: Record<string, string> = { unpaid: "Unpaid", partially_paid: "Partially paid", paid: "Paid" };
+
   return (
-    <div className="flex flex-col gap-4">
-      <BackLink href="/expenses">Expenses</BackLink>
-      <DetailHeader
+    <FormView
+      crumbs={[{ label: "Expenses", href: "/finance?tab=expenses" }, { label: expense.expenseCode }]}
+      statusbar={
+        <StatusBar
+          label="Expense status"
+          stages={expenseStages.map((k, i) => ({ key: k, label: EXPENSE_LABEL[k], state: i < expenseAt ? "done" : i === expenseAt ? "current" : "todo" }))}
+        />
+      }
+      chatter={historyEntries ? <Chatter entries={historyEntries} timeZone={actor.timezone} title="History" empty="No changes recorded yet." /> : undefined}
+    >
+      <SheetTitle
+        code="Expense"
         title={expense.expenseCode}
-        badge={<StatusBadge status={expense.status} />}
-        facts={
-          <>
-            {expense.payee} · {expense.categoryName} · {expense.expenseDate}
-          </>
+        badges={<span className="text-base text-muted">{expense.payee}</span>}
+        smart={
+          <SmartButtons
+            items={[
+              { icon: "partial", value: money(expense.currency, expense.total), label: "Total" },
+              { icon: "completed", value: money(expense.currency, expense.confirmedPayments), label: "Paid" },
+              { icon: "pending", value: money(expense.currency, expense.outstanding), label: "Outstanding" },
+            ]}
+          />
         }
       />
-      <Figures
+      <FieldGrid
         items={[
-          { label: "Total", value: money(expense.currency, expense.total) },
-          { label: "Paid", value: money(expense.currency, expense.confirmedPayments) },
-          { label: "Outstanding", value: money(expense.currency, expense.outstanding), tone: expense.status === "paid" ? "success" : "default" },
+          { label: "Payee/vendor", value: expense.payee },
+          { label: "Category", value: expense.categoryName },
+          { label: "Expense date", value: expense.expenseDate },
+          { label: "Due date", value: expense.dueDate ?? notSet },
+          { label: "Project", value: projectLabel ?? notSet },
+          { label: "Description", value: expense.description },
         ]}
       />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+      <div className="mt-2 flex flex-col gap-4">
           {canEdit && <ExpenseEditForm expense={expense} categories={categories} projects={projects} />}
           {canPay && expense.outstanding !== "0.00" && <NewExpensePaymentForm expenseId={expense.id} />}
           {canArchive && (
@@ -146,9 +163,6 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
               </TableShell>
             )}
           </Section>
-        </div>
-
-        <aside className="flex min-w-0 flex-col gap-4">
           <Section title={`Attached receipt files (${receipts.length})`}>
             {receipts.length === 0 ? (
               <p className="text-sm text-muted">No receipts attached yet.</p>
@@ -166,21 +180,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
             )}
             {actor.permissions.has("finance.expenses.update") ? <ReceiptUploadForm expenseId={expense.id} /> : null}
           </Section>
-          <Section title="Details">
-            <DetailList
-              rows={[
-                ["Payee/vendor", expense.payee],
-                ["Category", expense.categoryName],
-                ["Description", expense.description],
-                ["Project", projectLabel ?? notSet],
-                ["Expense date", expense.expenseDate],
-                ["Due date", expense.dueDate ?? notSet],
-              ]}
-            />
-          </Section>
-          <HistoryPanel actor={actor} entity="expense" entityId={expense.id} />
-        </aside>
       </div>
-    </div>
+    </FormView>
   );
 }

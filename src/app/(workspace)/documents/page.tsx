@@ -1,3 +1,4 @@
+import { ControlPanel } from "@/components/ui/odoo";
 import { FilterPills } from "@/components/ui/filter-pills";
 import { Icon } from "@/components/ui/icons";
 import { requireActor } from "@/lib/auth/require-actor";
@@ -29,35 +30,37 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="m-0 text-2xl font-semibold tracking-tight text-foreground">Documents</h1>
-        <p className="mt-1 text-muted">Every file across your projects. Admins add files inside a project; you can search and download.</p>
-      </div>
+      <ControlPanel
+        search={
+          <form role="search" className="flex w-full flex-wrap items-center gap-2">
+            <div className="relative w-full">
+              <label htmlFor="doc-q" className="sr-only">Search documents</label>
+              <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
+              <input
+                id="doc-q"
+                name="q"
+                type="search"
+                defaultValue={sp.q}
+                placeholder="Search by file name"
+                className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
+              />
+            </div>
+            <label htmlFor="doc-project" className="sr-only">Filter by project</label>
+            <select id="doc-project" name="project" defaultValue={projectId ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {kind ? <input type="hidden" name="type" value={kind} /> : null}
+            <button type="submit" className="h-10 rounded-lg border border-field bg-surface px-4 font-medium hover:bg-primary-soft">Search</button>
+          </form>
+        }
+        crumbs={[{ label: "Documents" }]}
+        description={<>Every file across your projects. Admins add files inside a project; you can search and download.</>}
+      />
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <form role="search" className="flex flex-wrap items-center gap-2.5">
-          <div className="relative max-w-[360px] min-w-60 flex-1">
-            <label htmlFor="doc-q" className="sr-only">Search documents</label>
-            <Icon name="search" size={18} className="pointer-events-none absolute left-3 top-[11px] text-muted" />
-            <input
-              id="doc-q"
-              name="q"
-              type="search"
-              defaultValue={sp.q}
-              placeholder="Search by file name"
-              className="h-10 w-full rounded-lg border border-field bg-surface pl-10 pr-3 text-foreground placeholder:text-muted"
-            />
-          </div>
-          <label htmlFor="doc-project" className="sr-only">Filter by project</label>
-          <select id="doc-project" name="project" defaultValue={projectId ?? ""} className="h-10 rounded-lg border border-field bg-surface px-2.5 text-foreground">
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          {kind ? <input type="hidden" name="type" value={kind} /> : null}
-          <button type="submit" className="h-10 rounded-lg border border-field bg-surface px-4 font-medium hover:bg-primary-soft">Search</button>
-        </form>
         <FilterPills
           label="File type"
           pills={(["All", ...DOC_KINDS] as const).map((k) => ({
